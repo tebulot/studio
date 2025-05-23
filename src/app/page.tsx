@@ -36,7 +36,7 @@ export default function HomePage() {
 
   const faqData = [
     {
-      question: "What are these \"unwanted web crawlers\" and \"bad bots\" you're talking about?",
+      question: "What are these AI crawlers and scrapers you're talking about?",
       answer: "They're automated software scripts that roam the internet. Some are legitimate, like search engine crawlers (Googlebot, Bingbot). Many others are a nuisance or outright malicious. Think content scrapers stealing your articles, price bots undercutting your store, spambots filling your forms, vulnerability scanners looking for weaknesses, or just aggressive bots hogging your server resources and slowing your site down for real people."
     },
     {
@@ -125,6 +125,7 @@ export default function HomePage() {
               key={i}
               className="absolute text-primary/5 animate-spin-slow"
               style={{
+                // width and height are controlled by className now
                 top: style.top,
                 left: style.left,
                 animationDuration: style.animationDuration,
