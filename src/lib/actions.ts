@@ -1,17 +1,29 @@
 
 "use server";
 
-import { db } from '@/lib/firebase/clientApp'; // Not ideal for server actions, but works for client-side SDK style
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase/clientApp'; // db is still needed for serverTimestamp if we were to use it here.
+import { serverTimestamp } from 'firebase/firestore'; // Keep for potential future use or if constructing complex objects
 import { randomUUID } from 'crypto';
 
-interface AddTarpitConfigData {
+interface AddTarpitConfigServerData {
   userId: string;
   name: string;
   description?: string;
 }
 
-export async function addManagedTarpitConfig(data: AddTarpitConfigData): Promise<{ success: boolean; message: string, url?: string }> {
+// Define the shape of the data returned by the action, which will be written to Firestore by the client
+interface TarpitConfigForFirestore {
+  userId: string;
+  name: string;
+  description: string;
+  pathSegment: string;
+  fullUrl: string;
+  // createdAt will be handled client-side with serverTimestamp for consistency or by Firestore itself
+  status: "active";
+}
+
+
+export async function generateManagedTarpitConfigDetails(data: AddTarpitConfigServerData): Promise<{ success: boolean; message: string; configData?: Omit<TarpitConfigForFirestore, 'status'> & {status: "active"} , fullUrl?: string }> {
   const { userId, name, description } = data;
 
   if (!userId) {
@@ -31,20 +43,21 @@ export async function addManagedTarpitConfig(data: AddTarpitConfigData): Promise
     const pathSegment = randomUUID();
     const fullUrl = `${tarpitBaseUrl}/trap/${pathSegment}`;
 
-    await addDoc(collection(db, "tarpit_configs"), {
+    // Data to be returned to the client for Firestore write
+    const configDetails: Omit<TarpitConfigForFirestore, 'status'> & {status: "active"} = {
       userId,
       name,
       description: description || "",
       pathSegment,
       fullUrl,
-      createdAt: serverTimestamp(),
-      status: "active",
-    });
+      status: "active", // Default status
+    };
 
-    return { success: true, message: "Managed URL added successfully!", url: fullUrl };
+    return { success: true, message: "Configuration details generated successfully!", configData: configDetails, fullUrl: fullUrl };
   } catch (error) {
-    console.error("Error adding managed URL to Firestore:", error);
+    console.error("Error generating managed URL details:", error);
     const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
-    return { success: false, message: `Failed to add managed URL: ${errorMessage}` };
+    return { success: false, message: `Failed to generate URL details: ${errorMessage}` };
   }
 }
+

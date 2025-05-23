@@ -10,9 +10,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Loader2 } from "lucide-react"; // Added Loader2
 import { useAuth } from "@/contexts/AuthContext";
-import { addManagedTarpitConfig } from "@/lib/actions"; // Import the server action
+import { generateManagedTarpitConfigDetails } from "@/lib/actions"; // Updated import
+import { db } from "@/lib/firebase/clientApp"; // Import db for client-side write
+import { collection, addDoc, serverTimestamp } from "firebase/firestore"; // Import Firestore methods
 
 const formSchema = z.object({
   name: z.string().min(1, "Tarpit Name is required."),
@@ -34,7 +36,7 @@ export default function AddUrlForm() {
     },
   });
 
-  const onSubmit: SubmitHandler<FormData> = async (data) => {
+  const onSubmit: SubmitHandler<FormData> = async (formData) => {
     if (!user) {
       toast({
         title: "Error",
@@ -46,30 +48,45 @@ export default function AddUrlForm() {
 
     setIsLoading(true);
     try {
-      const result = await addManagedTarpitConfig({
+      // Step 1: Call server action to generate details (pathSegment, fullUrl)
+      const generationResult = await generateManagedTarpitConfigDetails({
         userId: user.uid,
-        name: data.name,
-        description: data.description,
+        name: formData.name,
+        description: formData.description,
       });
 
-      if (result.success) {
-        toast({
-          title: "Success!",
-          description: result.message + (result.url ? `\nNew URL: ${result.url}` : ""),
-          variant: "default",
-        });
-        form.reset();
-      } else {
+      if (!generationResult.success || !generationResult.configData || !generationResult.fullUrl) {
         toast({
           title: "Error",
-          description: result.message,
+          description: generationResult.message || "Failed to generate URL configuration.",
           variant: "destructive",
         });
+        setIsLoading(false);
+        return;
       }
+
+      // Step 2: Write to Firestore on the client-side
+      const documentToWrite = {
+        ...generationResult.configData,
+        createdAt: serverTimestamp(), // Add timestamp here
+      };
+
+      await addDoc(collection(db, "tarpit_configs"), documentToWrite);
+
+      toast({
+        title: "Success!",
+        description: `Managed URL added successfully!\nNew URL: ${generationResult.fullUrl}`,
+        variant: "default",
+        duration: 5000, // Give more time to see the URL
+      });
+      form.reset();
+
     } catch (error) {
+      console.error("Error in onSubmit AddUrlForm:", error);
+      const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
       toast({
         title: "Error",
-        description: "An unexpected error occurred while calling the server action.",
+        description: `Failed to add managed URL: ${errorMessage}`,
         variant: "destructive",
       });
     } finally {
@@ -111,7 +128,7 @@ export default function AddUrlForm() {
         />
         <Button type="submit" disabled={isLoading || !user} className="w-full md:w-auto bg-primary text-primary-foreground hover:bg-accent hover:text-accent-foreground">
           {isLoading ? (
-            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary-foreground mr-2"></div>
+            <Loader2 className="mr-2 h-5 w-5 animate-spin" /> // Updated loading indicator
           ) : (
             <PlusCircle className="mr-2 h-5 w-5" />
           )}
