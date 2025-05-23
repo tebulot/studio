@@ -7,18 +7,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import BrandLogoIcon from '@/components/icons/BrandLogoIcon';
-import { useState, type FormEvent, useEffect } from 'react'; // Added useEffect
+import { useState, type FormEvent, useEffect } from 'react'; 
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2, Mail } from 'lucide-react';
-
-interface BackgroundIconStyle {
-  width: string;
-  height: string;
-  top: string;
-  left: string;
-  animationDuration: string;
-  opacity: number;
-}
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -29,25 +20,6 @@ export default function LoginPage() {
   
   const { signIn, signUp, loading, sendPasswordReset } = useAuth();
   const [resetLoading, setResetLoading] = useState(false);
-
-  const [backgroundIconStyles, setBackgroundIconStyles] = useState<BackgroundIconStyle[]>([]);
-
-  useEffect(() => {
-    const styles: BackgroundIconStyle[] = [...Array(5)].map(() => {
-      const bgIconWidth = Math.random() * 150 + 80;
-      const bgIconHeight = Math.random() * 150 + 80;
-      return {
-        width: `${bgIconWidth}px`,
-        height: `${bgIconHeight}px`,
-        top: `${Math.random() * 100}%`,
-        left: `${Math.random() * 100}%`,
-        animationDuration: `${Math.random() * 15 + 12}s`,
-        opacity: Math.random() * 0.08 + 0.02,
-      };
-    });
-    setBackgroundIconStyles(styles);
-  }, []);
-
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -72,14 +44,10 @@ export default function LoginPage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground font-mono p-8 selection:bg-primary selection:text-primary-foreground">
       <div className="absolute inset-0 overflow-hidden z-0">
-        {backgroundIconStyles.map((style, i) => (
-            <BrandLogoIcon
-              key={i}
-              className="absolute text-primary/5 animate-spin-slow"
-              style={style}
-              isPriority={false}
-            />
-          ))}
+        <BrandLogoIcon
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[70vw] h-[70vh] max-w-[700px] max-h-[700px] text-primary/5 animate-spin-slow opacity-5"
+            isPriority={false}
+        />
       </div>
       <Card className="w-full max-w-md z-10 bg-card/80 backdrop-blur-sm border-primary/20 shadow-xl shadow-primary/10">
         <CardHeader className="text-center">
