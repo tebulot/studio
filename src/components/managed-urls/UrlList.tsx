@@ -8,21 +8,18 @@ import * as z from "zod";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Copy, Edit3, Code, Loader2, Save } from "lucide-react";
+import { Trash2, Copy, Edit3, Code, Loader2, Save, AlertTriangle, HelpCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from '@/components/ui/textarea';
-// Label import might not be needed if not used elsewhere in this form after changes
-// import { Label } from '@/components/ui/label'; 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useAuth } from "@/contexts/AuthContext";
 import { db } from "@/lib/firebase/clientApp";
 import { collection, query, where, onSnapshot, Timestamp, type DocumentData, type QueryDocumentSnapshot, doc, updateDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
-// Server actions are no longer directly used for DB CUD operations from this component
-// import { updateManagedTarpitConfig, deleteManagedTarpitConfig } from "@/lib/actions";
 
 interface ManagedUrlFirestoreData {
   id: string; // Firestore document ID
@@ -56,6 +53,10 @@ export default function UrlList() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [currentUrlToDelete, setCurrentUrlToDelete] = useState<ManagedUrlFirestoreData | null>(null);
   const [isDeleteLoading, setIsDeleteLoading] = useState(false);
+  
+  const [isEmbedDialogOpen, setIsEmbedDialogOpen] = useState(false);
+  const [currentUrlForEmbed, setCurrentUrlForEmbed] = useState<ManagedUrlFirestoreData | null>(null);
+
 
   const editForm = useForm<EditFormData>({
     resolver: zodResolver(editFormSchema),
@@ -81,7 +82,7 @@ export default function UrlList() {
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const validUrls: ManagedUrlFirestoreData[] = [];
-      querySnapshot.forEach((docSnap: QueryDocumentSnapshot<DocumentData>) => { // Renamed doc to docSnap for clarity
+      querySnapshot.forEach((docSnap: QueryDocumentSnapshot<DocumentData>) => {
         const data = docSnap.data();
         if (data.name && data.fullUrl && data.pathSegment && data.userId && data.status &&
             data.createdAt && typeof data.createdAt.toMillis === 'function') {
@@ -122,7 +123,7 @@ export default function UrlList() {
   };
 
   const onEditSubmit: SubmitHandler<EditFormData> = async (formData) => {
-    if (!currentUrlToEdit || !user) return; // Ensure user is available for context, though not directly used in Firestore call here
+    if (!currentUrlToEdit || !user) return;
     setIsEditLoading(true);
     try {
       const docRef = doc(db, "tarpit_configs", currentUrlToEdit.id);
@@ -150,7 +151,7 @@ export default function UrlList() {
   };
 
   const handleDeleteConfirm = async () => {
-    if (!currentUrlToDelete || !user) return; // Ensure user is available for context
+    if (!currentUrlToDelete || !user) return;
     setIsDeleteLoading(true);
     try {
       const docRef = doc(db, "tarpit_configs", currentUrlToDelete.id);
@@ -167,6 +168,11 @@ export default function UrlList() {
       setIsDeleteLoading(false);
     }
   };
+  
+  const handleEmbedOpen = (url: ManagedUrlFirestoreData) => {
+    setCurrentUrlForEmbed(url);
+    setIsEmbedDialogOpen(true);
+  };
 
   if (isLoading) {
     return (
@@ -181,7 +187,7 @@ export default function UrlList() {
     return <p className="text-muted-foreground text-center py-4">Please log in to see your managed URLs.</p>;
   }
 
-  if (urls.length === 0 && !authLoading && user) { // Added user check here
+  if (urls.length === 0 && !authLoading && user) {
     return <p className="text-muted-foreground text-center py-4">No managed URLs configured yet. Add one above!</p>;
   }
 
@@ -190,23 +196,25 @@ export default function UrlList() {
       toast({ title: "Copied!", description: `${type} copied to clipboard.` });
     }).catch(err => {
       console.error(`Could not copy ${type}: `, err);
-      toast({ title: "Error", description: `Could not copy ${type}.`, variant: "destructive" });
+      toast({ title: "Error", description: `Could not copy ${type}.`, variant = "destructive" });
     });
   };
   
-  const getEmbedCode = (url: string): string => {
-    if (!url) return "";
-    // Basic inference based on common extensions
-    if (url.endsWith('.js') || url.endsWith('.json')) {
-      return `<script src="${url}" async defer></script>`;
-    } else if (/\.(gif|png|jpg|jpeg|svg|webp)$/i.test(url)) {
-      return `<img src="${url}" alt="Tarpit Pixel" width="1" height="1" style="display:none;" />`;
-    } else if (url.endsWith('.css')) {
-      return `<link rel="stylesheet" href="${url}">`;
-    }
-    // Default to a hidden iframe for other content types
-    return `<iframe src="${url}" width="0" height="0" style="display:none;" frameborder="0" title="SpiteSpiral Tarpit"></iframe>`;
-  };
+  const SnippetDisplay = ({ title, snippet, explanation }: { title: string, snippet: string, explanation: string }) => (
+    <div className="space-y-2 mb-4">
+      <h4 className="font-semibold text-sm text-primary">{title}</h4>
+      <Textarea
+        value={snippet}
+        readOnly
+        rows={snippet.split('\n').length > 1 ? snippet.split('\n').length +1 : 3}
+        className="bg-input border-border focus:ring-primary text-foreground/90 font-mono text-xs"
+      />
+      <p className="text-xs text-muted-foreground">{explanation}</p>
+      <Button onClick={() => handleCopy(snippet, `${title} Snippet`)} variant="outline" size="sm" className="text-accent border-accent hover:bg-accent/10">
+        <Copy className="mr-2 h-3 w-3" /> Copy Snippet
+      </Button>
+    </div>
+  );
 
   return (
     <>
@@ -227,7 +235,8 @@ export default function UrlList() {
               </CardHeader>
               <CardContent className="flex-grow">
                 <p className="text-sm text-foreground/90 break-all">
-                  <span className="font-semibold text-muted-foreground">Full URL: </span> {url.fullUrl}
+                  <span className="font-semibold text-muted-foreground">Full URL: </span> 
+                  <a href={url.fullUrl} target="_blank" rel="noopener noreferrer" className="hover:underline text-accent">{url.fullUrl}</a>
                 </p>
                 <p className="text-xs text-muted-foreground mt-2">
                   Created: {url.createdAt ? new Date(url.createdAt.toDate()).toLocaleDateString() : 'N/A'}
@@ -237,37 +246,9 @@ export default function UrlList() {
                 </p>
               </CardContent>
               <CardFooter className="flex justify-end gap-2 border-t border-border pt-4">
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button variant="ghost" size="icon" title="Get Embed Code" className="text-muted-foreground hover:text-primary">
-                      <Code className="h-4 w-4" />
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px] bg-card border-primary/30">
-                    <DialogHeader>
-                      <DialogTitle className="text-primary">Embed Code for {url.name}</DialogTitle>
-                      <DialogDescription>
-                        Copy this code and paste it into your website&apos;s HTML to activate the tarpit for this URL.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                      <Textarea
-                        id={`embed-code-${url.id}`}
-                        value={getEmbedCode(url.fullUrl)}
-                        readOnly
-                        rows={4}
-                        className="bg-input border-border focus:ring-primary text-foreground"
-                      />
-                      <Button onClick={() => handleCopy(getEmbedCode(url.fullUrl), "Embed code")} className="w-full bg-primary text-primary-foreground hover:bg-accent hover:text-accent-foreground">
-                        <Copy className="mr-2 h-4 w-4" /> Copy Code
-                      </Button>
-                    </div>
-                     <DialogClose asChild>
-                        <Button type="button" variant="secondary" className="mt-2">Close</Button>
-                      </DialogClose>
-                  </DialogContent>
-                </Dialog>
-
+                <Button variant="ghost" size="icon" title="Get Embed Code & Instructions" onClick={() => handleEmbedOpen(url)} className="text-muted-foreground hover:text-primary">
+                  <HelpCircle className="h-4 w-4" />
+                </Button>
                 <Button variant="ghost" size="icon" onClick={() => handleCopy(url.fullUrl, "URL")} title="Copy URL" className="text-muted-foreground hover:text-primary">
                   <Copy className="h-4 w-4" />
                 </Button>
@@ -282,6 +263,104 @@ export default function UrlList() {
           ))}
         </div>
       </ScrollArea>
+
+      {/* Embed Code Dialog */}
+      <Dialog open={isEmbedDialogOpen} onOpenChange={setIsEmbedDialogOpen}>
+        <DialogContent className="max-w-2xl bg-card border-primary/30">
+          <DialogHeader>
+            <DialogTitle className="text-primary flex items-center"><Code className="mr-2 h-5 w-5"/>Embed Instructions for: {currentUrlForEmbed?.name}</DialogTitle>
+            <DialogDescription>
+              Follow these instructions to effectively embed your SpiteSpiral Tarpit link and start trapping crawlers.
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="max-h-[70vh] p-1 pr-4">
+            {currentUrlForEmbed && (
+                <Accordion type="single" collapsible className="w-full space-y-3">
+                <AccordionItem value="item-1">
+                  <AccordionTrigger className="text-accent hover:text-primary">Primary Recommended Snippets</AccordionTrigger>
+                  <AccordionContent className="space-y-4 pt-2">
+                    <SnippetDisplay
+                      title="1x1 Invisible Pixel Image"
+                      snippet={`<img src="${currentUrlForEmbed.fullUrl}" width="1" height="1" alt="" style="border:0; position:absolute; left:-9999px;" aria-hidden="true" loading="eager" />`}
+                      explanation={`This creates a tiny, invisible image. Most web crawlers will try to fetch this image, leading them to your tarpit. The loading="eager" hint encourages it to load even if off-screen. It's designed to be completely invisible and not affect your page layout.`}
+                    />
+                    <SnippetDisplay
+                      title="Fake Stylesheet Link (for the <head>)"
+                      snippet={`<link rel="stylesheet" href="${currentUrlForEmbed.fullUrl}" media="print" onload="this.media='all'; this.onload=null;" />`}
+                      explanation={`This looks like a stylesheet to crawlers. We use media="print" and an onload trick to ensure it doesn't block your page rendering for actual visitors while still being discoverable by many bots. Some bots specifically look for and parse CSS files.`}
+                    />
+                  </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value="item-2">
+                  <AccordionTrigger className="text-accent hover:text-primary">Alternative Snippets</AccordionTrigger>
+                  <AccordionContent className="space-y-4 pt-2">
+                    <SnippetDisplay
+                      title="Fake Script Tag"
+                      snippet={`<script src="${currentUrlForEmbed.fullUrl}" async defer></script>`}
+                      explanation={`This mimics a JavaScript file. 'async' and 'defer' help prevent it from blocking your page load for human visitors.`}
+                    />
+                  </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value="item-3">
+                  <AccordionTrigger className="text-accent hover:text-primary">Step-by-Step Guidance</AccordionTrigger>
+                  <AccordionContent className="text-sm text-foreground/80 space-y-1 pt-2">
+                    <p>1. Choose one of the HTML snippets provided above.</p>
+                    <p>2. Copy the entire snippet.</p>
+                    <p>3. Open the HTML code for the website pages where you want to detect crawlers.</p>
+                    <p>4. Paste the snippet into the recommended location within your HTML (see 'Where to Place it' below).</p>
+                    <p>5. If you use a website template or a common include file (like a header or footer), placing it there will deploy it across many pages at once.</p>
+                    <p>6. Save and publish your website changes.</p>
+                  </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value="item-4">
+                  <AccordionTrigger className="text-accent hover:text-primary">Where to Place It to Catch the Most Crawlers</AccordionTrigger>
+                  <AccordionContent className="text-sm text-foreground/80 space-y-2 pt-2">
+                    <p><strong className="text-primary">Goal:</strong> The Managed URL should be easily discoverable by automated crawlers but generally ignored by human visitors.</p>
+                    <p className="font-semibold text-foreground/90">Key Locations on Their Website:</p>
+                    <ul className="list-disc pl-5 space-y-1">
+                      <li><strong className="text-primary/90">In the HTML &lt;head&gt;:</strong> Ideal for the &lt;link rel="stylesheet" ...&gt; method. Crawlers almost always parse the head for metadata and resource links.</li>
+                      <li><strong className="text-primary/90">End of the &lt;body&gt; tag:</strong> A common place for tracking scripts and non-critical elements. Good for the &lt;img&gt; or &lt;script&gt; methods. This ensures it doesn't interfere with the rendering of the main content.</li>
+                      <li><strong className="text-primary/90">Common Headers/Footers:</strong> If their website uses templates (e.g., WordPress, Shopify, or a custom CMS), tell them to place the snippet in their site-wide header or footer template file. This ensures the tarpit link is present on every page, maximizing coverage.</li>
+                    </ul>
+                    <p><strong className="text-primary">Throughout Multiple Pages:</strong> Emphasize that the more pages it's on, the higher the chance of catching various types of crawlers exploring different parts of their site.</p>
+                    <p><strong className="text-primary">Subtlety is Key (for Humans):</strong> Our provided snippets are designed to be invisible or non-disruptive to your human visitors. The goal is for automated bots to follow these links, not your customers.</p>
+                     <p className="font-semibold text-foreground/90 mt-2">What to (Generally) Avoid for this Specific Purpose:</p>
+                     <ul className="list-disc pl-5 space-y-1">
+                        <li>Placing it only in robots.txt.</li>
+                        <li>Hiding it too well with JavaScript that some crawlers might not execute.</li>
+                    </ul>
+                  </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value="item-5">
+                  <AccordionTrigger className="text-accent hover:text-primary">Do's and Don'ts</AccordionTrigger>
+                  <AccordionContent className="text-sm text-foreground/80 space-y-2 pt-2">
+                    <p className="font-semibold text-foreground/90">Do:</p>
+                    <ul className="list-disc pl-5 space-y-1">
+                      <li>Place it where it's likely to be parsed by automated tools.</li>
+                      <li>Test your page after adding it to ensure it doesn't break your layout (though the provided snippets are designed to be safe).</li>
+                    </ul>
+                    <p className="font-semibold text-foreground/90 mt-2">Don't:</p>
+                     <ul className="list-disc pl-5 space-y-1">
+                      <li>Make it a visible, clickable link for your human users unless you have a specific strategy for that.</li>
+                      <li>Modify the <code className="bg-muted px-1 py-0.5 rounded text-xs text-accent">{currentUrlForEmbed.fullUrl}</code> part of the snippet.</li>
+                    </ul>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            )}
+          </ScrollArea>
+          <DialogFooter className="pt-4">
+            <DialogClose asChild>
+              <Button type="button" variant="outline">Close</Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
