@@ -1,7 +1,8 @@
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import TrappedCrawlersChart from "@/components/dashboard/TrappedCrawlersChart";
 import RecentActivityTable from "@/components/dashboard/RecentActivityTable";
-import { ShieldCheck, Users, AlertTriangle } from "lucide-react";
+import { ShieldCheck, Users, DollarSign } from "lucide-react"; // Changed AlertTriangle to DollarSign
 
 export default function DashboardPage() {
   return (
@@ -34,14 +35,14 @@ export default function DashboardPage() {
             <p className="text-xs text-muted-foreground mt-1">All systems operational</p>
           </CardContent>
         </Card>
-        <Card className="border-destructive/30 shadow-lg shadow-destructive/10 hover:shadow-destructive/20 transition-shadow duration-300">
+        <Card className="border-primary/30 shadow-lg shadow-primary/10 hover:shadow-primary/20 transition-shadow duration-300"> {/* Changed from destructive */}
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-destructive">High-Risk Alerts</CardTitle>
-            <AlertTriangle className="h-5 w-5 text-destructive" />
+            <CardTitle className="text-sm font-medium text-primary">Estimated Crawler Costs Saved</CardTitle> {/* Changed title */}
+            <DollarSign className="h-5 w-5 text-primary" /> {/* Changed icon */}
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-foreground">3</div>
-            <p className="text-xs text-muted-foreground mt-1">Require immediate attention</p>
+            <div className="text-3xl font-bold text-foreground">$125.50</div> {/* Changed value */}
+            <p className="text-xs text-muted-foreground mt-1">This month</p> {/* Changed sub-text */}
           </CardContent>
         </Card>
       </section>
