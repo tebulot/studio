@@ -49,7 +49,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (!loading && !user && !isPublicPath) {
       router.push('/login?redirect=' + encodeURIComponent(pathname));
     }
-    if (!loading && user && (pathname === '/login' || pathname === '/')) {
+    // Only redirect from /login to /dashboard if user is logged in.
+    // Allow logged-in users to visit the homepage ('/').
+    if (!loading && user && pathname === '/login') {
         router.push('/dashboard');
     }
   }, [user, loading, router, pathname]);
