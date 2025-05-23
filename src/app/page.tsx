@@ -44,8 +44,7 @@ export default function HomePage() {
         </Button>
 
         {/* New Informational Section */}
-        <div className="mt-20 w-full max-w-5xl px-4">
-          {/* Buttons removed as per request */}
+        <div className="mt-20 mb-20 w-full max-w-5xl px-4"> {/* Added mb-20 here */}
           <div className="grid md:grid-cols-3 gap-6 text-left">
             <Card className="border-primary/30 shadow-lg shadow-primary/10 bg-card/80 backdrop-blur-sm">
               <CardHeader>
