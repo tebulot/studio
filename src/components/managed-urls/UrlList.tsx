@@ -43,13 +43,32 @@ export default function UrlList() {
     const q = query(collection(db, "tarpit_configs"), where("userId", "==", user.uid));
     
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const fetchedUrls: ManagedUrlFirestoreData[] = [];
+      const validUrls: ManagedUrlFirestoreData[] = [];
       querySnapshot.forEach((doc: QueryDocumentSnapshot<DocumentData>) => {
-        fetchedUrls.push({ id: doc.id, ...doc.data() } as ManagedUrlFirestoreData);
+        const data = doc.data();
+        // Check for essential fields and valid Timestamp for createdAt
+        if (data.name && data.fullUrl && data.pathSegment && data.userId && data.status &&
+            data.createdAt && typeof data.createdAt.toMillis === 'function') {
+          validUrls.push({
+            id: doc.id,
+            name: data.name as string,
+            description: data.description as string | undefined,
+            fullUrl: data.fullUrl as string,
+            pathSegment: data.pathSegment as string,
+            createdAt: data.createdAt as Timestamp, // We've checked it's a Timestamp
+            status: data.status as "active" | "inactive",
+            userId: data.userId as string,
+          });
+        } else {
+          // Optionally log or handle documents that don't match the expected structure
+          console.warn(`Document ${doc.id} is missing required fields or has invalid createdAt. Data:`, data);
+        }
       });
-      // Sort by creation date, newest first
-      fetchedUrls.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
-      setUrls(fetchedUrls);
+
+      // Sort valid URLs by creation date, newest first
+      validUrls.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+      
+      setUrls(validUrls);
       setIsLoading(false);
     }, (error) => {
       console.error("Error fetching managed URLs:", error);
