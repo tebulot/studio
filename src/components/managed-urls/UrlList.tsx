@@ -196,7 +196,7 @@ export default function UrlList() {
       toast({ title: "Copied!", description: `${type} copied to clipboard.` });
     }).catch(err => {
       console.error(`Could not copy ${type}: `, err);
-      toast({ title: "Error", description: `Could not copy ${type}.`, variant = "destructive" });
+      toast({ title: "Error", description: `Could not copy ${type}.`, variant: "destructive" });
     });
   };
   
@@ -442,5 +442,7 @@ export default function UrlList() {
     </>
   );
 }
+
+    
 
     
