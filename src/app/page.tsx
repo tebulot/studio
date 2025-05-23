@@ -56,7 +56,7 @@ export default function HomePage() {
     },
     {
       question: "What exactly is a \"tarpit\" and how does it stop them?",
-      answer: "Imagine digital flypaper for bots. When a crawler accesses one of our special \"Managed URLs\" that you've placed on your site, our SpiteSpiral tarpit servers deliberately engage with it very, very slowly. We might feed it data at a snail's pace, send it an endless stream of trivial information, or make it think it's found something interesting that requires many slow requests. The goal isn't to block it with a \"403 Forbidden\" (it might just try again from a different IP), but to waste its time and computational resources, making your site an incredibly inefficient and frustrating target."
+      answer: "Imagine digital flypaper for bots. When a crawler accesses one of our special Managed URLs that you've placed on your site, our SpiteSpiral tarpit servers deliberately engage with it very, very slowly. We might feed it data at a snail's pace, send it an endless stream of trivial information, or make it think it's found something interesting that requires many slow requests. The goal isn't to block it with a \"403 Forbidden\" (it might just try again from a different IP), but to waste its time and computational resources, making your site an incredibly inefficient and frustrating target."
     },
     {
       question: "So, what is \"SpiteSpiral\" and how does it fit in?",
@@ -74,7 +74,7 @@ export default function HomePage() {
             <li><strong>Dedicated & Isolated Infrastructure:</strong> Our tarpits run on servers separate from your website. This means when a bot is being bogged down, it's our server resources being used, not your website's, ensuring your site performance for real users remains unaffected.</li>
             <li><strong>Simplicity & Ease of Use:</strong> You get a URL and a snippet. That's your involvement. No server admin, no command lines, no software updates for you to worry about in this regard.</li>
             <li><strong>Actionable Analytics (Planned/Included):</strong> SpiteSpiral aims to provide a dashboard showing you what's hitting your Managed URLs. Setting up effective logging, aggregation, and a user-friendly display for a DIY solution is a significant extra project.</li>
-            <li><strong>Focus:</strong> You probably have a business to run that isn't \"tarpit administration.\" SpiteSpiral lets you offload this specific, niche task so you can focus on your core activities. It's like email – you could run your own mail server, but most businesses pay for a managed service.</li>
+            <li><strong>Focus:</strong> You probably have a business to run that isn't "tarpit administration." SpiteSpiral lets you offload this specific, niche task so you can focus on your core activities. It's like email – you could run your own mail server, but most businesses pay for a managed service.</li>
           </ul>
         </>
       )
