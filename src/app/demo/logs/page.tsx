@@ -1,0 +1,83 @@
+
+'use client';
+
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import RequestLogTable from "@/components/request-logs/RequestLogTable";
+import { FileText, ShieldCheck } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import NextLink from "next/link";
+import { useEffect, useState } from "react";
+
+const DEMO_USER_ID = process.env.NEXT_PUBLIC_DEMO_USER_ID;
+
+export default function DemoRequestLogsPage() {
+  const [isDemoIdConfigured, setIsDemoIdConfigured] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // For initial check
+
+  useEffect(() => {
+    if (DEMO_USER_ID && DEMO_USER_ID !== "public-demo-user-id-placeholder") {
+      setIsDemoIdConfigured(true);
+    }
+    setIsLoading(false);
+  }, []);
+
+  if (isLoading) {
+      return (
+        <div className="flex flex-col items-center justify-center text-center space-y-4 p-8">
+            <FileText className="h-16 w-16 text-primary animate-pulse" />
+            <p className="text-muted-foreground">Loading Demo Logs...</p>
+        </div>
+      )
+  }
+
+  if (!isDemoIdConfigured) {
+    return (
+        <div className="flex flex-col items-center justify-center text-center space-y-4 p-8 rounded-lg bg-card border border-destructive shadow-lg">
+            <ShieldCheck className="h-16 w-16 text-destructive" />
+            <h2 className="text-2xl font-semibold text-destructive">Demo Not Configured</h2>
+            <p className="text-muted-foreground max-w-md">
+                The <code className="bg-muted px-1.5 py-0.5 rounded-sm font-semibold text-accent">NEXT_PUBLIC_DEMO_USER_ID</code> environment variable is not set or is still using the placeholder value.
+                Please configure this in your <code className="bg-muted px-1.5 py-0.5 rounded-sm font-semibold text-accent">.env</code> file and ensure the corresponding user and data exist in Firestore to view the demo logs.
+            </p>
+            <Button asChild>
+                <NextLink href="/">Return to Homepage</NextLink>
+            </Button>
+        </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      <header className="mb-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+            <div className="flex items-center gap-3">
+            <FileText className="h-10 w-10 text-primary" />
+            <h1 className="text-4xl font-bold tracking-tight text-primary glitch-text">Demo Request Logs</h1>
+            </div>
+            <p className="text-muted-foreground mt-2 text-lg">
+            View raw GET and POST request logs from crawlers interacting with the demo tarpits.
+            </p>
+        </div>
+         <Button asChild variant="outline" className="border-accent text-accent hover:bg-accent/10 hover:text-accent-foreground">
+            <NextLink href="/demo/dashboard">
+                <ShieldCheck className="mr-2 h-4 w-4" /> View Demo Dashboard
+            </NextLink>
+        </Button>
+      </header>
+
+      <section>
+        <Card className="shadow-lg border-primary/20">
+          <CardHeader>
+            <CardTitle className="text-xl text-primary">Demo Crawler Request Logs</CardTitle>
+            <CardDescription>
+              Detailed log of incoming requests to demo tarpits.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <RequestLogTable userIdOverride={DEMO_USER_ID} />
+          </CardContent>
+        </Card>
+      </section>
+    </div>
+  );
+}

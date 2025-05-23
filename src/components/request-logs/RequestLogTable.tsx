@@ -20,42 +20,50 @@ interface TarpitLogEntry {
   managedUrlId: string;
   managedUrlPath: string;
   userId: string;
-  method?: "GET" | "POST" | "PUT" | "DELETE" | "OTHER" | string; // Allow string for flexibility
+  method?: "GET" | "POST" | "PUT" | "DELETE" | "OTHER" | string;
   status?: number;
-  responseType?: "Trapped" | "Slowed" | "Blocked" | "Served" | string; // Allow string
+  responseType?: "Trapped" | "Slowed" | "Blocked" | "Served" | string;
   requestBodySnippet?: string;
 }
 
-export default function RequestLogTable() {
+interface RequestLogTableProps {
+  userIdOverride?: string;
+}
+
+export default function RequestLogTable({ userIdOverride }: RequestLogTableProps) {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [logs, setLogs] = useState<TarpitLogEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (authLoading) {
+    const currentUserId = userIdOverride || user?.uid;
+
+    if (!userIdOverride && authLoading) {
       setIsLoading(true);
       return;
     }
-    if (!user || !user.uid) {
+    
+    if (!currentUserId) {
       setLogs([]);
       setIsLoading(false);
+      if (!userIdOverride) { // Only show toast if not in override mode
+        // console.log("No user ID available for RequestLogTable.");
+      }
       return;
     }
 
     setIsLoading(true);
     const q = query(
       collection(db, "tarpit_logs"),
-      where("userId", "==", user.uid),
+      where("userId", "==", currentUserId),
       orderBy("timestamp", "desc")
-      // limit(50) // Consider adding a limit for performance
     );
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const fetchedLogs: TarpitLogEntry[] = [];
       querySnapshot.forEach((docSnap: QueryDocumentSnapshot<DocumentData>) => {
         const data = docSnap.data();
-        // Basic validation
         if (data.timestamp && data.trappedBotIp && data.userAgent && data.managedUrlPath) {
           fetchedLogs.push({
             id: docSnap.id,
@@ -70,14 +78,12 @@ export default function RequestLogTable() {
             responseType: data.responseType as string | undefined,
             requestBodySnippet: data.requestBodySnippet as string | undefined,
           });
-        } else {
-          // console.warn("Fetched log document with missing required fields:", docSnap.id, data);
         }
       });
       setLogs(fetchedLogs);
       setIsLoading(false);
     }, (error) => {
-      console.error("Error fetching request logs (Raw Firebase Error):", error);
+      console.error("Error fetching request logs:", error);
       toast({
         title: "Error Fetching Logs",
         description: "Could not fetch request logs. Check console for details.",
@@ -87,7 +93,7 @@ export default function RequestLogTable() {
     });
 
     return () => unsubscribe();
-  }, [user, authLoading, toast]);
+  }, [userIdOverride, user, authLoading, toast]);
 
   const getBadgeVariant = (responseType?: string) => {
     switch (responseType) {
@@ -118,7 +124,7 @@ export default function RequestLogTable() {
   }
 
   if (logs.length === 0) {
-    return <p className="text-muted-foreground text-center py-4">No request logs available yet. Once your tarpits are active and catching bots, logs will appear here.</p>;
+    return <p className="text-muted-foreground text-center py-4">No request logs available yet. {userIdOverride ? "No demo logs found." : "Once your tarpits are active, logs will appear."}</p>;
   }
 
   return (

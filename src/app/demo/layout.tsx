@@ -1,0 +1,62 @@
+
+import type { Metadata } from 'next';
+import NextLink from 'next/link';
+import { Button } from '@/components/ui/button';
+import BrandLogoIcon from '@/components/icons/BrandLogoIcon';
+import { Home } from 'lucide-react';
+
+// Note: This demo layout does NOT use AuthProvider to avoid auth-based redirects.
+
+export const metadata: Metadata = {
+  title: 'SpiteSpiral - Public Demo',
+  description: 'Public demonstration of SpiteSpiral Tarpit dashboard and logs.',
+};
+
+export default function DemoLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col min-h-screen bg-background font-mono text-foreground">
+      <header className="sticky top-0 z-40 w-full border-b border-primary/20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container flex h-20 items-center justify-between py-3">
+          <NextLink href="/" className="flex items-center gap-3 group">
+            <BrandLogoIcon className="h-12 w-12 md:h-14 md:w-14 text-primary" isPriority />
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold font-sans glitch-text">
+                <span className="text-primary-foreground">Spite</span><span className="text-primary">Spiral</span>
+              </h1>
+              <p className="text-xs text-accent">Public Demo Mode</p>
+            </div>
+          </NextLink>
+          <nav className="flex items-center gap-2">
+             <Button asChild variant="outline" className="border-accent text-accent hover:bg-accent/10 hover:text-accent-foreground">
+                <NextLink href="/">
+                    <Home className="mr-2 h-4 w-4" /> Back to Main Site
+                </NextLink>
+            </Button>
+             <Button asChild className="bg-primary text-primary-foreground hover:bg-accent hover:text-accent-foreground">
+                <NextLink href="/login">
+                    Deploy Your Own
+                </NextLink>
+            </Button>
+          </nav>
+        </div>
+      </header>
+      <main className="flex-1 container mx-auto p-6 lg:p-10">
+        {children}
+      </main>
+      <footer className="py-6 md:px-8 md:py-0 border-t border-primary/10 bg-card/50">
+        <div className="container flex flex-col items-center justify-between gap-4 md:h-20 md:flex-row">
+          <p className="text-balance text-center text-sm leading-loose text-muted-foreground md:text-left">
+            Built by SpiteSpiral Industries. This is a public demo.
+          </p>
+           <p className="text-xs text-muted-foreground/70">
+            © {new Date().getFullYear()} SpiteSpiral. Not for commercial use without permission.
+          </p>
+        </div>
+      </footer>
+    </div>
+  );
+}

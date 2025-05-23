@@ -21,30 +21,39 @@ interface ActivityLogEntry {
   userId: string;
 }
 
+interface RecentActivityTableProps {
+  userIdOverride?: string;
+}
 
-export default function RecentActivityTable() {
+export default function RecentActivityTable({ userIdOverride }: RecentActivityTableProps) {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [activityLogs, setActivityLogs] = useState<ActivityLogEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (authLoading) {
+    const currentUserId = userIdOverride || user?.uid;
+
+    if (!userIdOverride && authLoading) {
       setIsLoading(true);
       return;
     }
-    if (!user || !user.uid) {
+
+    if (!currentUserId) {
       setActivityLogs([]);
       setIsLoading(false);
+      if (!userIdOverride) { // Only show toast if not in override mode (i.e. expecting a logged-in user)
+        // console.log("No user ID available for RecentActivityTable.");
+      }
       return;
     }
 
     setIsLoading(true);
     const q = query(
       collection(db, "tarpit_logs"),
-      where("userId", "==", user.uid),
+      where("userId", "==", currentUserId),
       orderBy("timestamp", "desc"),
-      limit(10) // Show only the 10 most recent logs on the dashboard
+      limit(10)
     );
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
@@ -60,14 +69,12 @@ export default function RecentActivityTable() {
             managedUrlPath: data.managedUrlPath as string,
             userId: data.userId as string,
           });
-        } else {
-          // console.warn("Fetched recent activity log with missing required fields:", docSnap.id, data);
         }
       });
       setActivityLogs(fetchedLogs);
       setIsLoading(false);
     }, (error) => {
-      console.error("Error fetching recent activity logs (Raw Firebase Error):", error);
+      console.error("Error fetching recent activity logs:", error);
       toast({
         title: "Error Fetching Activity",
         description: "Could not fetch recent activity. Check console for details.",
@@ -77,7 +84,7 @@ export default function RecentActivityTable() {
     });
 
     return () => unsubscribe();
-  }, [user, authLoading, toast]);
+  }, [userIdOverride, user, authLoading, toast]);
 
   if (isLoading) {
     return (
@@ -142,7 +149,6 @@ export default function RecentActivityTable() {
                 <TableCell className="text-sm text-primary/90 break-all">
                    <Tooltip>
                     <TooltipTrigger asChild>
-                      {/* Assuming managedUrlPath is the full URL or path. If it's just the segment, construct full URL */}
                       <span className="truncate block max-w-[250px] hover:underline cursor-pointer">
                         {log.managedUrlPath}
                       </span>
