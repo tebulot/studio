@@ -9,21 +9,22 @@ export default function HomePage() {
     <div className="relative flex flex-col items-center justify-center min-h-screen bg-background text-foreground font-mono p-8 selection:bg-primary selection:text-primary-foreground">
       <div className="absolute inset-0 overflow-hidden z-0">
         {[...Array(10)].map((_, i) => {
+          // Calculate random size for the container div
+          const iconContainerSize = Math.random() * 200 + 100;
           return (
             <BrandLogoIcon
               key={i}
-              className="absolute text-primary/5 animate-spin-slow" // Tailwind will handle sizing
+              className="absolute text-primary/5 animate-spin-slow"
               style={{
-                // width and height are controlled by className now
+                // Apply random width/height to the container div
+                width: `${iconContainerSize}px`,
+                height: `${iconContainerSize}px`,
                 top: `${Math.random() * 100}%`,
                 left: `${Math.random() * 100}%`,
                 animationDuration: `${Math.random() * 10 + 10}s`,
                 opacity: Math.random() * 0.1 + 0.02,
-                // Add explicit width/height for the style prop for the div
-                width: `${Math.random() * 200 + 100}px`,
-                height: `${Math.random() * 200 + 100}px`,
               }}
-              isPriority={false}
+              isPriority={false} // Background icons are not priority
             />
           );
         })}
@@ -39,7 +40,11 @@ export default function HomePage() {
         <p className="text-lg md:text-xl text-muted-foreground mb-10 max-w-xl md:max-w-2xl leading-relaxed">
           AI crawlers nuking your operating costs? Robots.txt being ignored? Your hard work feeding their AI, royalty-free? Lead them down the garden path, towards endless, recursive slop and make them choke on it.
         </p>
-        <Button asChild size="lg" className="px-10 py-6 text-lg bg-primary text-primary-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-300 ease-in-out shadow-[0_0_15px_hsl(var(--primary)),_0_0_30px_hsl(var(--primary)/0.7)] hover:shadow-[0_0_20px_hsl(var(--accent)),_0_0_40px_hsl(var(--accent)/0.7)] rounded-lg">
+        <Button
+          asChild
+          size="lg"
+          className="px-10 py-6 text-lg bg-primary text-primary-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-100 ease-in-out shadow-[0_0_15px_hsl(var(--primary)),_0_0_30px_hsl(var(--primary)/0.7)] hover:shadow-[0_0_20px_hsl(var(--accent)),_0_0_40px_hsl(var(--accent)/0.7)] active:shadow-[0_0_10px_hsl(var(--accent)/0.5)] rounded-lg border-b-4 border-primary/60 active:translate-y-0.5 active:border-b-2"
+        >
           <NextLink href="/dashboard">Deploy</NextLink>
         </Button>
 
@@ -47,7 +52,7 @@ export default function HomePage() {
         <div className="mt-20 mb-20 w-full max-w-5xl px-4">
           <div className="grid md:grid-cols-3 gap-6 text-left">
             <Card className="border-primary/30 shadow-lg shadow-primary/10 bg-card/80 backdrop-blur-sm">
-              <CardHeader>
+              <CardHeader className="p-6">
                 <CardTitle className="text-2xl text-accent glitch-text min-h-12 flex items-center">What is a Tarpit?</CardTitle>
               </CardHeader>
               <CardContent className="text-foreground/80 space-y-3">
@@ -57,7 +62,7 @@ export default function HomePage() {
             </Card>
 
             <Card className="border-accent/30 shadow-lg shadow-accent/10 bg-card/80 backdrop-blur-sm">
-              <CardHeader>
+              <CardHeader className="p-6">
                 <CardTitle className="text-2xl text-accent glitch-text min-h-12 flex items-center">How SpiteSpiral Works</CardTitle>
               </CardHeader>
               <CardContent className="text-foreground/80 space-y-3">
@@ -67,7 +72,7 @@ export default function HomePage() {
             </Card>
 
             <Card className="border-primary/30 shadow-lg shadow-primary/10 bg-card/80 backdrop-blur-sm">
-              <CardHeader>
+              <CardHeader className="p-6">
                 <CardTitle className="text-2xl text-accent glitch-text min-h-12 flex items-center">Tarpits as a Service (TaaS)</CardTitle>
               </CardHeader>
               <CardContent className="text-foreground/80 space-y-3">
