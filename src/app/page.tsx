@@ -1,3 +1,4 @@
+
 import NextLink from 'next/link'; // Renamed to avoid conflict
 import { Button } from '@/components/ui/button';
 import SpiralIcon from '@/components/icons/SpiralIcon';
