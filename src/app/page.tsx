@@ -2,6 +2,7 @@
 import NextLink from 'next/link'; // Renamed to avoid conflict
 import { Button } from '@/components/ui/button';
 import SpiralIcon from '@/components/icons/SpiralIcon';
+import BrandLogoIcon from '@/components/icons/BrandLogoIcon'; // Added import
 
 export default function HomePage() {
   return (
@@ -25,8 +26,7 @@ export default function HomePage() {
 
       <div className="relative z-10 text-center flex flex-col items-center">
         <div className="mb-4 transform transition-transform hover:scale-110 active:scale-95">
-          {/* Removed animate-spiral-spin from SpiralIcon class */}
-          <SpiralIcon className="w-28 h-28 md:w-36 md:h-36 text-primary" />
+          <BrandLogoIcon className="w-28 h-28 md:w-36 md:h-36" /> {/* Replaced SpiralIcon */}
         </div>
         <h1 className="text-5xl md:text-7xl font-black font-sans mb-10 glitch-text tracking-wider">
           <span className="text-primary-foreground">Spite</span><span className="text-primary">Spiral</span>
