@@ -26,7 +26,8 @@ export default function HomePage() {
 
       <div className="relative z-10 text-center flex flex-col items-center">
         <div className="mb-4 transform transition-transform hover:scale-110 active:scale-95">
-          <BrandLogoIcon className="w-28 h-28 md:w-36 md:h-36" /> {/* Replaced SpiralIcon */}
+          {/* Updated size classes */}
+          <BrandLogoIcon className="w-56 h-56 md:w-72 md:h-72" />
         </div>
         <h1 className="text-5xl md:text-7xl font-black font-sans mb-10 glitch-text tracking-wider">
           <span className="text-primary-foreground">Spite</span><span className="text-primary">Spiral</span>
