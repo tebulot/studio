@@ -1,33 +1,50 @@
 
-import NextLink from 'next/link'; // Renamed to avoid conflict
+'use client'; // Converted to client component
+
+import NextLink from 'next/link';
 import { Button } from '@/components/ui/button';
 import BrandLogoIcon from '@/components/icons/BrandLogoIcon';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"; // Added Card imports
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from 'react'; // Added useState, useEffect
+
+interface BackgroundIconStyle {
+  width: string;
+  height: string;
+  top: string;
+  left: string;
+  animationDuration: string;
+  opacity: number;
+}
 
 export default function HomePage() {
+  const [backgroundIconStyles, setBackgroundIconStyles] = useState<BackgroundIconStyle[]>([]);
+
+  useEffect(() => {
+    const styles: BackgroundIconStyle[] = [...Array(10)].map(() => {
+      const iconContainerSize = Math.random() * 200 + 100;
+      return {
+        width: `${iconContainerSize}px`,
+        height: `${iconContainerSize}px`,
+        top: `${Math.random() * 100}%`,
+        left: `${Math.random() * 100}%`,
+        animationDuration: `${Math.random() * 10 + 10}s`,
+        opacity: Math.random() * 0.1 + 0.02,
+      };
+    });
+    setBackgroundIconStyles(styles);
+  }, []);
+
   return (
     <div className="relative flex flex-col items-center justify-center min-h-screen bg-background text-foreground font-mono p-8 selection:bg-primary selection:text-primary-foreground">
       <div className="absolute inset-0 overflow-hidden z-0">
-        {[...Array(10)].map((_, i) => {
-          // Calculate random size for the container div
-          const iconContainerSize = Math.random() * 200 + 100;
-          return (
+        {backgroundIconStyles.map((style, i) => (
             <BrandLogoIcon
               key={i}
               className="absolute text-primary/5 animate-spin-slow"
-              style={{
-                // Apply random width/height to the container div
-                width: `${iconContainerSize}px`,
-                height: `${iconContainerSize}px`,
-                top: `${Math.random() * 100}%`,
-                left: `${Math.random() * 100}%`,
-                animationDuration: `${Math.random() * 10 + 10}s`,
-                opacity: Math.random() * 0.1 + 0.02,
-              }}
-              isPriority={false} // Background icons are not priority
+              style={style}
+              isPriority={false}
             />
-          );
-        })}
+          ))}
       </div>
 
       <div className="relative z-10 text-center flex flex-col items-center w-full">
@@ -48,7 +65,6 @@ export default function HomePage() {
           <NextLink href="/dashboard">Deploy</NextLink>
         </Button>
 
-        {/* New Informational Section */}
         <div className="mt-20 mb-20 w-full max-w-5xl px-4">
           <div className="grid md:grid-cols-3 gap-6 text-left">
             <Card className="border-primary/30 shadow-lg shadow-primary/10 bg-card/80 backdrop-blur-sm">

@@ -7,9 +7,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import BrandLogoIcon from '@/components/icons/BrandLogoIcon';
-import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent, useEffect } from 'react'; // Added useEffect
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2, Mail } from 'lucide-react';
+
+interface BackgroundIconStyle {
+  width: string;
+  height: string;
+  top: string;
+  left: string;
+  animationDuration: string;
+  opacity: number;
+}
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -19,7 +28,26 @@ export default function LoginPage() {
   const [resetEmail, setResetEmail] = useState('');
   
   const { signIn, signUp, loading, sendPasswordReset } = useAuth();
-  const [resetLoading, setResetLoading] = useState(false); // Separate loading state for reset
+  const [resetLoading, setResetLoading] = useState(false);
+
+  const [backgroundIconStyles, setBackgroundIconStyles] = useState<BackgroundIconStyle[]>([]);
+
+  useEffect(() => {
+    const styles: BackgroundIconStyle[] = [...Array(5)].map(() => {
+      const bgIconWidth = Math.random() * 150 + 80;
+      const bgIconHeight = Math.random() * 150 + 80;
+      return {
+        width: `${bgIconWidth}px`,
+        height: `${bgIconHeight}px`,
+        top: `${Math.random() * 100}%`,
+        left: `${Math.random() * 100}%`,
+        animationDuration: `${Math.random() * 15 + 12}s`,
+        opacity: Math.random() * 0.08 + 0.02,
+      };
+    });
+    setBackgroundIconStyles(styles);
+  }, []);
+
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -36,7 +64,7 @@ export default function LoginPage() {
     const success = await sendPasswordReset(resetEmail);
     setResetLoading(false);
     if (success) {
-      setIsPasswordResetMode(false); // Optionally switch back to login form
+      setIsPasswordResetMode(false); 
       setResetEmail('');
     }
   };
@@ -44,30 +72,19 @@ export default function LoginPage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground font-mono p-8 selection:bg-primary selection:text-primary-foreground">
       <div className="absolute inset-0 overflow-hidden z-0">
-        {[...Array(5)].map((_, i) => {
-          const bgIconWidth = Math.random() * 150 + 80;
-          const bgIconHeight = Math.random() * 150 + 80;
-          return (
+        {backgroundIconStyles.map((style, i) => (
             <BrandLogoIcon
               key={i}
               className="absolute text-primary/5 animate-spin-slow"
-              style={{
-                width: `${bgIconWidth}px`,
-                height: `${bgIconHeight}px`,
-                top: `${Math.random() * 100}%`,
-                left: `${Math.random() * 100}%`,
-                animationDuration: `${Math.random() * 15 + 12}s`,
-                opacity: Math.random() * 0.08 + 0.02,
-              }}
+              style={style}
               isPriority={false}
             />
-          );
-        })}
+          ))}
       </div>
       <Card className="w-full max-w-md z-10 bg-card/80 backdrop-blur-sm border-primary/20 shadow-xl shadow-primary/10">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4">
-            <BrandLogoIcon className="w-16 h-16 text-primary animate-spin-slow" isPriority={true} />
+            <BrandLogoIcon className="w-16 h-16 text-primary animate-spin-slow" style={{animationDuration: '5s'}} isPriority={true} />
           </div>
           <CardTitle className="text-3xl font-bold text-primary glitch-text">
             {isPasswordResetMode ? 'Reset Password' : isSignUp ? 'Create Account' : 'Welcome Back'}
