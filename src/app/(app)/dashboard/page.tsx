@@ -2,7 +2,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import TrappedCrawlersChart from "@/components/dashboard/TrappedCrawlersChart";
 import RecentActivityTable from "@/components/dashboard/RecentActivityTable";
-import { ShieldCheck, Users, DollarSign } from "lucide-react"; // Changed AlertTriangle to DollarSign
+import { ShieldCheck, Users, DollarSign, Cpu } from "lucide-react"; // Added Cpu as an option
 
 export default function DashboardPage() {
   return (
@@ -35,14 +35,14 @@ export default function DashboardPage() {
             <p className="text-xs text-muted-foreground mt-1">All systems operational</p>
           </CardContent>
         </Card>
-        <Card className="border-primary/30 shadow-lg shadow-primary/10 hover:shadow-primary/20 transition-shadow duration-300"> {/* Changed from destructive */}
+        <Card className="border-primary/30 shadow-lg shadow-primary/10 hover:shadow-primary/20 transition-shadow duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-primary">Estimated Crawler Costs Saved</CardTitle> {/* Changed title */}
-            <DollarSign className="h-5 w-5 text-primary" /> {/* Changed icon */}
+            <CardTitle className="text-sm font-medium text-primary">Crawler Compute Wasted</CardTitle> {/* Changed title */}
+            <DollarSign className="h-5 w-5 text-primary" /> {/* Kept DollarSign, can change to Cpu */}
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-foreground">$125.50</div> {/* Changed value */}
-            <p className="text-xs text-muted-foreground mt-1">This month</p> {/* Changed sub-text */}
+            <div className="text-3xl font-bold text-foreground">$75.80</div> {/* Changed value */}
+            <p className="text-xs text-muted-foreground mt-1">Wasted by trapped crawlers this month</p> {/* Changed sub-text */}
           </CardContent>
         </Card>
       </section>
