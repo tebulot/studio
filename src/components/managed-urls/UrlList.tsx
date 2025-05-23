@@ -196,11 +196,15 @@ export default function UrlList() {
   
   const getEmbedCode = (url: string): string => {
     if (!url) return "";
+    // Basic inference based on common extensions
     if (url.endsWith('.js') || url.endsWith('.json')) {
       return `<script src="${url}" async defer></script>`;
     } else if (/\.(gif|png|jpg|jpeg|svg|webp)$/i.test(url)) {
       return `<img src="${url}" alt="Tarpit Pixel" width="1" height="1" style="display:none;" />`;
+    } else if (url.endsWith('.css')) {
+      return `<link rel="stylesheet" href="${url}">`;
     }
+    // Default to a hidden iframe for other content types
     return `<iframe src="${url}" width="0" height="0" style="display:none;" frameborder="0" title="SpiteSpiral Tarpit"></iframe>`;
   };
 
@@ -243,7 +247,7 @@ export default function UrlList() {
                     <DialogHeader>
                       <DialogTitle className="text-primary">Embed Code for {url.name}</DialogTitle>
                       <DialogDescription>
-                        Copy this code and paste it into your website&apos;s HTML.
+                        Copy this code and paste it into your website&apos;s HTML to activate the tarpit for this URL.
                       </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
