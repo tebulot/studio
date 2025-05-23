@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -99,7 +100,7 @@ export default function AddUrlForm() {
             <FormItem>
               <FormLabel className="text-foreground/80">Description (Optional)</FormLabel>
               <FormControl>
-                <Textarea placeholder="e.g., Tarpit for blocking bad bots on main site" {...field} className="bg-background border-border focus:ring-primary"/>
+                <Textarea placeholder="e.g., Main page capture link, header capture link, etc" {...field} className="bg-background border-border focus:ring-primary"/>
               </FormControl>
               <FormMessage />
             </FormItem>
