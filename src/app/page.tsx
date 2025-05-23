@@ -55,7 +55,7 @@ export default function HomePage() {
       )
     },
     {
-      question: "What exactly is a tarpit and how does it stop them?",
+      question: "What exactly is a Tarpit and how does it stop them?",
       answer: "Imagine digital flypaper for bots. When a crawler accesses one of our special Managed URLs that you've placed on your site, our SpiteSpiral tarpit servers deliberately engage with it very, very slowly. We might feed it data at a snail's pace, send it an endless stream of trivial information, or make it think it's found something interesting that requires many slow requests. The goal isn't to block it with a \"403 Forbidden\" (it might just try again from a different IP), but to waste its time and computational resources, making your site an incredibly inefficient and frustrating target."
     },
     {
@@ -78,6 +78,10 @@ export default function HomePage() {
           </ul>
         </>
       )
+    },
+    {
+      question: "So, why the name SpiteSpiral?",
+      answer: "I'm sure if you've read this far, you're either already pretty pissed off, or you're starting to get pretty annoyed. The creator of Nepenthes, the Tarpit SpiteSpiral utilises heavily as it's original codebase under the MIT license, speaks of AI crawlers with such a distaste and frustration, that I was moved to build this site and this service to allow those without the technical knowledge, infrastructure or time to set a Tarpit up for themselves on their own website. In some regards, it's an act of desperation, self damaging, and can lead to your website disappearing off of search engine results. The point is to do damage. It's a destructive, malicious, and spiteful measure to implement. SpiteSpiral allows us to take the punches, burn our CPU cycles and power to trap these things in a purgatory of endless recursion, and protect your website from the negative effects. And between you and me, this kind of abstract, compute based warfare is so darn interesting. So you can be sure I'm going to be utilising everything at my disposal to continue to mutate, adapt, and abstract SpiteSpiral to ensure we're on the front lines, ensuring we do as much damage as we possibly can."
     },
     {
       question: "Will SpiteSpiral make my website slower for my actual human visitors?",
@@ -125,7 +129,6 @@ export default function HomePage() {
               key={i}
               className="absolute text-primary/5 animate-spin-slow"
               style={{
-                // width and height are controlled by className now
                 top: style.top,
                 left: style.left,
                 animationDuration: style.animationDuration,
