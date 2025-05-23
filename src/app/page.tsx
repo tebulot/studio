@@ -9,6 +9,13 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { useState, useEffect } from 'react';
 
 export default function HomePage() {
+  const [backgroundIconStyles, setBackgroundIconStyles] = useState<React.CSSProperties[]>([]);
+
+  useEffect(() => {
+    // This effect runs only once on the client after mount
+    // No random styles needed for the single large background icon
+  }, []);
+
   const faqData = [
     {
       question: "What are these AI crawlers and scrapers you're talking about?",
@@ -100,7 +107,7 @@ export default function HomePage() {
     <div className="relative flex flex-col items-center justify-center min-h-screen bg-background text-foreground font-mono p-8 selection:bg-primary selection:text-primary-foreground">
       <div className="absolute inset-0 overflow-hidden z-0">
         <BrandLogoIcon
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[70vw] h-[70vh] max-w-[700px] max-h-[700px] text-primary/5 animate-spin-slow opacity-5"
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[250vw] h-[250vh] text-primary/5 animate-spin-slow opacity-5"
           isPriority={false}
         />
       </div>
@@ -200,3 +207,5 @@ export default function HomePage() {
     </div>
   );
 }
+
+    
