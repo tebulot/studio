@@ -16,7 +16,10 @@ const geistMono = Geist_Mono({ // Corrected instantiation
   subsets: ['latin'],
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+
 export const metadata: Metadata = {
+  ...(siteUrl && { metadataBase: new URL(siteUrl) }),
   title: 'SpiteSpiral Tarpit',
   description: 'Advanced Tarpit as a Service by SpiteSpiral',
 };
