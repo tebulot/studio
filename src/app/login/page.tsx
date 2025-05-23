@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import SpiralIcon from '@/components/icons/SpiralIcon';
+import SpiralIcon from '@/components/icons/SpiralIcon'; // Keep for potential other uses, though not central logo
 import BrandLogoIcon from '@/components/icons/BrandLogoIcon';
 import { useState, type FormEvent } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -53,7 +53,8 @@ export default function LoginPage() {
       <Card className="w-full max-w-md z-10 bg-card/80 backdrop-blur-sm border-primary/20 shadow-xl shadow-primary/10">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4">
-            <SpiralIcon className="w-16 h-16 text-primary animate-spiral-spin" style={{ animationDuration: '5s' }} />
+            {/* Replaced SpiralIcon with BrandLogoIcon and updated animation */}
+            <BrandLogoIcon className="w-16 h-16 text-primary animate-spin-slow" isPriority={true} />
           </div>
           <CardTitle className="text-3xl font-bold text-primary glitch-text">
             {isSignUp ? 'Create Account' : 'Welcome Back'}
