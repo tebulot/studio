@@ -1,10 +1,21 @@
+
 "use client";
 
+import { useState, useEffect } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
 
-const recentActivity = [
+interface Activity {
+  ip: string;
+  userAgent: string;
+  timestamp: string; // ISO string
+  status: string;
+  severity: string;
+}
+
+const generateRecentActivity = (): Activity[] => [
   { ip: "192.168.1.101", userAgent: "Googlebot/2.1", timestamp: new Date().toISOString(), status: "Trapped", severity: "Low" },
   { ip: "10.0.0.5", userAgent: "AhrefsBot", timestamp: new Date(Date.now() - 3600000).toISOString(), status: "Slowed", severity: "Medium" },
   { ip: "172.16.0.23", userAgent: "SemrushBot", timestamp: new Date(Date.now() - 7200000).toISOString(), status: "Trapped", severity: "Low" },
@@ -14,6 +25,43 @@ const recentActivity = [
 ];
 
 export default function RecentActivityTable() {
+  const [recentActivity, setRecentActivity] = useState<Activity[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    setRecentActivity(generateRecentActivity());
+    setIsLoading(false);
+  }, []);
+
+  if (isLoading) {
+    return (
+      <ScrollArea className="h-[400px] rounded-md border border-border">
+        <Table>
+          <TableHeader className="sticky top-0 bg-muted/50 backdrop-blur-sm">
+            <TableRow>
+              <TableHead className="text-accent">IP Address</TableHead>
+              <TableHead className="text-accent">User Agent</TableHead>
+              <TableHead className="text-accent">Timestamp</TableHead>
+              <TableHead className="text-accent">Status</TableHead>
+              <TableHead className="text-right text-accent">Severity</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {[...Array(5)].map((_, index) => (
+              <TableRow key={index}>
+                <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                <TableCell><Skeleton className="h-5 w-36" /></TableCell>
+                <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
+                <TableCell className="text-right"><Skeleton className="h-6 w-16 rounded-full ml-auto" /></TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </ScrollArea>
+    );
+  }
+
   return (
     <ScrollArea className="h-[400px] rounded-md border border-border">
       <Table>
@@ -35,7 +83,7 @@ export default function RecentActivityTable() {
                 {new Date(activity.timestamp).toLocaleString()}
               </TableCell>
               <TableCell>
-                <Badge 
+                <Badge
                   variant={activity.status === "Trapped" ? "default" : activity.status === "Blocked" ? "destructive" : "secondary"}
                   className={
                     activity.status === "Trapped" ? "bg-primary/80 text-primary-foreground" :
@@ -48,7 +96,7 @@ export default function RecentActivityTable() {
                 </Badge>
               </TableCell>
               <TableCell className="text-right">
-                <Badge 
+                <Badge
                   variant={activity.severity === "High" ? "destructive" : activity.severity === "Medium" ? "secondary" : "outline"}
                   className={
                     activity.severity === "High" ? "border-destructive text-destructive" :
