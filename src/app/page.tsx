@@ -16,14 +16,13 @@ export default function HomePage() {
               key={i}
               className="absolute text-primary/5 animate-spin-slow"
               style={{
-                width: `${bgIconWidth}px`,
-                height: `${bgIconHeight}px`,
+                // width and height are controlled by className now
                 top: `${Math.random() * 100}%`,
                 left: `${Math.random() * 100}%`,
                 animationDuration: `${Math.random() * 10 + 10}s`,
                 opacity: Math.random() * 0.1 + 0.02,
               }}
-              isPriority={false} 
+              isPriority={false}
             />
           );
         })}
@@ -72,7 +71,7 @@ export default function HomePage() {
               </CardHeader>
               <CardContent className="text-foreground/80 space-y-3">
                 <p>Manually setting up a tarpit often means your server bears the brunt of the crawler's wasted compute, impacting your own resource costs and potentially SEO.</p>
-                <p>SpiteSpiral's TaaS provides managed, scalable instances that absorb this load, protecting your site without adversely affecting your server performance or search engine ranking.</p>
+                <p>SpiteSpiral's TaaS provides managed, scalable instances that absorb this load, trapping crawlers and letting them thrash against the rocks on our infrastructure, without adversely affecting your server performance or SEO.</p>
               </CardContent>
             </Card>
           </div>
