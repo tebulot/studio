@@ -1,11 +1,17 @@
 
+'use client'; // Added 'use client' as it uses hooks
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { UserCog, CreditCard, ShieldCheck } from "lucide-react"; // Changed ShieldLock to ShieldCheck
+import { UserCog, CreditCard, ShieldCheck } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext"; // Import useAuth
+import { Skeleton } from "@/components/ui/skeleton"; // Import Skeleton
 
 export default function AccountPage() {
+  const { user, loading } = useAuth(); // Get user and loading state
+
   return (
     <div className="space-y-8">
       <header className="mb-10">
@@ -31,12 +37,32 @@ export default function AccountPage() {
           <CardContent className="space-y-4">
             <div className="space-y-1">
               <Label htmlFor="email" className="text-foreground/80">Email Address</Label>
-              <Input id="email" type="email" defaultValue="user@example.com" readOnly className="bg-background border-border focus:ring-primary cursor-not-allowed" />
+              {loading ? (
+                <Skeleton className="h-10 w-full" />
+              ) : (
+                <Input 
+                  id="email" 
+                  type="email" 
+                  defaultValue={user?.email || "Loading..."} 
+                  readOnly 
+                  className="bg-background border-border focus:ring-primary cursor-not-allowed" 
+                />
+              )}
             </div>
             <Button variant="outline" className="border-accent text-accent hover:bg-accent/10 hover:text-accent-foreground" disabled>Change Email (Soon)</Button>
              <div className="space-y-1 mt-4">
               <Label htmlFor="username" className="text-foreground/80">Username</Label>
-              <Input id="username" type="text" defaultValue="currentUser" readOnly className="bg-background border-border focus:ring-primary cursor-not-allowed" />
+              {loading ? (
+                <Skeleton className="h-10 w-full" />
+              ) : (
+                <Input 
+                  id="username" 
+                  type="text" 
+                  defaultValue={user?.displayName || user?.email?.split('@')[0] || "currentUser"} 
+                  readOnly 
+                  className="bg-background border-border focus:ring-primary cursor-not-allowed" 
+                />
+              )}
             </div>
              <Button variant="outline" className="border-accent text-accent hover:bg-accent/10 hover:text-accent-foreground" disabled>Change Username (Soon)</Button>
           </CardContent>
@@ -56,11 +82,11 @@ export default function AccountPage() {
           <CardContent className="space-y-4">
             <div>
               <p className="text-sm text-muted-foreground">Current Plan:</p>
-              <p className="text-lg font-semibold text-foreground">Pro Tier (Monthly)</p>
+              <p className="text-lg font-semibold text-foreground">Pro Tier (Monthly) - Placeholder</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Next Billing Date:</p>
-              <p className="text-lg font-semibold text-foreground">July 15, 2024</p>
+              <p className="text-lg font-semibold text-foreground">July 15, 2024 - Placeholder</p>
             </div>
             <Button className="bg-primary text-primary-foreground hover:bg-primary/90" disabled>Manage Billing (Soon)</Button>
              <Button variant="outline" className="ml-2 border-accent text-accent hover:bg-accent/10 hover:text-accent-foreground" disabled>View Invoices (Soon)</Button>
@@ -73,7 +99,7 @@ export default function AccountPage() {
         <Card className="shadow-lg border-primary/20">
           <CardHeader>
             <div className="flex items-center gap-2">
-                <ShieldCheck className="h-6 w-6 text-accent" /> {/* Changed ShieldLock to ShieldCheck */}
+                <ShieldCheck className="h-6 w-6 text-accent" /> 
                 <CardTitle className="text-xl text-primary">Security Settings</CardTitle>
             </div>
             <CardDescription>Enhance your account security.</CardDescription>

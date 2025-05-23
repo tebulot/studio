@@ -3,12 +3,20 @@
 
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset, SidebarTrigger, SidebarFooter } from "@/components/ui/sidebar";
 import AppHeaderContent from '@/components/layout/AppHeaderContent';
-import { LayoutDashboard, Link2, FileText, Menu, LogOut, UserCog } from 'lucide-react'; // Changed ShieldAlert to FileText, Added UserCog
+import { LayoutDashboard, Link2, FileText, Menu, LogOut, UserCog } from 'lucide-react'; 
 import NextLink from 'next/link'; 
 import { Button } from '@/components/ui/button';
 import SpiralIcon from '@/components/icons/SpiralIcon';
+import { useAuth } from "@/contexts/AuthContext"; // Added useAuth import
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
+  const { signOut, loading } = useAuth(); // Destructure signOut and loading
+
+  const handleSignOut = async () => {
+    await signOut();
+    // Navigation to /login is handled by AuthContext or explicitly in signOut function
+  };
+
   return (
     <SidebarProvider defaultOpen>
       <div className="flex min-h-screen bg-background font-mono text-foreground">
@@ -36,9 +44,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild tooltip={{content:"Request Logs", side:"right", className:"bg-popover text-popover-foreground border-primary/50"}} className="justify-start">
-                  <NextLink href="/anomaly-detection" className="flex items-center"> {/* Link remains /anomaly-detection for now, page content changes */}
-                    <FileText className="mr-2 h-5 w-5 text-accent" /> {/* Changed icon */}
-                    <span className="text-base">Request Logs</span> {/* Changed text */}
+                  <NextLink href="/anomaly-detection" className="flex items-center"> 
+                    <FileText className="mr-2 h-5 w-5 text-accent" /> 
+                    <span className="text-base">Request Logs</span> 
                   </NextLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -54,16 +62,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </SidebarContent>
           <SidebarFooter className="mt-auto p-2 border-t border-primary/20">
              <SidebarMenuItem>
-                {/* This button would eventually call a signOut function */}
                 <SidebarMenuButton 
                   tooltip={{content:"Sign Out", side:"right", className:"bg-popover text-popover-foreground border-primary/50"}} 
                   className="justify-start w-full"
-                  onClick={() => {
-                    // Placeholder for actual sign out logic
-                    // For now, it could redirect to login or home
-                    // import Router from 'next/router'; Router.push('/login');
-                    alert("Sign out clicked (placeholder)");
-                  }}
+                  onClick={handleSignOut} // Use handleSignOut
+                  disabled={loading} // Disable button while auth operations are in progress
                 >
                   <LogOut className="mr-2 h-5 w-5 text-destructive" />
                   <span className="text-base text-destructive">Sign Out</span>
@@ -73,7 +76,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </Sidebar>
         <SidebarInset>
           <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 border-b bg-background/80 backdrop-blur-sm px-4 md:px-6 md:hidden">
-            {/* Mobile Header: Show app name/logo and sidebar trigger */}
             <NextLink href="/" className="flex items-center gap-2 text-lg font-semibold md:text-base">
               <SpiralIcon className="h-6 w-6 text-primary" />
               <span className="glitch-text text-primary">SpiteSpiral</span>
