@@ -25,7 +25,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark"> {/* Ensure dark mode is active globally */}
+    <html lang="en" className="dark">{/* Ensure dark mode is active globally */}
       <body className={cn(
         "min-h-screen bg-background font-mono antialiased",
         geistSans.variable,
