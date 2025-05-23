@@ -25,10 +25,11 @@ export default function HomePage() {
 
       <div className="relative z-10 text-center flex flex-col items-center">
         <div className="mb-4 transform transition-transform hover:scale-110 active:scale-95">
-          <SpiralIcon className="w-28 h-28 md:w-36 md:h-36 text-primary animate-spiral-spin" />
+          {/* Removed animate-spiral-spin from SpiralIcon class */}
+          <SpiralIcon className="w-28 h-28 md:w-36 md:h-36 text-primary" />
         </div>
-        <h1 className="text-5xl md:text-7xl font-black mb-10 glitch-text text-primary tracking-wider">
-          SpiteSpiral
+        <h1 className="text-5xl md:text-7xl font-black font-sans mb-10 glitch-text tracking-wider">
+          <span className="text-primary-foreground">Spite</span><span className="text-primary">Spiral</span>
         </h1>
         <p className="text-lg md:text-xl text-muted-foreground mb-10 max-w-xl md:max-w-2xl leading-relaxed">
           AI crawlers nuking your operating costs? Robots.txt being ignored? Your hard work feeding their AI, royalty-free? Lead them down the garden path, towards endless, recursive slop and make them choke on it.

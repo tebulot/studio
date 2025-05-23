@@ -9,24 +9,16 @@ export default function SpiralIcon({ className, ...props }: SpiralIconProps) {
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 100 100"
-      className={cn("animate-spin-slow", className)} // Uses Tailwind animation utility
+      className={cn(className)} // Removed default animate-spin-slow
       {...props}
     >
-      <path
-        d="M50 50
-           A5 5 0 0 1 55 50
-           A10 10 0 0 1 45 50
-           A15 15 0 0 1 60 50
-           A20 20 0 0 1 40 50
-           A25 25 0 0 1 65 50
-           A30 30 0 0 1 35 50
-           A35 35 0 0 1 70 50
-           A40 40 0 0 1 30 50"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="5" // Adjusted for better visibility
-        strokeLinecap="round"
-      />
+      {/* New "bladed" spiral icon path inspired by the provided image */}
+      <g stroke="currentColor" strokeWidth="8" strokeLinecap="round" fill="none">
+        <path d="M50 25 Q60 25 65 35 T75 50" />
+        <path d="M75 50 Q75 60 65 65 T50 75" />
+        <path d="M50 75 Q40 75 35 65 T25 50" />
+        <path d="M25 50 Q25 40 35 35 T50 25" />
+      </g>
     </svg>
   );
 }
