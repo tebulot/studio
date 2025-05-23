@@ -7,6 +7,7 @@ import {
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
   signOut as firebaseSignOut, // Renamed to avoid conflict
+  sendPasswordResetEmail, // Added for password reset
   type AuthError 
 } from 'firebase/auth';
 import { useRouter, usePathname } from 'next/navigation';
@@ -21,6 +22,7 @@ interface AuthContextType {
   signIn: (email: string, pass: string) => Promise<User | null>;
   signUp: (email: string, pass: string) => Promise<User | null>;
   signOut: () => Promise<void>;
+  sendPasswordReset: (email: string) => Promise<boolean>; // Added
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -104,6 +106,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const sendPasswordReset = async (email: string): Promise<boolean> => {
+    setLoading(true);
+    try {
+      await sendPasswordResetEmail(auth, email);
+      toast({
+        title: "Password Reset Email Sent",
+        description: "Check your inbox (and spam folder) for a link to reset your password.",
+      });
+      return true;
+    } catch (error) {
+      const authError = error as AuthError;
+      console.error("Password reset error", authError);
+      toast({
+        title: "Password Reset Failed",
+        description: authError.message || "Could not send password reset email.",
+        variant: "destructive",
+      });
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   if (loading && !user) { // Show loading screen only if truly loading initial auth state or during auth operations
     const publicPaths = ['/', '/login'];
@@ -124,7 +149,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, sendPasswordReset }}>
       {children}
     </AuthContext.Provider>
   );
