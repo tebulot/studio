@@ -9,18 +9,19 @@ export default function HomePage() {
     <div className="relative flex flex-col items-center justify-center min-h-screen bg-background text-foreground font-mono p-8 selection:bg-primary selection:text-primary-foreground">
       <div className="absolute inset-0 overflow-hidden z-0">
         {[...Array(10)].map((_, i) => {
-          const bgIconWidth = Math.random() * 200 + 100;
-          const bgIconHeight = Math.random() * 200 + 100;
           return (
             <BrandLogoIcon
               key={i}
-              className="absolute text-primary/5 animate-spin-slow"
+              className="absolute text-primary/5 animate-spin-slow" // Tailwind will handle sizing
               style={{
                 // width and height are controlled by className now
                 top: `${Math.random() * 100}%`,
                 left: `${Math.random() * 100}%`,
                 animationDuration: `${Math.random() * 10 + 10}s`,
                 opacity: Math.random() * 0.1 + 0.02,
+                // Add explicit width/height for the style prop for the div
+                width: `${Math.random() * 200 + 100}px`,
+                height: `${Math.random() * 200 + 100}px`,
               }}
               isPriority={false}
             />
@@ -46,7 +47,7 @@ export default function HomePage() {
         <div className="mt-20 mb-20 w-full max-w-5xl px-4"> {/* Added mb-20 here */}
           <div className="grid md:grid-cols-3 gap-6 text-left">
             <Card className="border-primary/30 shadow-lg shadow-primary/10 bg-card/80 backdrop-blur-sm">
-              <CardHeader>
+              <CardHeader className="min-h-24"> {/* Added min-h-24 */}
                 <CardTitle className="text-2xl text-accent glitch-text">What is a Tarpit?</CardTitle>
               </CardHeader>
               <CardContent className="text-foreground/80 space-y-3">
@@ -56,7 +57,7 @@ export default function HomePage() {
             </Card>
 
             <Card className="border-accent/30 shadow-lg shadow-accent/10 bg-card/80 backdrop-blur-sm">
-              <CardHeader>
+              <CardHeader className="min-h-24"> {/* Added min-h-24 */}
                 <CardTitle className="text-2xl text-accent glitch-text">How SpiteSpiral Works</CardTitle>
               </CardHeader>
               <CardContent className="text-foreground/80 space-y-3">
@@ -66,7 +67,7 @@ export default function HomePage() {
             </Card>
 
             <Card className="border-primary/30 shadow-lg shadow-primary/10 bg-card/80 backdrop-blur-sm">
-              <CardHeader>
+              <CardHeader className="min-h-24"> {/* Added min-h-24 */}
                 <CardTitle className="text-2xl text-accent glitch-text">Tarpits as a Service (TaaS)</CardTitle>
               </CardHeader>
               <CardContent className="text-foreground/80 space-y-3">
