@@ -5,41 +5,79 @@ import { useState, useEffect } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"; // Keep for potentially long UAs or URLs
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useAuth } from "@/contexts/AuthContext";
+import { db } from "@/lib/firebase/clientApp";
+import { collection, query, where, onSnapshot, orderBy, Timestamp, type DocumentData, type QueryDocumentSnapshot, limit } from "firebase/firestore";
+import { useToast } from "@/hooks/use-toast";
+
 
 interface ActivityLogEntry {
-  id: string; // Added for unique key
-  timestamp: string; // ISO string
+  id: string; // Firestore document ID
+  timestamp: Timestamp;
   trappedBotIp: string;
   userAgent: string;
-  managedUrlHit: string;
+  managedUrlPath: string; // The path that was hit
+  userId: string;
 }
 
-const generateMockActivityLogs = (): ActivityLogEntry[] => {
-  const now = Date.now();
-  const baseTarpitUrl = process.env.NEXT_PUBLIC_TARPIT_BASE_URL || "https://tarpit.example.com";
-  return [
-    { id: "log1", timestamp: new Date(now - Math.random() * 100000).toISOString(), trappedBotIp: "192.168.1.101", userAgent: "Googlebot/2.1 (+http://www.google.com/bot.html)", managedUrlHit: `${baseTarpitUrl}/trap/abc-123-def` },
-    { id: "log2", timestamp: new Date(now - Math.random() * 200000).toISOString(), trappedBotIp: "10.0.0.5", userAgent: "AhrefsBot (https://ahrefs.com/robot/)", managedUrlHit: `${baseTarpitUrl}/trap/xyz-789-uvw` },
-    { id: "log3", timestamp: new Date(now - Math.random() * 300000).toISOString(), trappedBotIp: "172.16.0.23", userAgent: "SemrushBot/7~bl", managedUrlHit: `${baseTarpitUrl}/trap/main-site-trap` },
-    { id: "log4", timestamp: new Date(now - Math.random() * 400000).toISOString(), trappedBotIp: "203.0.113.45", userAgent: "MaliciousUA/1.0 (compatible; EvilScraper/2.2)", managedUrlHit: `${baseTarpitUrl}/trap/blog-post-lure` },
-    { id: "log5", timestamp: new Date(now - Math.random() * 500000).toISOString(), trappedBotIp: "198.51.100.12", userAgent: "Bingbot/2.0 (+http://www.bing.com/bingbot.htm)", managedUrlHit: `${baseTarpitUrl}/trap/product-page-snare` },
-    { id: "log6", timestamp: new Date(now - Math.random() * 600000).toISOString(), trappedBotIp: "192.0.2.88", userAgent: "Unknown Crawler Gecko/20100101 Firefox/90.0", managedUrlHit: `${baseTarpitUrl}/trap/legacy-path-hook` },
-  ];
-};
 
 export default function RecentActivityTable() {
+  const { user, loading: authLoading } = useAuth();
+  const { toast } = useToast();
   const [activityLogs, setActivityLogs] = useState<ActivityLogEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Simulate API call
-    const timer = setTimeout(() => {
-      setActivityLogs(generateMockActivityLogs());
+    if (authLoading) {
+      setIsLoading(true);
+      return;
+    }
+    if (!user || !user.uid) {
+      setActivityLogs([]);
       setIsLoading(false);
-    }, 700); // Simulate network delay
-    return () => clearTimeout(timer);
-  }, []);
+      return;
+    }
+
+    setIsLoading(true);
+    const q = query(
+      collection(db, "tarpit_logs"),
+      where("userId", "==", user.uid),
+      orderBy("timestamp", "desc"),
+      limit(10) // Show only the 10 most recent logs on the dashboard
+    );
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const fetchedLogs: ActivityLogEntry[] = [];
+      querySnapshot.forEach((docSnap: QueryDocumentSnapshot<DocumentData>) => {
+        const data = docSnap.data();
+        if (data.timestamp && data.trappedBotIp && data.userAgent && data.managedUrlPath && data.userId) {
+          fetchedLogs.push({
+            id: docSnap.id,
+            timestamp: data.timestamp as Timestamp,
+            trappedBotIp: data.trappedBotIp as string,
+            userAgent: data.userAgent as string,
+            managedUrlPath: data.managedUrlPath as string,
+            userId: data.userId as string,
+          });
+        } else {
+          // console.warn("Fetched recent activity log with missing required fields:", docSnap.id, data);
+        }
+      });
+      setActivityLogs(fetchedLogs);
+      setIsLoading(false);
+    }, (error) => {
+      console.error("Error fetching recent activity logs (Raw Firebase Error):", error);
+      toast({
+        title: "Error Fetching Activity",
+        description: "Could not fetch recent activity. Check console for details.",
+        variant: "destructive",
+      });
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [user, authLoading, toast]);
 
   if (isLoading) {
     return (
@@ -67,7 +105,7 @@ export default function RecentActivityTable() {
       </ScrollArea>
     );
   }
-  
+
   if (activityLogs.length === 0) {
     return <p className="text-muted-foreground text-center py-4">No recent activity logged yet.</p>;
   }
@@ -88,7 +126,7 @@ export default function RecentActivityTable() {
             {activityLogs.map((log) => (
               <TableRow key={log.id} className="hover:bg-muted/30">
                 <TableCell className="text-xs text-muted-foreground">
-                  {new Date(log.timestamp).toLocaleString()}
+                  {log.timestamp ? new Date(log.timestamp.toDate()).toLocaleString() : 'N/A'}
                 </TableCell>
                 <TableCell className="font-medium text-foreground/90">{log.trappedBotIp}</TableCell>
                 <TableCell className="text-xs text-muted-foreground max-w-xs truncate">
@@ -104,12 +142,13 @@ export default function RecentActivityTable() {
                 <TableCell className="text-sm text-primary/90 break-all">
                    <Tooltip>
                     <TooltipTrigger asChild>
-                      <a href={log.managedUrlHit} target="_blank" rel="noopener noreferrer" className="truncate block max-w-[250px] hover:underline cursor-pointer">
-                        {log.managedUrlHit}
-                      </a>
+                      {/* Assuming managedUrlPath is the full URL or path. If it's just the segment, construct full URL */}
+                      <span className="truncate block max-w-[250px] hover:underline cursor-pointer">
+                        {log.managedUrlPath}
+                      </span>
                     </TooltipTrigger>
                     <TooltipContent className="bg-popover text-popover-foreground border-primary/50 max-w-lg">
-                      <p>{log.managedUrlHit}</p>
+                      <p>{log.managedUrlPath}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TableCell>
