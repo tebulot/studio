@@ -3,6 +3,7 @@ import AppHeaderContent from '@/components/layout/AppHeaderContent';
 import { LayoutDashboard, Link2, ShieldAlert, Menu } from 'lucide-react';
 import NextLink from 'next/link'; // Renamed to avoid conflict
 import { Button } from '@/components/ui/button';
+import SpiralIcon from '@/components/icons/SpiralIcon'; // Added import
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
