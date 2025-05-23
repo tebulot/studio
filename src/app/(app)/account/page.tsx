@@ -1,16 +1,62 @@
 
-'use client'; // Added 'use client' as it uses hooks
+'use client';
 
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { UserCog, CreditCard, ShieldCheck } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext"; // Import useAuth
-import { Skeleton } from "@/components/ui/skeleton"; // Import Skeleton
+import { UserCog, CreditCard, ShieldCheck, Save, XCircle, Loader2 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AccountPage() {
-  const { user, loading } = useAuth(); // Get user and loading state
+  const { user, loading: authLoading, updateUserEmail, updateUserDisplayName } = useAuth();
+
+  const [isEditingEmail, setIsEditingEmail] = useState(false);
+  const [emailInputValue, setEmailInputValue] = useState("");
+  const [isUpdatingEmail, setIsUpdatingEmail] = useState(false);
+
+  const [isEditingUsername, setIsEditingUsername] = useState(false);
+  const [usernameInputValue, setUsernameInputValue] = useState("");
+  const [isUpdatingUsername, setIsUpdatingUsername] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setEmailInputValue(user.email || "");
+      setUsernameInputValue(user.displayName || user.email?.split('@')[0] || "currentUser");
+    }
+  }, [user]);
+
+  const handleEmailChange = async () => {
+    if (!emailInputValue || emailInputValue === user?.email) {
+      setIsEditingEmail(false);
+      return;
+    }
+    setIsUpdatingEmail(true);
+    const success = await updateUserEmail(emailInputValue);
+    if (success) {
+      setIsEditingEmail(false);
+      // EmailInputValue will be updated via useEffect if user object changes or user re-verifies.
+      // For now, we rely on the toast message for feedback.
+    }
+    setIsUpdatingEmail(false);
+  };
+
+  const handleUsernameChange = async () => {
+    if (!usernameInputValue || usernameInputValue === (user?.displayName || user?.email?.split('@')[0])) {
+      setIsEditingUsername(false);
+      return;
+    }
+    setIsUpdatingUsername(true);
+    const success = await updateUserDisplayName(usernameInputValue);
+    if (success) {
+      setIsEditingUsername(false);
+      // usernameInputValue should reflect change due to setUser in updateUserDisplayName
+    }
+    setIsUpdatingUsername(false);
+  };
+
 
   return (
     <div className="space-y-8">
@@ -24,7 +70,6 @@ export default function AccountPage() {
         </p>
       </header>
 
-      {/* Account Details Card */}
       <section>
         <Card className="shadow-lg border-primary/20">
           <CardHeader>
@@ -34,42 +79,96 @@ export default function AccountPage() {
             </div>
             <CardDescription>View and update your personal information.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-1">
+          <CardContent className="space-y-6">
+            {/* Email Section */}
+            <div className="space-y-2">
               <Label htmlFor="email" className="text-foreground/80">Email Address</Label>
-              {loading ? (
+              {authLoading ? (
                 <Skeleton className="h-10 w-full" />
+              ) : isEditingEmail ? (
+                <div className="flex items-center gap-2">
+                  <Input 
+                    id="email" 
+                    type="email" 
+                    value={emailInputValue}
+                    onChange={(e) => setEmailInputValue(e.target.value)}
+                    className="bg-input border-border focus:ring-primary" 
+                    disabled={isUpdatingEmail}
+                  />
+                  <Button onClick={handleEmailChange} size="icon" variant="ghost" className="text-primary hover:text-accent" disabled={isUpdatingEmail}>
+                    {isUpdatingEmail ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
+                  </Button>
+                  <Button onClick={() => { setIsEditingEmail(false); setEmailInputValue(user?.email || "");}} size="icon" variant="ghost" className="text-destructive hover:text-destructive/80" disabled={isUpdatingEmail}>
+                    <XCircle className="h-5 w-5" />
+                  </Button>
+                </div>
               ) : (
-                <Input 
-                  id="email" 
-                  type="email" 
-                  defaultValue={user?.email || "Loading..."} 
-                  readOnly 
-                  className="bg-background border-border focus:ring-primary cursor-not-allowed" 
-                />
+                <div className="flex items-center gap-2">
+                  <Input 
+                    id="emailDisplay" 
+                    type="email" 
+                    value={user?.email || "Loading..."} 
+                    readOnly 
+                    className="bg-background border-border focus:ring-primary cursor-not-allowed flex-grow" 
+                  />
+                  <Button 
+                    variant="outline" 
+                    className="border-accent text-accent hover:bg-accent/10 hover:text-accent-foreground" 
+                    onClick={() => { setIsEditingEmail(true); setEmailInputValue(user?.email || ""); }}
+                  >
+                    Change Email
+                  </Button>
+                </div>
               )}
+               {isEditingEmail && <p className="text-xs text-muted-foreground">A verification link will be sent to your new email address.</p>}
             </div>
-            <Button variant="outline" className="border-accent text-accent hover:bg-accent/10 hover:text-accent-foreground" disabled>Change Email (Soon)</Button>
-             <div className="space-y-1 mt-4">
+
+            {/* Username Section */}
+            <div className="space-y-2">
               <Label htmlFor="username" className="text-foreground/80">Username</Label>
-              {loading ? (
+              {authLoading ? (
                 <Skeleton className="h-10 w-full" />
+              ) : isEditingUsername ? (
+                 <div className="flex items-center gap-2">
+                  <Input 
+                    id="username" 
+                    type="text" 
+                    value={usernameInputValue}
+                    onChange={(e) => setUsernameInputValue(e.target.value)}
+                    className="bg-input border-border focus:ring-primary" 
+                    disabled={isUpdatingUsername}
+                  />
+                  <Button onClick={handleUsernameChange} size="icon" variant="ghost" className="text-primary hover:text-accent" disabled={isUpdatingUsername}>
+                     {isUpdatingUsername ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
+                  </Button>
+                  <Button onClick={() => { setIsEditingUsername(false); setUsernameInputValue(user?.displayName || user?.email?.split('@')[0] || "currentUser");}} size="icon" variant="ghost" className="text-destructive hover:text-destructive/80" disabled={isUpdatingUsername}>
+                    <XCircle className="h-5 w-5" />
+                  </Button>
+                </div>
               ) : (
-                <Input 
-                  id="username" 
-                  type="text" 
-                  defaultValue={user?.displayName || user?.email?.split('@')[0] || "currentUser"} 
-                  readOnly 
-                  className="bg-background border-border focus:ring-primary cursor-not-allowed" 
-                />
+                <div className="flex items-center gap-2">
+                  <Input 
+                    id="usernameDisplay" 
+                    type="text" 
+                    value={user?.displayName || user?.email?.split('@')[0] || "currentUser"} 
+                    readOnly 
+                    className="bg-background border-border focus:ring-primary cursor-not-allowed flex-grow" 
+                  />
+                  <Button 
+                    variant="outline" 
+                    className="border-accent text-accent hover:bg-accent/10 hover:text-accent-foreground" 
+                    onClick={() => { setIsEditingUsername(true); setUsernameInputValue(user?.displayName || user?.email?.split('@')[0] || "currentUser"); }}
+                  >
+                    Change Username
+                  </Button>
+                </div>
               )}
             </div>
-             <Button variant="outline" className="border-accent text-accent hover:bg-accent/10 hover:text-accent-foreground" disabled>Change Username (Soon)</Button>
           </CardContent>
         </Card>
       </section>
 
-      {/* Billing Information Card */}
+      {/* Billing Information Card (Placeholder) */}
       <section>
         <Card className="shadow-lg border-accent/20">
           <CardHeader>
@@ -94,7 +193,7 @@ export default function AccountPage() {
         </Card>
       </section>
 
-      {/* Security Settings Card */}
+      {/* Security Settings Card (Placeholder) */}
       <section>
         <Card className="shadow-lg border-primary/20">
           <CardHeader>

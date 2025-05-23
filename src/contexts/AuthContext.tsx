@@ -6,12 +6,14 @@ import {
   onAuthStateChanged, 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
-  signOut as firebaseSignOut, // Renamed to avoid conflict
-  sendPasswordResetEmail, // Added for password reset
+  signOut as firebaseSignOut,
+  sendPasswordResetEmail,
+  updateProfile, // Added
+  verifyBeforeUpdateEmail, // Added
   type AuthError 
 } from 'firebase/auth';
 import { useRouter, usePathname } from 'next/navigation';
-import type { ReactNode, Dispatch, SetStateAction } from 'react';
+import type { ReactNode } from 'react';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { auth } from '@/lib/firebase/clientApp';
 import { useToast } from '@/hooks/use-toast';
@@ -22,7 +24,9 @@ interface AuthContextType {
   signIn: (email: string, pass: string) => Promise<User | null>;
   signUp: (email: string, pass: string) => Promise<User | null>;
   signOut: () => Promise<void>;
-  sendPasswordReset: (email: string) => Promise<boolean>; // Added
+  sendPasswordReset: (email: string) => Promise<boolean>;
+  updateUserEmail: (newEmail: string) => Promise<boolean>; // Added
+  updateUserDisplayName: (newDisplayName: string) => Promise<boolean>; // Added
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -49,8 +53,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (!loading && !user && !isPublicPath) {
       router.push('/login?redirect=' + encodeURIComponent(pathname));
     }
-    // Only redirect from /login to /dashboard if user is logged in.
-    // Allow logged-in users to visit the homepage ('/').
     if (!loading && user && pathname === '/login') {
         router.push('/dashboard');
     }
@@ -62,7 +64,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const userCredential = await signInWithEmailAndPassword(auth, email, pass);
       setUser(userCredential.user);
       toast({ title: "Signed In", description: "Welcome back!" });
-      router.push('/dashboard'); // Explicit redirect
+      router.push('/dashboard');
       return userCredential.user;
     } catch (error) {
       const authError = error as AuthError;
@@ -80,7 +82,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
       setUser(userCredential.user);
       toast({ title: "Signed Up", description: "Welcome to SpiteSpiral!" });
-      router.push('/dashboard'); // Explicit redirect
+      router.push('/dashboard');
       return userCredential.user;
     } catch (error) {
       const authError = error as AuthError;
@@ -131,11 +133,58 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const updateUserEmail = async (newEmail: string): Promise<boolean> => {
+    if (!auth.currentUser) {
+      toast({ title: "Error", description: "No user logged in.", variant: "destructive" });
+      return false;
+    }
+    setLoading(true);
+    try {
+      await verifyBeforeUpdateEmail(auth.currentUser, newEmail);
+      // Firebase handles the email update after verification.
+      // onAuthStateChanged will eventually reflect the change.
+      toast({
+        title: "Verification Email Sent",
+        description: `A verification email has been sent to ${newEmail}. Please check your inbox to complete the email change. Your current email remains active until then.`,
+        duration: 10000, // Longer duration for this important message
+      });
+      return true;
+    } catch (error) {
+      const authError = error as AuthError;
+      console.error("Update email error", authError);
+      toast({ title: "Update Email Failed", description: authError.message || "Could not start email update process.", variant: "destructive" });
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  if (loading && !user) { // Show loading screen only if truly loading initial auth state or during auth operations
+  const updateUserDisplayName = async (newDisplayName: string): Promise<boolean> => {
+    if (!auth.currentUser) {
+      toast({ title: "Error", description: "No user logged in.", variant: "destructive" });
+      return false;
+    }
+    setLoading(true);
+    try {
+      await updateProfile(auth.currentUser, { displayName: newDisplayName });
+      // Manually update the user object in state for immediate UI reflection
+      setUser(auth.currentUser); 
+      toast({ title: "Username Updated", description: "Your username has been successfully updated." });
+      return true;
+    } catch (error) {
+      const authError = error as AuthError;
+      console.error("Update display name error", authError);
+      toast({ title: "Update Username Failed", description: authError.message || "Could not update username.", variant: "destructive" });
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading && !user) { 
     const publicPaths = ['/', '/login'];
     const isPublicPath = publicPaths.includes(pathname) || pathname.startsWith('/_next/');
-    if (!isPublicPath || (pathname === '/login' && user)) { // Avoid showing loader on public pages unnecessarily
+    if (!isPublicPath || (pathname === '/login' && user)) { 
         return (
         <div className="flex items-center justify-center min-h-screen bg-background text-foreground">
             <div className="flex flex-col items-center space-y-4">
@@ -151,7 +200,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, sendPasswordReset }}>
+    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, sendPasswordReset, updateUserEmail, updateUserDisplayName }}>
       {children}
     </AuthContext.Provider>
   );
