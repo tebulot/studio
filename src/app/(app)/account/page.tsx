@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { UserCog, CreditCard, ShieldLock } from "lucide-react";
+import { UserCog, CreditCard, ShieldCheck } from "lucide-react"; // Changed ShieldLock to ShieldCheck
 
 export default function AccountPage() {
   return (
@@ -73,7 +73,7 @@ export default function AccountPage() {
         <Card className="shadow-lg border-primary/20">
           <CardHeader>
             <div className="flex items-center gap-2">
-                <ShieldLock className="h-6 w-6 text-accent" />
+                <ShieldCheck className="h-6 w-6 text-accent" /> {/* Changed ShieldLock to ShieldCheck */}
                 <CardTitle className="text-xl text-primary">Security Settings</CardTitle>
             </div>
             <CardDescription>Enhance your account security.</CardDescription>

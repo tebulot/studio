@@ -2,6 +2,7 @@
 import NextLink from 'next/link'; // Renamed to avoid conflict
 import { Button } from '@/components/ui/button';
 import BrandLogoIcon from '@/components/icons/BrandLogoIcon';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"; // Added Card imports
 
 export default function HomePage() {
   return (
@@ -15,8 +16,6 @@ export default function HomePage() {
               key={i}
               className="absolute text-primary/5 animate-spin-slow"
               style={{
-                width: `${bgIconWidth}px`,
-                height: `${bgIconHeight}px`,
                 top: `${Math.random() * 100}%`,
                 left: `${Math.random() * 100}%`,
                 animationDuration: `${Math.random() * 10 + 10}s`,
@@ -28,7 +27,7 @@ export default function HomePage() {
         })}
       </div>
 
-      <div className="relative z-10 text-center flex flex-col items-center">
+      <div className="relative z-10 text-center flex flex-col items-center w-full">
         <div className="mb-4 transform transition-transform hover:scale-110 active:scale-95">
           <BrandLogoIcon className="w-56 h-56 md:w-72 md:h-72" isPriority={true} />
         </div>
@@ -41,6 +40,53 @@ export default function HomePage() {
         <Button asChild size="lg" className="px-10 py-6 text-lg bg-primary text-primary-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-300 ease-in-out shadow-[0_0_15px_hsl(var(--primary)),_0_0_30px_hsl(var(--primary)/0.7)] hover:shadow-[0_0_20px_hsl(var(--accent)),_0_0_40px_hsl(var(--accent)/0.7)] rounded-lg">
           <NextLink href="/dashboard">Deploy</NextLink>
         </Button>
+
+        {/* New Informational Section */}
+        <div className="mt-20 w-full max-w-5xl px-4">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+            <Button size="lg" className="px-8 py-5 text-md sm:px-10 sm:py-6 sm:text-lg bg-primary text-primary-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-300 ease-in-out shadow-[0_0_15px_hsl(var(--primary)),_0_0_30px_hsl(var(--primary)/0.7)] hover:shadow-[0_0_20px_hsl(var(--accent)),_0_0_40px_hsl(var(--accent)/0.7)] rounded-lg">
+              Tarpits - Recursive Resource Warfare
+            </Button>
+            <Button size="lg" className="px-8 py-5 text-md sm:px-10 sm:py-6 sm:text-lg bg-primary text-primary-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-300 ease-in-out shadow-[0_0_15px_hsl(var(--primary)),_0_0_30px_hsl(var(--primary)/0.7)] hover:shadow-[0_0_20px_hsl(var(--accent)),_0_0_40px_hsl(var(--accent)/0.7)] rounded-lg">
+              How SpiteSpiral Works
+            </Button>
+            <Button size="lg" className="px-8 py-5 text-md sm:px-10 sm:py-6 sm:text-lg bg-primary text-primary-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-300 ease-in-out shadow-[0_0_15px_hsl(var(--primary)),_0_0_30px_hsl(var(--primary)/0.7)] hover:shadow-[0_0_20px_hsl(var(--accent)),_0_0_40px_hsl(var(--accent)/0.7)] rounded-lg">
+              TaaS - Tarpits as a Service
+            </Button>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6 text-left">
+            <Card className="border-primary/30 shadow-lg shadow-primary/10 bg-card/80 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="text-2xl text-accent glitch-text">What is a Tarpit?</CardTitle>
+              </CardHeader>
+              <CardContent className="text-foreground/80 space-y-3">
+                <p>A digital snare designed to slow down and neutralize malicious web crawlers and bots.</p>
+                <p>By presenting an endless maze of data or excruciatingly slow responses, tarpits waste the resources of automated threats, effectively turning their own persistence against them in a form of recursive resource warfare.</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-accent/30 shadow-lg shadow-accent/10 bg-card/80 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="text-2xl text-primary glitch-text">How SpiteSpiral Works</CardTitle>
+              </CardHeader>
+              <CardContent className="text-foreground/80 space-y-3">
+                <p>Embedding SpiteSpiral is effortless. Just add a simple, unique link generated for you to your website's codebase.</p>
+                <p>Each plan provides a dedicated, isolated tarpit instance. All interactions are captured in your private logs, giving you clear insights into the unwelcome visitors it ensnares.</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-primary/30 shadow-lg shadow-primary/10 bg-card/80 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="text-2xl text-accent glitch-text">Tarpits as a Service (TaaS)</CardTitle>
+              </CardHeader>
+              <CardContent className="text-foreground/80 space-y-3">
+                <p>Manually setting up a tarpit often means your server bears the brunt of the crawler's wasted compute, impacting your own resource costs and potentially SEO.</p>
+                <p>SpiteSpiral's TaaS provides managed, scalable instances that absorb this load, protecting your site without adversely affecting your server performance or search engine ranking.</p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
 
       <footer className="absolute bottom-8 text-sm text-muted-foreground/70 z-10">
@@ -49,3 +95,4 @@ export default function HomePage() {
     </div>
   );
 }
+
