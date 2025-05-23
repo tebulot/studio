@@ -27,29 +27,35 @@ interface ManagedUrlFirestoreData {
 }
 
 export default function UrlList() {
+  const { user, loading: authLoading } = useAuth(); // Get user and authLoading state
   const [urls, setUrls] = useState<ManagedUrlFirestoreData[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true); // UrlList's own data loading state
   const { toast } = useToast();
-  const { user } = useAuth();
 
   useEffect(() => {
-    // Ensure user and user.uid are present before querying
-    if (!user || !user.uid) {
-      setUrls([]);
-      setIsLoading(false);
+    // If Firebase auth is still loading, don't do anything yet.
+    // The UrlList will show its own loading indicator.
+    if (authLoading) {
+      setIsLoading(true);
       return;
     }
 
-    setIsLoading(true);
-    // Capture user.uid to ensure its value at the time of query construction is used
-    const currentUserId = user.uid; 
+    // Auth is resolved, now check if user is actually logged in
+    if (!user || !user.uid) {
+      setUrls([]);
+      setIsLoading(false); // Not fetching if no user
+      return;
+    }
+
+    // User is available and auth is resolved, proceed with Firestore query
+    setIsLoading(true); // Indicate UrlList is now fetching its data
+    const currentUserId = user.uid;
     const q = query(collection(db, "tarpit_configs"), where("userId", "==", currentUserId));
-    
+
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const validUrls: ManagedUrlFirestoreData[] = [];
       querySnapshot.forEach((doc: QueryDocumentSnapshot<DocumentData>) => {
         const data = doc.data();
-        // Check for essential fields and valid Timestamp for createdAt
         if (data.name && data.fullUrl && data.pathSegment && data.userId && data.status &&
             data.createdAt && typeof data.createdAt.toMillis === 'function') {
           validUrls.push({
@@ -72,19 +78,19 @@ export default function UrlList() {
       setUrls(validUrls);
       setIsLoading(false);
     }, (error) => {
-      console.error("Error fetching managed URLs (Raw Firebase Error):", error); // Log the raw Firebase error
-      toast({ 
-        title: "Error", 
-        description: "Could not fetch managed URLs. Please check the browser console for more details.", 
-        variant: "destructive" 
+      console.error("Error fetching managed URLs (Raw Firebase Error):", error);
+      toast({
+        title: "Error",
+        description: "Could not fetch managed URLs. Please check the browser console for more details.",
+        variant: "destructive"
       });
       setIsLoading(false);
     });
 
     return () => unsubscribe();
-  }, [user, toast]); // user is the primary dependency for re-fetching. toast is for the error handler.
+  }, [user, authLoading, toast]); // Added authLoading to dependencies
 
-  if (isLoading) {
+  if (isLoading) { // This isLoading now reflects authLoading OR data fetching for UrlList
     return (
       <div className="flex justify-center items-center h-32">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -93,7 +99,7 @@ export default function UrlList() {
     );
   }
 
-  if (!user) { // This check is mostly for completeness, effect hook should handle early return
+  if (!user) {
     return <p className="text-muted-foreground text-center py-4">Please log in to see your managed URLs.</p>;
   }
 
@@ -170,7 +176,7 @@ export default function UrlList() {
               <Button variant="ghost" size="icon" title="Edit URL (Not Implemented)" className="text-muted-foreground hover:text-accent disabled:opacity-50" disabled>
                 <Edit3 className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="icon" onClick={() => handleDelete(url.id)} title="Delete URL (Not Implemented)" className="text-muted-foreground hover:text-destructive disabled:opacity-50" disabled>
+              <Button variant="ghost" size="icon" onClick={() => console.warn(`Delete action for ${url.id} not implemented.`)} title="Delete URL (Not Implemented)" className="text-muted-foreground hover:text-destructive disabled:opacity-50" disabled>
                 <Trash2 className="h-4 w-4" />
               </Button>
             </CardFooter>
@@ -181,14 +187,32 @@ export default function UrlList() {
   );
 }
 
-// Helper function (remains the same)
-const getEmbedCode = (url: string) => {
-  if (url.endsWith('.js') || url.endsWith('.json')) {
+// Helper function to generate embed code
+const getEmbedCode = (url: string): string => {
+  if (!url) return "";
+  // Basic check for common script/image types for demonstration
+  if (url.endsWith('.js') || url.endsWith('.json')) { // Assuming .json might be used for some tarpit data loads
     return `<script src="${url}" async defer></script>`;
-  } else if (url.endsWith('.gif') || url.endsWith('.png') || url.endsWith('.jpg')) {
+  } else if (/\.(gif|png|jpg|jpeg|svg|webp)$/i.test(url)) { // More comprehensive image check
     return `<img src="${url}" alt="Tarpit Pixel" width="1" height="1" style="display:none;" />`;
   }
-  return `<iframe src="${url}" width="0" height="0" style="display:none;" frameborder="0"></iframe>`;
-}
+  // Default to iframe if type is uncertain, or it's a general HTML page trap
+  return `<iframe src="${url}" width="0" height="0" style="display:none;" frameborder="0" title="SpiteSpiral Tarpit"></iframe>`;
+};
+
+// Helper function to copy text to clipboard
+const handleCopy = (text: string, type: string = "Text") => {
+  navigator.clipboard.writeText(text).then(() => {
+    // This toast call needs to be adapted if useToast is not directly available here
+    // For now, logging to console as a placeholder for direct copy action.
+    // To use toast, this function might need to be part of the component or toast passed in.
+    console.log(`${type} copied to clipboard!`);
+    // Ideally: toast({ title: "Copied!", description: `${type} copied to clipboard.` });
+  }).catch(err => {
+    console.error(`Could not copy ${type}: `, err);
+    // Ideally: toast({ title: "Error", description: `Could not copy ${type}.`, variant: "destructive" });
+  });
+};
+    
 
     
