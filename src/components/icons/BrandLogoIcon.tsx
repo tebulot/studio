@@ -1,7 +1,7 @@
 // src/components/icons/BrandLogoIcon.tsx
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
-import spitespiralLogoAsset from './spitespirallogo.svg'; // Import the SVG asset
+import spitespiralLogoAsset from './spitespirallogoyellow.svg'; // Updated import
 
 interface BrandLogoIconProps {
   className?: string; // This className will size the outer div
