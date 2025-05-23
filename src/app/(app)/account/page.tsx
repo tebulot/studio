@@ -6,12 +6,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { UserCog, CreditCard, ShieldCheck, Save, XCircle, Loader2 } from "lucide-react";
+import { UserCog, CreditCard, ShieldCheck, Save, XCircle, Loader2, MailLock } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AccountPage() {
-  const { user, loading: authLoading, updateUserEmail, updateUserDisplayName } = useAuth();
+  const { user, loading: authLoading, updateUserEmail, updateUserDisplayName, sendPasswordReset } = useAuth();
 
   const [isEditingEmail, setIsEditingEmail] = useState(false);
   const [emailInputValue, setEmailInputValue] = useState("");
@@ -20,6 +20,8 @@ export default function AccountPage() {
   const [isEditingUsername, setIsEditingUsername] = useState(false);
   const [usernameInputValue, setUsernameInputValue] = useState("");
   const [isUpdatingUsername, setIsUpdatingUsername] = useState(false);
+
+  const [isSendingResetEmail, setIsSendingResetEmail] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -55,6 +57,18 @@ export default function AccountPage() {
       // usernameInputValue should reflect change due to setUser in updateUserDisplayName
     }
     setIsUpdatingUsername(false);
+  };
+
+  const handlePasswordResetRequest = async () => {
+    if (!user || !user.email) {
+        // This case should ideally not happen if the button is only enabled for logged-in users
+        alert("Error: User email not found."); 
+        return;
+    }
+    setIsSendingResetEmail(true);
+    await sendPasswordReset(user.email);
+    setIsSendingResetEmail(false);
+    // Toast is handled by sendPasswordReset in AuthContext
   };
 
 
@@ -204,7 +218,19 @@ export default function AccountPage() {
             <CardDescription>Enhance your account security.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-             <Button variant="outline" className="border-accent text-accent hover:bg-accent/10 hover:text-accent-foreground" disabled>Change Password (Soon)</Button>
+             <Button 
+                variant="outline" 
+                className="border-accent text-accent hover:bg-accent/10 hover:text-accent-foreground" 
+                onClick={handlePasswordResetRequest}
+                disabled={authLoading || isSendingResetEmail || !user?.email}
+              >
+                {isSendingResetEmail ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                    <MailLock className="mr-2 h-4 w-4" /> 
+                )}
+                {isSendingResetEmail ? "Sending..." : "Change Password"}
+              </Button>
             <div className="mt-2">
                 <p className="text-sm text-muted-foreground">Two-Factor Authentication (2FA): <span className="text-destructive font-semibold">Disabled</span></p>
                 <Button variant="outline" className="mt-2 border-primary text-primary hover:bg-primary/10 hover:text-primary-foreground" disabled>Enable 2FA (Soon)</Button>
@@ -215,3 +241,4 @@ export default function AccountPage() {
     </div>
   );
 }
+
