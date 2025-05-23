@@ -3,7 +3,7 @@
 
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset, SidebarTrigger, SidebarFooter } from "@/components/ui/sidebar";
 import AppHeaderContent from '@/components/layout/AppHeaderContent';
-import { LayoutDashboard, Link2, FileText, Menu, LogOut } from 'lucide-react'; // Changed ShieldAlert to FileText
+import { LayoutDashboard, Link2, FileText, Menu, LogOut, UserCog } from 'lucide-react'; // Changed ShieldAlert to FileText, Added UserCog
 import NextLink from 'next/link'; 
 import { Button } from '@/components/ui/button';
 import SpiralIcon from '@/components/icons/SpiralIcon';
@@ -39,6 +39,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   <NextLink href="/anomaly-detection" className="flex items-center"> {/* Link remains /anomaly-detection for now, page content changes */}
                     <FileText className="mr-2 h-5 w-5 text-accent" /> {/* Changed icon */}
                     <span className="text-base">Request Logs</span> {/* Changed text */}
+                  </NextLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip={{content:"Account", side:"right", className:"bg-popover text-popover-foreground border-primary/50"}} className="justify-start">
+                  <NextLink href="/account" className="flex items-center">
+                    <UserCog className="mr-2 h-5 w-5 text-accent" />
+                    <span className="text-base">Account</span>
                   </NextLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
