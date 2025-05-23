@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function HomePage() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground font-mono p-8 selection:bg-primary selection:text-primary-foreground">
+    <div className="relative flex flex-col items-center justify-center min-h-screen bg-background text-foreground font-mono p-8 selection:bg-primary selection:text-primary-foreground">
       <div className="absolute inset-0 overflow-hidden z-0">
         {[...Array(10)].map((_, i) => {
           const bgIconWidth = Math.random() * 200 + 100;
@@ -16,12 +16,14 @@ export default function HomePage() {
               key={i}
               className="absolute text-primary/5 animate-spin-slow"
               style={{
+                width: `${bgIconWidth}px`,
+                height: `${bgIconHeight}px`,
                 top: `${Math.random() * 100}%`,
                 left: `${Math.random() * 100}%`,
                 animationDuration: `${Math.random() * 10 + 10}s`,
                 opacity: Math.random() * 0.1 + 0.02,
               }}
-              isPriority={false} // Explicitly false for background icons
+              isPriority={false} 
             />
           );
         })}
@@ -43,18 +45,7 @@ export default function HomePage() {
 
         {/* New Informational Section */}
         <div className="mt-20 w-full max-w-5xl px-4">
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-            <Button size="lg" className="px-8 py-5 text-md sm:px-10 sm:py-6 sm:text-lg bg-primary text-primary-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-300 ease-in-out shadow-[0_0_15px_hsl(var(--primary)),_0_0_30px_hsl(var(--primary)/0.7)] hover:shadow-[0_0_20px_hsl(var(--accent)),_0_0_40px_hsl(var(--accent)/0.7)] rounded-lg">
-              Tarpits - Recursive Resource Warfare
-            </Button>
-            <Button size="lg" className="px-8 py-5 text-md sm:px-10 sm:py-6 sm:text-lg bg-primary text-primary-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-300 ease-in-out shadow-[0_0_15px_hsl(var(--primary)),_0_0_30px_hsl(var(--primary)/0.7)] hover:shadow-[0_0_20px_hsl(var(--accent)),_0_0_40px_hsl(var(--accent)/0.7)] rounded-lg">
-              How SpiteSpiral Works
-            </Button>
-            <Button size="lg" className="px-8 py-5 text-md sm:px-10 sm:py-6 sm:text-lg bg-primary text-primary-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-300 ease-in-out shadow-[0_0_15px_hsl(var(--primary)),_0_0_30px_hsl(var(--primary)/0.7)] hover:shadow-[0_0_20px_hsl(var(--accent)),_0_0_40px_hsl(var(--accent)/0.7)] rounded-lg">
-              TaaS - Tarpits as a Service
-            </Button>
-          </div>
-
+          {/* Buttons removed as per request */}
           <div className="grid md:grid-cols-3 gap-6 text-left">
             <Card className="border-primary/30 shadow-lg shadow-primary/10 bg-card/80 backdrop-blur-sm">
               <CardHeader>
@@ -95,4 +86,3 @@ export default function HomePage() {
     </div>
   );
 }
-
