@@ -44,11 +44,11 @@ export default function HomePage() {
         </Button>
 
         {/* New Informational Section */}
-        <div className="mt-20 mb-20 w-full max-w-5xl px-4"> {/* Added mb-20 here */}
+        <div className="mt-20 mb-20 w-full max-w-5xl px-4">
           <div className="grid md:grid-cols-3 gap-6 text-left">
             <Card className="border-primary/30 shadow-lg shadow-primary/10 bg-card/80 backdrop-blur-sm">
-              <CardHeader className="min-h-24"> {/* Added min-h-24 */}
-                <CardTitle className="text-2xl text-accent glitch-text">What is a Tarpit?</CardTitle>
+              <CardHeader>
+                <CardTitle className="text-2xl text-accent glitch-text min-h-12 flex items-center">What is a Tarpit?</CardTitle>
               </CardHeader>
               <CardContent className="text-foreground/80 space-y-3">
                 <p>A digital snare designed to slow down and neutralize malicious web crawlers and bots.</p>
@@ -57,8 +57,8 @@ export default function HomePage() {
             </Card>
 
             <Card className="border-accent/30 shadow-lg shadow-accent/10 bg-card/80 backdrop-blur-sm">
-              <CardHeader className="min-h-24"> {/* Added min-h-24 */}
-                <CardTitle className="text-2xl text-accent glitch-text">How SpiteSpiral Works</CardTitle>
+              <CardHeader>
+                <CardTitle className="text-2xl text-accent glitch-text min-h-12 flex items-center">How SpiteSpiral Works</CardTitle>
               </CardHeader>
               <CardContent className="text-foreground/80 space-y-3">
                 <p>Embedding SpiteSpiral is effortless. Just add a simple, unique link generated for you to your website's codebase.</p>
@@ -67,8 +67,8 @@ export default function HomePage() {
             </Card>
 
             <Card className="border-primary/30 shadow-lg shadow-primary/10 bg-card/80 backdrop-blur-sm">
-              <CardHeader className="min-h-24"> {/* Added min-h-24 */}
-                <CardTitle className="text-2xl text-accent glitch-text">Tarpits as a Service (TaaS)</CardTitle>
+              <CardHeader>
+                <CardTitle className="text-2xl text-accent glitch-text min-h-12 flex items-center">Tarpits as a Service (TaaS)</CardTitle>
               </CardHeader>
               <CardContent className="text-foreground/80 space-y-3">
                 <p>Manually setting up a tarpit often means your server bears the brunt of the crawler's wasted compute, impacting your own resource costs and potentially SEO.</p>
