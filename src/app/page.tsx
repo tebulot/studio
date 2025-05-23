@@ -27,7 +27,7 @@ export default function HomePage() {
         <div className="mb-4 transform transition-transform hover:scale-110 active:scale-95">
           <SpiralIcon className="w-28 h-28 md:w-36 md:h-36 text-primary animate-spiral-spin" />
         </div>
-        <h1 className="text-5xl md:text-7xl font-black mb-4 glitch-text text-primary tracking-wider">
+        <h1 className="text-5xl md:text-7xl font-black mb-6 glitch-text text-primary tracking-wider">
           SpiteSpiral
         </h1>
         <p className="text-lg md:text-xl text-muted-foreground mb-10 max-w-xl md:max-w-2xl leading-relaxed">
