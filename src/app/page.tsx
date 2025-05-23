@@ -33,7 +33,7 @@ export default function HomePage() {
           Deploy intelligent network traps. Entangle malicious bots and crawlers in a digital labyrinth, safeguarding your resources.
         </p>
         <Button asChild size="lg" className="px-10 py-6 text-lg bg-primary text-primary-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-300 ease-in-out shadow-[0_0_15px_hsl(var(--primary)),_0_0_30px_hsl(var(--primary)/0.7)] hover:shadow-[0_0_20px_hsl(var(--accent)),_0_0_40px_hsl(var(--accent)/0.7)] rounded-lg">
-          <NextLink href="/dashboard">Enter the Spiral</NextLink>
+          <NextLink href="/dashboard">Deploy</NextLink>
         </Button>
       </div>
       
@@ -43,3 +43,4 @@ export default function HomePage() {
     </div>
   );
 }
+
