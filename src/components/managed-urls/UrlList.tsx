@@ -33,14 +33,17 @@ export default function UrlList() {
   const { user } = useAuth();
 
   useEffect(() => {
-    if (!user) {
+    // Ensure user and user.uid are present before querying
+    if (!user || !user.uid) {
       setUrls([]);
       setIsLoading(false);
       return;
     }
 
     setIsLoading(true);
-    const q = query(collection(db, "tarpit_configs"), where("userId", "==", user.uid));
+    // Capture user.uid to ensure its value at the time of query construction is used
+    const currentUserId = user.uid; 
+    const q = query(collection(db, "tarpit_configs"), where("userId", "==", currentUserId));
     
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const validUrls: ManagedUrlFirestoreData[] = [];
@@ -55,49 +58,31 @@ export default function UrlList() {
             description: data.description as string | undefined,
             fullUrl: data.fullUrl as string,
             pathSegment: data.pathSegment as string,
-            createdAt: data.createdAt as Timestamp, // We've checked it's a Timestamp
+            createdAt: data.createdAt as Timestamp,
             status: data.status as "active" | "inactive",
             userId: data.userId as string,
           });
         } else {
-          // Optionally log or handle documents that don't match the expected structure
           console.warn(`Document ${doc.id} is missing required fields or has invalid createdAt. Data:`, data);
         }
       });
 
-      // Sort valid URLs by creation date, newest first
       validUrls.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
       
       setUrls(validUrls);
       setIsLoading(false);
     }, (error) => {
-      console.error("Error fetching managed URLs:", error);
-      toast({ title: "Error", description: "Could not fetch managed URLs.", variant: "destructive" });
+      console.error("Error fetching managed URLs (Raw Firebase Error):", error); // Log the raw Firebase error
+      toast({ 
+        title: "Error", 
+        description: "Could not fetch managed URLs. Please check the browser console for more details.", 
+        variant: "destructive" 
+      });
       setIsLoading(false);
     });
 
-    return () => unsubscribe(); // Cleanup subscription on unmount
-  }, [user, toast]);
-
-  const handleDelete = (id: string) => {
-    // TODO: Implement delete functionality with a Server Action
-    console.warn("Delete functionality not yet implemented for ID:", id);
-    toast({ title: "Coming Soon", description: `Delete for URL ID ${id} is not yet implemented.`, variant: "default" });
-  };
-
-  const handleCopy = (textToCopy: string, type: string) => {
-    navigator.clipboard.writeText(textToCopy);
-    toast({ title: "Copied!", description: `${type} copied to clipboard.` });
-  };
-
-  const getEmbedCode = (url: string) => {
-    if (url.endsWith('.js') || url.endsWith('.json')) {
-      return `<script src="${url}" async defer></script>`;
-    } else if (url.endsWith('.gif') || url.endsWith('.png') || url.endsWith('.jpg')) {
-      return `<img src="${url}" alt="Tarpit Pixel" width="1" height="1" style="display:none;" />`;
-    }
-    return `<iframe src="${url}" width="0" height="0" style="display:none;" frameborder="0"></iframe>`;
-  }
+    return () => unsubscribe();
+  }, [user, toast]); // user is the primary dependency for re-fetching. toast is for the error handler.
 
   if (isLoading) {
     return (
@@ -108,7 +93,7 @@ export default function UrlList() {
     );
   }
 
-  if (!user) {
+  if (!user) { // This check is mostly for completeness, effect hook should handle early return
     return <p className="text-muted-foreground text-center py-4">Please log in to see your managed URLs.</p>;
   }
 
@@ -195,3 +180,15 @@ export default function UrlList() {
     </ScrollArea>
   );
 }
+
+// Helper function (remains the same)
+const getEmbedCode = (url: string) => {
+  if (url.endsWith('.js') || url.endsWith('.json')) {
+    return `<script src="${url}" async defer></script>`;
+  } else if (url.endsWith('.gif') || url.endsWith('.png') || url.endsWith('.jpg')) {
+    return `<img src="${url}" alt="Tarpit Pixel" width="1" height="1" style="display:none;" />`;
+  }
+  return `<iframe src="${url}" width="0" height="0" style="display:none;" frameborder="0"></iframe>`;
+}
+
+    
