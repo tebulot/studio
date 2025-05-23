@@ -15,12 +15,14 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
+// Label import might not be needed if not used elsewhere in this form after changes
+// import { Label } from '@/components/ui/label'; 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useAuth } from "@/contexts/AuthContext";
 import { db } from "@/lib/firebase/clientApp";
-import { collection, query, where, onSnapshot, Timestamp, type DocumentData, type QueryDocumentSnapshot } from "firebase/firestore";
-import { updateManagedTarpitConfig, deleteManagedTarpitConfig } from "@/lib/actions";
+import { collection, query, where, onSnapshot, Timestamp, type DocumentData, type QueryDocumentSnapshot, doc, updateDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
+// Server actions are no longer directly used for DB CUD operations from this component
+// import { updateManagedTarpitConfig, deleteManagedTarpitConfig } from "@/lib/actions";
 
 interface ManagedUrlFirestoreData {
   id: string; // Firestore document ID
@@ -79,12 +81,12 @@ export default function UrlList() {
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const validUrls: ManagedUrlFirestoreData[] = [];
-      querySnapshot.forEach((doc: QueryDocumentSnapshot<DocumentData>) => {
-        const data = doc.data();
+      querySnapshot.forEach((docSnap: QueryDocumentSnapshot<DocumentData>) => { // Renamed doc to docSnap for clarity
+        const data = docSnap.data();
         if (data.name && data.fullUrl && data.pathSegment && data.userId && data.status &&
             data.createdAt && typeof data.createdAt.toMillis === 'function') {
           validUrls.push({
-            id: doc.id,
+            id: docSnap.id,
             name: data.name as string,
             description: data.description as string | undefined,
             fullUrl: data.fullUrl as string,
@@ -95,7 +97,7 @@ export default function UrlList() {
             userId: data.userId as string,
           });
         } else {
-          // console.warn(`Document ${doc.id} is missing required fields or has invalid createdAt. Data:`, data);
+          // console.warn(`Document ${docSnap.id} is missing required fields or has invalid createdAt. Data:`, data);
         }
       });
       validUrls.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
@@ -120,24 +122,21 @@ export default function UrlList() {
   };
 
   const onEditSubmit: SubmitHandler<EditFormData> = async (formData) => {
-    if (!currentUrlToEdit || !user) return;
+    if (!currentUrlToEdit || !user) return; // Ensure user is available for context, though not directly used in Firestore call here
     setIsEditLoading(true);
     try {
-      const result = await updateManagedTarpitConfig({
-        docId: currentUrlToEdit.id,
+      const docRef = doc(db, "tarpit_configs", currentUrlToEdit.id);
+      await updateDoc(docRef, {
         name: formData.name,
-        description: formData.description,
-        userId: user.uid, // Pass for server-side validation, though rules are primary
+        description: formData.description || "",
+        updatedAt: serverTimestamp(),
       });
 
-      if (result.success) {
-        toast({ title: "Success!", description: result.message, variant: "default" });
-        setIsEditDialogOpen(false);
-        setCurrentUrlToEdit(null);
-      } else {
-        toast({ title: "Error", description: result.message, variant: "destructive" });
-      }
+      toast({ title: "Success!", description: "Managed URL updated successfully!", variant: "default" });
+      setIsEditDialogOpen(false);
+      setCurrentUrlToEdit(null);
     } catch (error) {
+      console.error("Error updating managed URL:", error);
       const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
       toast({ title: "Error", description: `Failed to update URL: ${errorMessage}`, variant: "destructive" });
     } finally {
@@ -151,22 +150,17 @@ export default function UrlList() {
   };
 
   const handleDeleteConfirm = async () => {
-    if (!currentUrlToDelete || !user) return;
+    if (!currentUrlToDelete || !user) return; // Ensure user is available for context
     setIsDeleteLoading(true);
     try {
-      const result = await deleteManagedTarpitConfig({
-        docId: currentUrlToDelete.id,
-        userId: user.uid, // Pass for server-side validation
-      });
+      const docRef = doc(db, "tarpit_configs", currentUrlToDelete.id);
+      await deleteDoc(docRef);
 
-      if (result.success) {
-        toast({ title: "Success!", description: result.message, variant: "default" });
-        setIsDeleteDialogOpen(false);
-        setCurrentUrlToDelete(null);
-      } else {
-        toast({ title: "Error", description: result.message, variant: "destructive" });
-      }
+      toast({ title: "Success!", description: "Managed URL deleted successfully!", variant: "default" });
+      setIsDeleteDialogOpen(false);
+      setCurrentUrlToDelete(null);
     } catch (error) {
+      console.error("Error deleting managed URL:", error);
       const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
       toast({ title: "Error", description: `Failed to delete URL: ${errorMessage}`, variant: "destructive" });
     } finally {
@@ -183,11 +177,11 @@ export default function UrlList() {
     );
   }
 
-  if (!user) {
+  if (!user && !authLoading) { 
     return <p className="text-muted-foreground text-center py-4">Please log in to see your managed URLs.</p>;
   }
 
-  if (urls.length === 0) {
+  if (urls.length === 0 && !authLoading && user) { // Added user check here
     return <p className="text-muted-foreground text-center py-4">No managed URLs configured yet. Add one above!</p>;
   }
 
@@ -365,3 +359,5 @@ export default function UrlList() {
     </>
   );
 }
+
+    
