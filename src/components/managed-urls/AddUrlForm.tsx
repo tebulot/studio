@@ -11,44 +11,47 @@ import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { PlusCircle } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { addManagedTarpitConfig } from "@/lib/actions"; // Import the server action
 
 const formSchema = z.object({
-  urlPath: z.string().min(1, "URL Path is required").startsWith("/", "Path must start with /"),
+  name: z.string().min(1, "Tarpit Name is required."),
   description: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
 
-// Dummy function to simulate adding a URL
-async function addManagedUrlApi(data: FormData): Promise<{ success: boolean; message: string, url?: string }> {
-  return new Promise(resolve => {
-    setTimeout(() => {
-      console.log("Adding URL:", data);
-      // Simulate success
-      resolve({ success: true, message: "Managed URL added successfully!", url: `https://tarpit.spitespiral.com${data.urlPath}` });
-      // Simulate failure
-      // resolve({ success: false, message: "Failed to add URL. Please try again." });
-    }, 1000);
-  });
-}
-
-
 export default function AddUrlForm() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      urlPath: "",
+      name: "",
       description: "",
     },
   });
 
   const onSubmit: SubmitHandler<FormData> = async (data) => {
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to add a managed URL.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const result = await addManagedUrlApi(data); // Replace with actual API call
+      const result = await addManagedTarpitConfig({
+        userId: user.uid,
+        name: data.name,
+        description: data.description,
+      });
+
       if (result.success) {
         toast({
           title: "Success!",
@@ -66,7 +69,7 @@ export default function AddUrlForm() {
     } catch (error) {
       toast({
         title: "Error",
-        description: "An unexpected error occurred.",
+        description: "An unexpected error occurred while calling the server action.",
         variant: "destructive",
       });
     } finally {
@@ -79,15 +82,15 @@ export default function AddUrlForm() {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <FormField
           control={form.control}
-          name="urlPath"
+          name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-foreground/80">URL Path</FormLabel>
+              <FormLabel className="text-foreground/80">Tarpit Name</FormLabel>
               <FormControl>
-                <Input placeholder="/my-trap.js" {...field} className="bg-background border-border focus:ring-primary"/>
+                <Input placeholder="e.g., My Main Website Trap" {...field} className="bg-background border-border focus:ring-primary"/>
               </FormControl>
               <FormDescription>
-                The path that will trigger the tarpit (e.g., /pixel.gif, /config.json). Must start with /.
+                A descriptive name for this specific tarpit instance.
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -100,13 +103,13 @@ export default function AddUrlForm() {
             <FormItem>
               <FormLabel className="text-foreground/80">Description (Optional)</FormLabel>
               <FormControl>
-                <Textarea placeholder="e.g., Main page capture link, header capture link, etc" {...field} className="bg-background border-border focus:ring-primary"/>
+                <Textarea placeholder="e.g., Captures bots attempting to scrape product pages." {...field} className="bg-background border-border focus:ring-primary"/>
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
-        <Button type="submit" disabled={isLoading} className="w-full md:w-auto bg-primary text-primary-foreground hover:bg-accent hover:text-accent-foreground">
+        <Button type="submit" disabled={isLoading || !user} className="w-full md:w-auto bg-primary text-primary-foreground hover:bg-accent hover:text-accent-foreground">
           {isLoading ? (
             <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary-foreground mr-2"></div>
           ) : (
