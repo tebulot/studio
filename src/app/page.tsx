@@ -57,7 +57,7 @@ export default function HomePage() {
 
             <Card className="border-accent/30 shadow-lg shadow-accent/10 bg-card/80 backdrop-blur-sm">
               <CardHeader>
-                <CardTitle className="text-2xl text-primary glitch-text">How SpiteSpiral Works</CardTitle>
+                <CardTitle className="text-2xl text-accent glitch-text">How SpiteSpiral Works</CardTitle>
               </CardHeader>
               <CardContent className="text-foreground/80 space-y-3">
                 <p>Embedding SpiteSpiral is effortless. Just add a simple, unique link generated for you to your website's codebase.</p>
