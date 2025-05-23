@@ -1,33 +1,36 @@
 
 import NextLink from 'next/link'; // Renamed to avoid conflict
 import { Button } from '@/components/ui/button';
-import SpiralIcon from '@/components/icons/SpiralIcon';
-import BrandLogoIcon from '@/components/icons/BrandLogoIcon'; // Added import
+import BrandLogoIcon from '@/components/icons/BrandLogoIcon';
 
 export default function HomePage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground font-mono p-8 selection:bg-primary selection:text-primary-foreground">
       <div className="absolute inset-0 overflow-hidden z-0">
-        {[...Array(10)].map((_, i) => (
-          <SpiralIcon
-            key={i}
-            className="absolute text-primary/5 animate-spin-slow"
-            style={{
-              width: `${Math.random() * 200 + 100}px`,
-              height: `${Math.random() * 200 + 100}px`,
-              top: `${Math.random() * 100}%`,
-              left: `${Math.random() * 100}%`,
-              animationDuration: `${Math.random() * 10 + 10}s`,
-              opacity: Math.random() * 0.1 + 0.02,
-            }}
-          />
-        ))}
+        {[...Array(10)].map((_, i) => {
+          const bgIconWidth = Math.random() * 200 + 100;
+          const bgIconHeight = Math.random() * 200 + 100;
+          return (
+            <BrandLogoIcon
+              key={i}
+              className="absolute text-primary/5 animate-spin-slow"
+              style={{
+                width: `${bgIconWidth}px`,
+                height: `${bgIconHeight}px`,
+                top: `${Math.random() * 100}%`,
+                left: `${Math.random() * 100}%`,
+                animationDuration: `${Math.random() * 10 + 10}s`,
+                opacity: Math.random() * 0.1 + 0.02,
+              }}
+              isPriority={false} // Explicitly false for background icons
+            />
+          );
+        })}
       </div>
 
       <div className="relative z-10 text-center flex flex-col items-center">
         <div className="mb-4 transform transition-transform hover:scale-110 active:scale-95">
-          {/* Updated size classes */}
-          <BrandLogoIcon className="w-56 h-56 md:w-72 md:h-72" />
+          <BrandLogoIcon className="w-56 h-56 md:w-72 md:h-72" isPriority={true} />
         </div>
         <h1 className="text-5xl md:text-7xl font-black font-sans mb-10 glitch-text tracking-wider">
           <span className="text-primary-foreground">Spite</span><span className="text-primary">Spiral</span>
