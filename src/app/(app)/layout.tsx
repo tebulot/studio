@@ -1,9 +1,10 @@
-import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
+
+import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset, SidebarTrigger, SidebarFooter } from "@/components/ui/sidebar";
 import AppHeaderContent from '@/components/layout/AppHeaderContent';
-import { LayoutDashboard, Link2, ShieldAlert, Menu } from 'lucide-react';
-import NextLink from 'next/link'; // Renamed to avoid conflict
+import { LayoutDashboard, Link2, ShieldAlert, Menu, LogOut } from 'lucide-react';
+import NextLink from 'next/link'; 
 import { Button } from '@/components/ui/button';
-import SpiralIcon from '@/components/icons/SpiralIcon'; // Added import
+import SpiralIcon from '@/components/icons/SpiralIcon';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -41,6 +42,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarContent>
+          <SidebarFooter className="mt-auto p-2 border-t border-primary/20">
+             <SidebarMenuItem>
+                {/* This button would eventually call a signOut function */}
+                <SidebarMenuButton 
+                  tooltip={{content:"Sign Out", side:"right", className:"bg-popover text-popover-foreground border-primary/50"}} 
+                  className="justify-start w-full"
+                  onClick={() => {
+                    // Placeholder for actual sign out logic
+                    // For now, it could redirect to login or home
+                    // import Router from 'next/router'; Router.push('/login');
+                    alert("Sign out clicked (placeholder)");
+                  }}
+                >
+                  <LogOut className="mr-2 h-5 w-5 text-destructive" />
+                  <span className="text-base text-destructive">Sign Out</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+          </SidebarFooter>
         </Sidebar>
         <SidebarInset>
           <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 border-b bg-background/80 backdrop-blur-sm px-4 md:px-6 md:hidden">
