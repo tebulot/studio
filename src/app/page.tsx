@@ -31,7 +31,7 @@ export default function HomePage() {
           SpiteSpiral
         </h1>
         <p className="text-lg md:text-xl text-muted-foreground mb-10 max-w-xl md:max-w-2xl leading-relaxed">
-          AI crawlers nuking your operating costs?  Robots.txt being ignored?  Your hard work feeding their AI, royalty-free? Make them choke on it.
+          AI crawlers nuking your operating costs? Robots.txt being ignored? Your hard work feeding their AI, royalty-free? Lead them down the garden path, towards endless, recursive slop and make them choke on it.
         </p>
         <Button asChild size="lg" className="px-10 py-6 text-lg bg-primary text-primary-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-300 ease-in-out shadow-[0_0_15px_hsl(var(--primary)),_0_0_30px_hsl(var(--primary)/0.7)] hover:shadow-[0_0_20px_hsl(var(--accent)),_0_0_40px_hsl(var(--accent)/0.7)] rounded-lg">
           <NextLink href="/dashboard">Deploy</NextLink>
