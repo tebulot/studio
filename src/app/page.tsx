@@ -55,12 +55,12 @@ export default function HomePage() {
       )
     },
     {
-      question: "What exactly is a \"tarpit\" and how does it stop them?",
+      question: "What exactly is a tarpit and how does it stop them?",
       answer: "Imagine digital flypaper for bots. When a crawler accesses one of our special Managed URLs that you've placed on your site, our SpiteSpiral tarpit servers deliberately engage with it very, very slowly. We might feed it data at a snail's pace, send it an endless stream of trivial information, or make it think it's found something interesting that requires many slow requests. The goal isn't to block it with a \"403 Forbidden\" (it might just try again from a different IP), but to waste its time and computational resources, making your site an incredibly inefficient and frustrating target."
     },
     {
-      question: "So, what is \"SpiteSpiral\" and how does it fit in?",
-      answer: "We manage the \"digital flypaper\" for you. You sign up, we give you unique URLs (your \"Managed URLs\"). You embed these discreetly on your website using simple HTML snippets we provide. When bots hit these URLs, they're directed to our specialized SpiteSpiral tarpit infrastructure, which bogs them down. Your website continues to operate normally for your human visitors, while the nuisance bots get stuck dealing with us."
+      question: "So, what is SpiteSpiral and how does it fit in?",
+      answer: "We manage the \"digital flypaper\" for you. You sign up, we give you unique URLs (your Managed URLs). You embed these discreetly on your website using simple HTML snippets we provide. When bots hit these URLs, they're directed to our specialized SpiteSpiral tarpit infrastructure, which bogs them down. Your website continues to operate normally for your human visitors, while the nuisance bots get stuck dealing with us."
     },
     {
       question: "Let's be brutally honest: Why should I pay for SpiteSpiral? Can't I just set up my own tarpit?",
