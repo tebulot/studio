@@ -43,7 +43,7 @@ export default function HomePage() {
         <Button
           asChild
           size="lg"
-          className="px-10 py-6 text-lg bg-primary text-primary-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-100 ease-in-out shadow-[0_0_15px_hsl(var(--primary)),_0_0_30px_hsl(var(--primary)/0.7)] hover:shadow-[0_0_20px_hsl(var(--accent)),_0_0_40px_hsl(var(--accent)/0.7)] active:shadow-[0_0_10px_hsl(var(--accent)/0.5)] rounded-lg border-b-4 border-primary/60 active:translate-y-0.5 active:border-b-2"
+          className="px-10 py-6 text-lg bg-primary text-primary-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-100 ease-in-out shadow-[0_0_15px_hsl(var(--primary)),_0_0_30px_hsl(var(--primary)/0.7)] hover:shadow-[0_0_20px_hsl(var(--accent)),_0_0_40px_hsl(var(--accent)/0.7)] rounded-lg border-b-4 border-primary/60 active:translate-y-0.5 active:border-b-2 active:[box-shadow:inset_0_3px_5px_rgba(0,0,0,0.3)] active:brightness-90"
         >
           <NextLink href="/dashboard">Deploy</NextLink>
         </Button>
