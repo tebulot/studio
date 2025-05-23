@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { UserCog, CreditCard, ShieldCheck, Save, XCircle, Loader2, MailLock } from "lucide-react";
+import { UserCog, CreditCard, ShieldCheck, Save, XCircle, Loader2, Mail } from "lucide-react"; // Changed MailLock to Mail
 import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -227,7 +227,7 @@ export default function AccountPage() {
                 {isSendingResetEmail ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
-                    <MailLock className="mr-2 h-4 w-4" /> 
+                    <Mail className="mr-2 h-4 w-4" /> 
                 )}
                 {isSendingResetEmail ? "Sending..." : "Change Password"}
               </Button>
@@ -241,4 +241,3 @@ export default function AccountPage() {
     </div>
   );
 }
-
