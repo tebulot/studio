@@ -1,10 +1,48 @@
 
+'use client'; // Convert to client component for hooks and data fetching
+
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import TrappedCrawlersChart from "@/components/dashboard/TrappedCrawlersChart";
 import RecentActivityTable from "@/components/dashboard/RecentActivityTable";
-import { ShieldCheck, Users, DollarSign, Cpu } from "lucide-react"; // Added Cpu as an option
+import { ShieldCheck, Users, DollarSign, Cpu } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { db } from "@/lib/firebase/clientApp";
+import { collection, query, where, onSnapshot, type DocumentData } from "firebase/firestore";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function DashboardPage() {
+  const { user, loading: authLoading } = useAuth();
+  const [activeInstancesCount, setActiveInstancesCount] = useState<number | null>(null);
+  const [isLoadingCount, setIsLoadingCount] = useState(true);
+
+  useEffect(() => {
+    if (authLoading) {
+      setIsLoadingCount(true);
+      return;
+    }
+
+    if (user) {
+      setIsLoadingCount(true);
+      const q = query(collection(db, "tarpit_configs"), where("userId", "==", user.uid));
+      
+      const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        setActiveInstancesCount(querySnapshot.size);
+        setIsLoadingCount(false);
+      }, (error) => {
+        console.error("Error fetching active instances count:", error);
+        setActiveInstancesCount(0); // Or some error state
+        setIsLoadingCount(false);
+      });
+
+      return () => unsubscribe(); // Cleanup listener on component unmount
+    } else {
+      // No user, so no instances
+      setActiveInstancesCount(0);
+      setIsLoadingCount(false);
+    }
+  }, [user, authLoading]);
+
   return (
     <div className="space-y-8">
       <header className="mb-10">
@@ -21,8 +59,8 @@ export default function DashboardPage() {
             <Users className="h-5 w-5 text-accent" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-foreground">1,234</div>
-            <p className="text-xs text-muted-foreground mt-1">+20.1% from last month</p>
+            <div className="text-3xl font-bold text-foreground">1,234</div> {/* Placeholder */}
+            <p className="text-xs text-muted-foreground mt-1">+20.1% from last month</p> {/* Placeholder */}
           </CardContent>
         </Card>
         <Card className="border-accent/30 shadow-lg shadow-accent/10 hover:shadow-accent/20 transition-shadow duration-300">
@@ -31,18 +69,22 @@ export default function DashboardPage() {
             <ShieldCheck className="h-5 w-5 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-foreground">5</div>
-            <p className="text-xs text-muted-foreground mt-1">All systems operational</p>
+            {isLoadingCount ? (
+              <Skeleton className="h-8 w-1/2" />
+            ) : (
+              <div className="text-3xl font-bold text-foreground">{activeInstancesCount ?? 0}</div>
+            )}
+            <p className="text-xs text-muted-foreground mt-1">Currently configured managed URLs</p>
           </CardContent>
         </Card>
         <Card className="border-primary/30 shadow-lg shadow-primary/10 hover:shadow-primary/20 transition-shadow duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-primary">Crawler Compute Wasted</CardTitle> {/* Changed title */}
-            <DollarSign className="h-5 w-5 text-primary" /> {/* Kept DollarSign, can change to Cpu */}
+            <CardTitle className="text-sm font-medium text-primary">Crawler Compute Wasted</CardTitle>
+            <DollarSign className="h-5 w-5 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-foreground">$75.80</div> {/* Changed value */}
-            <p className="text-xs text-muted-foreground mt-1">Wasted by trapped crawlers this month</p> {/* Changed sub-text */}
+            <div className="text-3xl font-bold text-foreground">$75.80</div> {/* Placeholder */}
+            <p className="text-xs text-muted-foreground mt-1">Wasted by trapped crawlers this month</p> {/* Placeholder */}
           </CardContent>
         </Card>
       </section>
