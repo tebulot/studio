@@ -9,7 +9,12 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { useState, useEffect } from 'react';
 
 export default function HomePage() {
-  // useEffect removed as backgroundIconStyles are no longer used for multiple icons
+  const [backgroundIconStyles, setBackgroundIconStyles] = useState<React.CSSProperties[]>([]);
+
+  useEffect(() => {
+    // This effect runs only once on the client after hydration
+    // The large background icon is now handled directly in JSX
+  }, []);
 
   const faqData = [
     {
@@ -100,9 +105,9 @@ export default function HomePage() {
 
   return (
     <div className="relative flex flex-col items-center justify-center min-h-screen bg-background text-foreground font-mono p-8 selection:bg-primary selection:text-primary-foreground">
-      <div className="absolute inset-0 overflow-hidden z-0">
+      <div className="absolute inset-0 overflow-hidden z-0 flex items-center justify-center">
         <BrandLogoIcon
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[250vw] h-[250vh] animate-spin-slow opacity-5"
+          className="w-[250vw] h-[250vh] animate-spin-slow opacity-5"
           isPriority={false}
         />
       </div>

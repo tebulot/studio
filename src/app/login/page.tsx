@@ -21,7 +21,10 @@ export default function LoginPage() {
   const { signIn, signUp, loading, sendPasswordReset } = useAuth();
   const [resetLoading, setResetLoading] = useState(false);
 
-  // useEffect removed as backgroundIconStyles are no longer used for multiple icons
+  useEffect(() => {
+    // This effect runs only once on the client after hydration
+    // The large background icon is now handled directly in JSX
+  }, []);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -45,16 +48,16 @@ export default function LoginPage() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground font-mono p-8 selection:bg-primary selection:text-primary-foreground">
-      <div className="absolute inset-0 overflow-hidden z-0">
+      <div className="absolute inset-0 overflow-hidden z-0 flex items-center justify-center">
         <BrandLogoIcon
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[250vw] h-[250vh] animate-spin-slow opacity-5"
+            className="w-[250vw] h-[250vh] animate-spin-slow opacity-5"
             isPriority={false}
         />
       </div>
       <Card className="w-full max-w-md z-10 bg-card/80 backdrop-blur-sm border-primary/20 shadow-xl shadow-primary/10">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4">
-            <BrandLogoIcon className="w-16 h-16 text-primary animate-spin-slow" style={{animationDuration: '5s'}} isPriority={true} />
+            <BrandLogoIcon className="w-16 h-16 animate-spin-slow" style={{animationDuration: '5s'}} isPriority={true} />
           </div>
           <CardTitle className="text-3xl font-bold text-primary glitch-text">
             {isPasswordResetMode ? 'Reset Password' : isSignUp ? 'Create Account' : 'Welcome Back'}
