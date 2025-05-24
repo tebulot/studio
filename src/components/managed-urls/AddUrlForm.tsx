@@ -144,17 +144,6 @@ export default function AddUrlForm() {
           )}
           {isLoading ? "Provisioning & Adding..." : "Add Managed URL"}
         </Button>
-         {tarpitBaseUrl && (
-          <Alert variant="default" className="mt-4 border-accent/30">
-            <Info className="h-4 w-4 text-accent" />
-            <AlertTitle className="text-accent/90">Configuration Info</AlertTitle>
-            <AlertDescription className="text-muted-foreground text-xs">
-              Generated Managed URLs will use the base: <strong className="text-foreground">{tarpitBaseUrl}</strong>.
-              Ensure this is set to your publicly accessible tarpit service domain in your <code>.env</code> file (<code>NEXT_PUBLIC_TARPIT_BASE_URL</code>) for the links to be live.
-              If it shows "http://localhost:3001", it's using the default placeholder.
-            </AlertDescription>
-          </Alert>
-        )}
       </form>
     </Form>
   );
