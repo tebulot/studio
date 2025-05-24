@@ -21,10 +21,7 @@ export default function LoginPage() {
   const { signIn, signUp, loading, sendPasswordReset } = useAuth();
   const [resetLoading, setResetLoading] = useState(false);
 
-  useEffect(() => {
-    // This effect runs only once on the client after hydration
-    // The large background icon is now handled directly in JSX
-  }, []);
+  // Removed useEffect for multiple random icons
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -50,7 +47,7 @@ export default function LoginPage() {
     <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground font-mono p-8 selection:bg-primary selection:text-primary-foreground">
       <div className="absolute inset-0 overflow-hidden z-0 flex items-center justify-center">
         <BrandLogoIcon
-            className="w-[250vw] h-[250vh] animate-spin-slow opacity-5"
+            className="w-[500vw] h-[500vh] animate-spin-slow opacity-5"
             isPriority={false}
         />
       </div>
