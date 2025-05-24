@@ -20,13 +20,15 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { useAuth } from "@/contexts/AuthContext";
 import { db } from "@/lib/firebase/clientApp";
 import { collection, query, where, onSnapshot, Timestamp, type DocumentData, type QueryDocumentSnapshot, doc, updateDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
+import { deprovisionTarpitInstance } from '@/lib/actions'; // Import the new server action
 
 interface ManagedUrlFirestoreData {
-  id: string; // Firestore document ID
+  id: string; 
   name: string;
   description?: string;
   fullUrl: string;
   pathSegment: string;
+  instanceId?: string; // Added instanceId
   createdAt: Timestamp;
   updatedAt?: Timestamp;
   status: "active" | "inactive";
@@ -92,6 +94,7 @@ export default function UrlList() {
             description: data.description as string | undefined,
             fullUrl: data.fullUrl as string,
             pathSegment: data.pathSegment as string,
+            instanceId: data.instanceId as string | undefined, // Read instanceId
             createdAt: data.createdAt as Timestamp,
             updatedAt: data.updatedAt as Timestamp | undefined,
             status: data.status as "active" | "inactive",
@@ -153,17 +156,47 @@ export default function UrlList() {
   const handleDeleteConfirm = async () => {
     if (!currentUrlToDelete || !user) return;
     setIsDeleteLoading(true);
+
     try {
+      // Step 1: Attempt to de-provision the Docker instance via server action
+      const deprovisionResult = await deprovisionTarpitInstance({
+        instanceId: currentUrlToDelete.instanceId,
+        pathSegment: currentUrlToDelete.pathSegment,
+        userId: user.uid,
+      });
+
+      if (!deprovisionResult.success) {
+        toast({
+          title: "De-provisioning Failed",
+          description: deprovisionResult.message || "Could not de-provision the Docker instance. Firestore entry not deleted.",
+          variant: "destructive",
+          duration: 7000,
+        });
+        setIsDeleteLoading(false);
+        // Optionally, close the dialog or keep it open for another attempt
+        // setIsDeleteDialogOpen(false); 
+        // setCurrentUrlToDelete(null);
+        return; 
+      }
+
+      toast({
+        title: "Instance De-provisioning Started",
+        description: deprovisionResult.message,
+        variant: "default",
+      });
+
+      // Step 2: If de-provisioning was successful (or if you want to delete DB entry regardless), delete from Firestore
       const docRef = doc(db, "tarpit_configs", currentUrlToDelete.id);
       await deleteDoc(docRef);
 
-      toast({ title: "Success!", description: "Managed URL deleted successfully!", variant: "default" });
+      toast({ title: "Success!", description: "Managed URL and associated instance (if applicable) successfully marked for deletion!", variant: "default" });
       setIsDeleteDialogOpen(false);
       setCurrentUrlToDelete(null);
+
     } catch (error) {
-      console.error("Error deleting managed URL:", error);
-      const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
-      toast({ title: "Error", description: `Failed to delete URL: ${errorMessage}`, variant: "destructive" });
+      console.error("Error during delete process:", error);
+      const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred during deletion.";
+      toast({ title: "Error", description: `Failed to complete delete operation: ${errorMessage}`, variant: "destructive" });
     } finally {
       setIsDeleteLoading(false);
     }
@@ -234,7 +267,10 @@ export default function UrlList() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex-grow">
-                <p className="text-sm text-foreground/90 break-all">
+                 <p className="text-xs text-muted-foreground">
+                  Instance ID: {url.instanceId || "N/A"}
+                </p>
+                <p className="text-sm text-foreground/90 break-all mt-1">
                   <span className="font-semibold text-muted-foreground">Full URL: </span> 
                   <a href={url.fullUrl} target="_blank" rel="noopener noreferrer" className="hover:underline text-accent">{url.fullUrl}</a>
                 </p>
@@ -421,7 +457,7 @@ export default function UrlList() {
           <AlertDialogHeader>
             <AlertDialogTitle className="text-destructive">Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription className="text-muted-foreground">
-              This action cannot be undone. This will permanently delete the managed URL
+              This action cannot be undone. This will attempt to de-provision the associated Docker instance and permanently delete the managed URL
               <span className="font-semibold text-foreground break-all"> {currentUrlToDelete?.name} </span>
               ({currentUrlToDelete?.fullUrl}).
             </AlertDialogDescription>
@@ -434,7 +470,7 @@ export default function UrlList() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {isDeleteLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
-              Yes, delete URL
+              {isDeleteLoading ? "Deleting..." : "Yes, delete URL & Instance"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -442,7 +478,3 @@ export default function UrlList() {
     </>
   );
 }
-
-    
-
-    
