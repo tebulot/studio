@@ -10,11 +10,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { PlusCircle, Loader2 } from "lucide-react"; 
+import { PlusCircle, Loader2, Info } from "lucide-react"; 
 import { useAuth } from "@/contexts/AuthContext";
-import { provisionAndGenerateManagedTarpitConfigDetails } from "@/lib/actions"; // Updated import
+import { provisionAndGenerateManagedTarpitConfigDetails } from "@/lib/actions";
 import { db } from "@/lib/firebase/clientApp"; 
 import { collection, addDoc, serverTimestamp } from "firebase/firestore"; 
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const formSchema = z.object({
   name: z.string().min(1, "Tarpit Name is required."),
@@ -27,6 +28,7 @@ export default function AddUrlForm() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
+  const tarpitBaseUrl = process.env.NEXT_PUBLIC_TARPIT_BASE_URL;
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -46,9 +48,17 @@ export default function AddUrlForm() {
       return;
     }
 
+    if (!tarpitBaseUrl || tarpitBaseUrl === "http://localhost:3001") {
+        toast({
+            title: "Configuration Notice",
+            description: `The Tarpit Base URL is currently set to "${tarpitBaseUrl}". Please update NEXT_PUBLIC_TARPIT_BASE_URL in your .env file to your public tarpit service domain for live functionality.`,
+            variant: "default",
+            duration: 10000,
+        });
+    }
+
     setIsLoading(true);
     try {
-      // Step 1: Call server action to provision Docker instance AND generate details (pathSegment, fullUrl)
       const provisionResult = await provisionAndGenerateManagedTarpitConfigDetails({
         userId: user.uid,
         name: formData.name,
@@ -65,11 +75,10 @@ export default function AddUrlForm() {
         return;
       }
 
-      // Step 2: Write to Firestore on the client-side (after successful Docker provisioning)
       const documentToWrite = {
-        ...provisionResult.configData, // This includes userId, name, description, pathSegment, fullUrl, instanceId (optional)
+        ...provisionResult.configData,
         createdAt: serverTimestamp(), 
-        status: "active", // Ensure status is set, though configData should have it
+        status: "active", 
       };
 
       await addDoc(collection(db, "tarpit_configs"), documentToWrite);
@@ -121,7 +130,7 @@ export default function AddUrlForm() {
             <FormItem>
               <FormLabel className="text-foreground/80">Description (Optional)</FormLabel>
               <FormControl>
-                <Textarea placeholder="e.g., Captures bots attempting to scrape product pages." {...field} className="bg-background border-border focus:ring-primary"/>
+                <Textarea placeholder="e.g., Main page capture link, header capture link, etc" {...field} className="bg-background border-border focus:ring-primary"/>
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -135,6 +144,17 @@ export default function AddUrlForm() {
           )}
           {isLoading ? "Provisioning & Adding..." : "Add Managed URL"}
         </Button>
+         {tarpitBaseUrl && (
+          <Alert variant="default" className="mt-4 border-accent/30">
+            <Info className="h-4 w-4 text-accent" />
+            <AlertTitle className="text-accent/90">Configuration Info</AlertTitle>
+            <AlertDescription className="text-muted-foreground text-xs">
+              Generated Managed URLs will use the base: <strong className="text-foreground">{tarpitBaseUrl}</strong>.
+              Ensure this is set to your publicly accessible tarpit service domain in your <code>.env</code> file (<code>NEXT_PUBLIC_TARPIT_BASE_URL</code>) for the links to be live.
+              If it shows "http://localhost:3001", it's using the default placeholder.
+            </AlertDescription>
+          </Alert>
+        )}
       </form>
     </Form>
   );
