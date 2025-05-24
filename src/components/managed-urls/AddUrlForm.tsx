@@ -10,11 +10,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { PlusCircle, Loader2 } from "lucide-react"; // Added Loader2
+import { PlusCircle, Loader2 } from "lucide-react"; 
 import { useAuth } from "@/contexts/AuthContext";
-import { generateManagedTarpitConfigDetails } from "@/lib/actions"; // Updated import
-import { db } from "@/lib/firebase/clientApp"; // Import db for client-side write
-import { collection, addDoc, serverTimestamp } from "firebase/firestore"; // Import Firestore methods
+import { provisionAndGenerateManagedTarpitConfigDetails } from "@/lib/actions"; // Updated import
+import { db } from "@/lib/firebase/clientApp"; 
+import { collection, addDoc, serverTimestamp } from "firebase/firestore"; 
 
 const formSchema = z.object({
   name: z.string().min(1, "Tarpit Name is required."),
@@ -48,36 +48,37 @@ export default function AddUrlForm() {
 
     setIsLoading(true);
     try {
-      // Step 1: Call server action to generate details (pathSegment, fullUrl)
-      const generationResult = await generateManagedTarpitConfigDetails({
+      // Step 1: Call server action to provision Docker instance AND generate details (pathSegment, fullUrl)
+      const provisionResult = await provisionAndGenerateManagedTarpitConfigDetails({
         userId: user.uid,
         name: formData.name,
         description: formData.description,
       });
 
-      if (!generationResult.success || !generationResult.configData || !generationResult.fullUrl) {
+      if (!provisionResult.success || !provisionResult.configData || !provisionResult.fullUrl) {
         toast({
-          title: "Error",
-          description: generationResult.message || "Failed to generate URL configuration.",
+          title: "Provisioning Failed",
+          description: provisionResult.message || "Failed to provision tarpit instance or generate URL configuration.",
           variant: "destructive",
         });
         setIsLoading(false);
         return;
       }
 
-      // Step 2: Write to Firestore on the client-side
+      // Step 2: Write to Firestore on the client-side (after successful Docker provisioning)
       const documentToWrite = {
-        ...generationResult.configData,
-        createdAt: serverTimestamp(), // Add timestamp here
+        ...provisionResult.configData, // This includes userId, name, description, pathSegment, fullUrl, instanceId (optional)
+        createdAt: serverTimestamp(), 
+        status: "active", // Ensure status is set, though configData should have it
       };
 
       await addDoc(collection(db, "tarpit_configs"), documentToWrite);
 
       toast({
         title: "Success!",
-        description: `Managed URL added successfully!\nNew URL: ${generationResult.fullUrl}`,
+        description: `Tarpit instance provisioned and managed URL added!\nNew URL: ${provisionResult.fullUrl}`,
         variant: "default",
-        duration: 5000, // Give more time to see the URL
+        duration: 7000, 
       });
       form.reset();
 
@@ -128,11 +129,11 @@ export default function AddUrlForm() {
         />
         <Button type="submit" disabled={isLoading || !user} className="w-full md:w-auto bg-primary text-primary-foreground hover:bg-accent hover:text-accent-foreground">
           {isLoading ? (
-            <Loader2 className="mr-2 h-5 w-5 animate-spin" /> // Updated loading indicator
+            <Loader2 className="mr-2 h-5 w-5 animate-spin" /> 
           ) : (
             <PlusCircle className="mr-2 h-5 w-5" />
           )}
-          {isLoading ? "Adding..." : "Add Managed URL"}
+          {isLoading ? "Provisioning & Adding..." : "Add Managed URL"}
         </Button>
       </form>
     </Form>
