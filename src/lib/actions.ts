@@ -23,10 +23,11 @@ interface TarpitConfigForFirestore {
   status: "active" | "inactive";
 }
 
+// Renamed from addManagedTarpitConfig to reflect it now also calls the provisioning API
 export async function provisionAndGenerateManagedTarpitConfigDetails(data: GenerateTarpitConfigDetailsData): Promise<{ 
   success: boolean; 
   message: string; 
-  configData?: Omit<TarpitConfigForFirestore, 'status' | 'createdAt' | 'instanceId'> & { status: "active", instanceId?: string };
+  configData?: Omit<TarpitConfigForFirestore, 'status' | 'createdAt' | 'updatedAt'> & { instanceId?: string }; // Adjusted to return data for client-side Firestore write
   fullUrl?: string 
 }> {
   const { userId, name, description } = data;
@@ -48,26 +49,27 @@ export async function provisionAndGenerateManagedTarpitConfigDetails(data: Gener
   const dockerApiKey = process.env.DOCKER_PROVISIONING_API_KEY;
 
   if (!dockerApiEndpoint || !dockerApiKey) {
-    console.error("Error: Docker provisioning API endpoint or key not configured in .env");
+    console.error("Error: Docker provisioning API endpoint or key not configured in .env. Endpoint:", dockerApiEndpoint);
     return { success: false, message: "Server configuration error: Docker API details missing." };
   }
 
   try {
     const pathSegment = randomUUID();
-    const fullUrl = `${tarpitBaseUrl}/trap/${pathSegment}`;
+    const fullUrl = `${tarpitBaseUrl}/trap/${pathSegment}`; // Ensure /trap/ prefix or similar as needed
 
+    // Call your backend Docker provisioning API
     console.log(`Attempting to provision Docker instance via ${dockerApiEndpoint} for path: ${pathSegment}, user: ${userId}, name: ${name}`);
     const provisionResponse = await fetch(dockerApiEndpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${dockerApiKey}`,
+        'Authorization': `Bearer ${dockerApiKey}`, // Ensure your backend expects a Bearer token
       },
       body: JSON.stringify({
-        userId,
+        userId, // Pass userId to backend
         name,
         description: description || "",
-        pathSegment, 
+        pathSegment, // Pass pathSegment to backend for routing/config
       }),
     });
 
@@ -77,23 +79,25 @@ export async function provisionAndGenerateManagedTarpitConfigDetails(data: Gener
         const errorData = await provisionResponse.json();
         errorMsg += ` - ${errorData.message || 'No additional error message from backend.'}`;
       } catch (jsonError) {
-        errorMsg += ` - And failed to parse error response from backend.`;
+        // If parsing fails, it's useful to see the raw text if available
+        const rawText = await provisionResponse.text().catch(() => "Could not get raw text response.");
+        errorMsg += ` - And failed to parse error response from backend. Raw response (approx): ${rawText.substring(0,200)}`;
       }
       console.error(errorMsg);
       return { success: false, message: errorMsg };
     }
 
-    const provisionData = await provisionResponse.json();
+    const provisionData = await provisionResponse.json(); // Assuming backend returns { success: true, instanceId: '...', ... }
     console.log("Docker instance provisioned successfully by backend:", provisionData);
 
-    const configDetails: Omit<TarpitConfigForFirestore, 'status' | 'createdAt' | 'instanceId'> & { status: "active", instanceId?: string } = {
+    // Prepare data for Firestore write on the client side
+    const configDetails: Omit<TarpitConfigForFirestore, 'status' | 'createdAt' | 'updatedAt'> & { instanceId?: string } = {
       userId,
       name,
       description: description || "",
       pathSegment,
       fullUrl, 
-      instanceId: provisionData.instanceId, 
-      status: "active",
+      instanceId: provisionData.instanceId, // Capture instanceId from backend response
     };
 
     return { 
@@ -112,9 +116,9 @@ export async function provisionAndGenerateManagedTarpitConfigDetails(data: Gener
 
 
 interface DeprovisionTarpitData {
-  instanceId?: string;
-  pathSegment: string;
-  userId: string;
+  instanceId?: string; // The unique ID of the Docker instance, if available
+  pathSegment: string;  // The unique path segment, can be used as a fallback or primary identifier
+  userId: string;       // The user ID, for logging or authorization on the backend
 }
 
 export async function deprovisionTarpitInstance(data: DeprovisionTarpitData): Promise<{ success: boolean; message: string }> {
@@ -128,42 +132,43 @@ export async function deprovisionTarpitInstance(data: DeprovisionTarpitData): Pr
     return { success: false, message: "Server configuration error: Docker de-provisioning API details missing." };
   }
 
-  // Your backend might require instanceId, pathSegment, or userId for identification/authorization
-  const identifier = instanceId || pathSegment; 
-  if (!identifier) {
+  // Determine the container name to send; prefer instanceId if available
+  const containerName = instanceId || pathSegment;
+  if (!containerName) {
     return { success: false, message: "Missing instanceId or pathSegment for de-provisioning." };
   }
 
   try {
-    console.log(`Attempting to de-provision Docker instance via ${deprovisionApiEndpoint}. Identifier: ${identifier} for user: ${userId}`);
+    console.log(`Attempting to de-provision Docker instance via ${deprovisionApiEndpoint}. Identifier (containerName): ${containerName} for user: ${userId}`);
     const response = await fetch(deprovisionApiEndpoint, {
-      method: 'DELETE', // Or 'POST', depending on your API design
+      method: 'POST', // Changed from DELETE to POST based on backend logs
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${dockerApiKey}`,
       },
       body: JSON.stringify({ 
-        instanceId: instanceId,
+        containerName: containerName, // Send as containerName
+        instanceId: instanceId,     // Still send original fields for backend flexibility
         pathSegment: pathSegment,
         userId: userId 
       }),
     });
 
     if (!response.ok) {
-      let errorMsg = `Failed to de-provision Docker instance from ${deprovisionApiEndpoint}. Status: ${response.status}`;
+      let errorMsg = `Failed to de-provision Docker instance from ${deprovisionApiEndpoint}. Status: ${response.status}. URL: ${deprovisionApiEndpoint}`;
       try {
         const errorData = await response.json();
         errorMsg += ` - ${errorData.message || 'No additional error message from backend.'}`;
       } catch (jsonError) {
-        // If parsing fails, it's useful to see the raw text if available
         const rawText = await response.text().catch(() => "Could not get raw text response.");
         errorMsg += ` - And failed to parse error response from backend. Raw response (approx): ${rawText.substring(0, 200)}`;
       }
       console.error(errorMsg);
       return { success: false, message: errorMsg };
     }
-
-    return { success: true, message: "Docker instance de-provisioning initiated successfully." };
+    
+    const responseData = await response.json(); // Assuming backend returns JSON
+    return { success: true, message: responseData.message || "Docker instance de-provisioning initiated successfully." };
 
   } catch (error) {
     console.error("Error in deprovisionTarpitInstance action:", error);
