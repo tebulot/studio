@@ -16,7 +16,7 @@ import { provisionAndGenerateManagedTarpitConfigDetails } from "@/lib/actions";
 import { db } from "@/lib/firebase/clientApp"; 
 import { collection, addDoc, serverTimestamp, query, where, getDocs } from "firebase/firestore"; 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Skeleton } from "@/components/ui/skeleton"; // Added this import
+import { Skeleton } from "@/components/ui/skeleton";
 
 const formSchema = z.object({
   name: z.string().min(1, "Tarpit Name is required."),
@@ -25,8 +25,7 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-// Define a placeholder for max allowed URLs, this would ideally come from user's subscription data
-const MAX_ALLOWED_URLS_PLACEHOLDER = 0; // New users (Window Shopping proxy) can add 0
+const ADMIN_TEST_MAX_URLS = 5; // Allow up to 5 URLs for admin testing
 
 export default function AddUrlForm() {
   const [isLoading, setIsLoading] = useState(false);
@@ -35,7 +34,7 @@ export default function AddUrlForm() {
   const [canAddMoreUrls, setCanAddMoreUrls] = useState(false);
 
   const { toast } = useToast();
-  const { user, loading: authLoading } = useAuth(); // Get authLoading state
+  const { user, loading: authLoading } = useAuth();
   const tarpitBaseUrl = process.env.NEXT_PUBLIC_TARPIT_BASE_URL;
 
   const form = useForm<FormData>({
@@ -47,7 +46,7 @@ export default function AddUrlForm() {
   });
 
   useEffect(() => {
-    if (authLoading) { // Wait for authentication to resolve
+    if (authLoading) {
       setIsCheckingUrlCount(true);
       return;
     }
@@ -65,46 +64,13 @@ export default function AddUrlForm() {
         const count = querySnapshot.size;
         setCurrentUserUrlCount(count);
         
-        if (count === 0) {
-          setCanAddMoreUrls(false); // New users with 0 URLs are effectively on "Window Shopping"
-        } else {
-          // This logic needs to be replaced with real tier limit checks from user's actual tier.
-          // For now, this placeholder allows up to 1 URL if they already have at least one.
-          // This means if they are on "Set & Forget" (1 URL limit) and have 1, they can't add.
-          // If they are on "Analytics" (3 URL limit) and have 1, they could add 2 more.
-          // A more robust check would fetch user's tier and its specific maxUrl.
-          // For simplicity in this step, let's assume a basic check against a small number if they have > 0.
-          // For a user who has > 0 URLs (meaning they are not "new"/Window Shopping):
-          // const userTierMaxUrls = 1; // Replace with actual fetched tier maxUrls (e.g. 1 for Set & Forget, 3 for Analytics)
-          // setCanAddMoreUrls(count < userTierMaxUrls); 
-          // As per current logic, it seems "Set & Forget allows 1, Analytics allows 3"
-          // For demo, we allow users who have existing URLs to add up to a hypothetical limit
-          // This is a placeholder for real tier enforcement.
-          // A more practical approach for a real app would be to fetch the user's current tier
-          // from Firestore, then get the maxUrls for that tier.
-          // const currentTier = await fetchUserTier(user.uid); // hypothetical function
-          // if (currentTier.id === 'set_and_forget') setCanAddMoreUrls(count < 1);
-          // else if (currentTier.id === 'analytics') setCanAddMoreUrls(count < 3);
-          // else setCanAddMoreUrls(false);
-
-          // Simplified placeholder logic:
-          // If they have > 0 URLs, they are not on "Window Shopping".
-          // Let's assume "Set & Forget" has 1 URL, "Analytics" has 3.
-          // If they have any URL, we can't know their tier from just URL count here.
-          // For now, if they have > 0, let's allow them to add up to a limit like 1, to simulate
-          // a basic tier. This needs to be replaced.
-          // The Account page simulates their tier; this form doesn't know it.
-          // The previous placeholder `setCanAddMoreUrls(count < 1)` for users with > 0 URLs was too restrictive.
-          // A more general placeholder if they have > 0 URLs:
-          const placeholderMaxForExistingUsers = 3; // Allows up to 3 URLs if they already have some
-          setCanAddMoreUrls(count < placeholderMaxForExistingUsers);
-        }
-
+        // Allow admin user to add up to ADMIN_TEST_MAX_URLS
+        setCanAddMoreUrls(count < ADMIN_TEST_MAX_URLS); 
 
       } catch (error) {
         console.error("Error fetching user URL count:", error);
         toast({ title: "Error", description: "Could not verify your current URL count.", variant: "destructive" });
-        setCanAddMoreUrls(false); // Default to not allowing if there's an error
+        setCanAddMoreUrls(false); 
       } finally {
         setIsCheckingUrlCount(false);
       }
@@ -124,26 +90,15 @@ export default function AddUrlForm() {
       return;
     }
 
-    if (!canAddMoreUrls && currentUserUrlCount === 0) { 
-        toast({
-            title: "Subscription Required",
-            description: "To add your first Managed URL, please select a subscription plan on your Account page.",
-            variant: "default", // Changed from destructive to default
-            duration: 7000,
-        });
-        return;
-    }
-
-     if (!canAddMoreUrls && currentUserUrlCount > 0) {
+    if (!canAddMoreUrls) {
          toast({
             title: "Limit Reached",
-            description: "You've reached the maximum number of Managed URLs for your current plan. Please upgrade to add more.",
-            variant: "default", // Changed from destructive to default
+            description: `You've reached the maximum number of Managed URLs for testing (${ADMIN_TEST_MAX_URLS}).`,
+            variant: "default", 
             duration: 7000,
         });
         return;
     }
-
 
     if (!tarpitBaseUrl || tarpitBaseUrl === "http://localhost:3001") {
         toast({
@@ -152,7 +107,6 @@ export default function AddUrlForm() {
             variant: "default",
             duration: 10000,
         });
-        // Not returning here, allow local testing if user proceeds
     }
 
     setIsLoading(true);
@@ -172,12 +126,17 @@ export default function AddUrlForm() {
         setIsLoading(false);
         return;
       }
-
-      const documentToWrite = {
-        ...provisionResult.configData,
+      
+      const { instanceId, ...configDataForWrite } = provisionResult.configData;
+      const documentToWrite: any = { // Use 'any' temporarily or define a more precise type
+        ...configDataForWrite,
         createdAt: serverTimestamp(), 
         status: "active", 
       };
+      if (instanceId !== undefined) { // Only include instanceId if it's defined
+        documentToWrite.instanceId = instanceId;
+      }
+
 
       await addDoc(collection(db, "tarpit_configs"), documentToWrite);
 
@@ -193,14 +152,7 @@ export default function AddUrlForm() {
         const querySnapshot = await getDocs(q);
         const count = querySnapshot.size;
         setCurrentUserUrlCount(count);
-        
-        if (count === 0) {
-            setCanAddMoreUrls(false);
-        } else {
-          // Placeholder: replace with actual tier limit check
-          const placeholderMaxForExistingUsers = 3; 
-          setCanAddMoreUrls(count < placeholderMaxForExistingUsers); 
-        }
+        setCanAddMoreUrls(count < ADMIN_TEST_MAX_URLS);
 
     } catch (error) {
       console.error("Error in onSubmit AddUrlForm:", error);
@@ -227,21 +179,12 @@ export default function AddUrlForm() {
 
   return (
     <>
-      {!canAddMoreUrls && !isCheckingUrlCount && user && currentUserUrlCount === 0 && ( // Specific message for 0 URLs
+      {!canAddMoreUrls && !isCheckingUrlCount && user && (
         <Alert variant="default" className="mb-6 border-amber-500/50 text-amber-500 [&>svg]:text-amber-500 bg-amber-500/10">
           <ShieldAlert className="h-5 w-5" />
-          <AlertTitle>Subscription Required</AlertTitle>
+          <AlertTitle>URL Limit Reached for Testing</AlertTitle>
           <AlertDescription>
-            To add your first Managed URL, please select a subscription plan on your Account page.
-          </AlertDescription>
-        </Alert>
-      )}
-      {!canAddMoreUrls && !isCheckingUrlCount && user && currentUserUrlCount > 0 && ( // Specific message for >0 URLs but limit reached
-        <Alert variant="default" className="mb-6 border-amber-500/50 text-amber-500 [&>svg]:text-amber-500 bg-amber-500/10">
-          <ShieldAlert className="h-5 w-5" />
-          <AlertTitle>URL Limit Reached</AlertTitle>
-          <AlertDescription>
-            You have reached the maximum number of Managed URLs for your current plan. Please upgrade to add more.
+            You have reached the current testing limit of {ADMIN_TEST_MAX_URLS} Managed URLs.
           </AlertDescription>
         </Alert>
       )}
