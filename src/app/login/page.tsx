@@ -18,7 +18,7 @@ export default function LoginPage() {
   const [isPasswordResetMode, setIsPasswordResetMode] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   
-  const { signIn, signUp, loading, sendPasswordReset } = useAuth();
+  const { signIn, signUp, loading: authContextLoading, sendPasswordReset } = useAuth(); // Renamed loading from useAuth
   const [resetLoading, setResetLoading] = useState(false);
   const [backgroundIconStyle, setBackgroundIconStyle] = useState<React.CSSProperties | null>(null);
 
@@ -49,13 +49,18 @@ export default function LoginPage() {
     }
   };
 
+  const handleAuthModeToggle = () => {
+    setIsSignUp(prev => !prev);
+    setIsPasswordResetMode(false); // Explicitly exit password reset mode
+  };
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground font-mono p-8 selection:bg-primary selection:text-primary-foreground">
       <div className="absolute inset-0 overflow-hidden z-0 flex items-center justify-center">
         {backgroundIconStyle && (
            <BrandLogoIcon
             className="w-[500vw] h-[500vh] opacity-5 animate-spin-slow"
-            style={backgroundIconStyle}
+            style={backgroundIconStyle} // style prop is used here for animation duration
             isPriority={false}
           />
         )}
@@ -94,9 +99,9 @@ export default function LoginPage() {
               <Button 
                 type="submit" 
                 className="w-full bg-primary text-primary-foreground hover:bg-accent hover:text-accent-foreground shadow-[0_0_10px_hsl(var(--primary)/0.5)] hover:shadow-[0_0_15px_hsl(var(--accent)/0.7)]"
-                disabled={resetLoading || loading}
+                disabled={resetLoading || authContextLoading}
               >
-                {(resetLoading || loading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {(resetLoading || authContextLoading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Send Reset Email
               </Button>
               <div className="text-center text-sm">
@@ -142,14 +147,14 @@ export default function LoginPage() {
               <Button 
                 type="submit" 
                 className="w-full bg-primary text-primary-foreground hover:bg-accent hover:text-accent-foreground shadow-[0_0_10px_hsl(var(--primary)/0.5)] hover:shadow-[0_0_15px_hsl(var(--accent)/0.7)]"
-                disabled={loading}
+                disabled={authContextLoading}
               >
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {authContextLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {isSignUp ? 'Sign Up' : 'Login'}
               </Button>
               <div className="text-center text-sm text-muted-foreground">
                 {isSignUp ? "Already have an account?" : "Don't have an account?"}{' '}
-                <Button variant="link" className="font-semibold text-accent hover:underline p-0 h-auto" onClick={() => setIsSignUp(!isSignUp)}>
+                <Button variant="link" className="font-semibold text-accent hover:underline p-0 h-auto" onClick={handleAuthModeToggle}>
                   {isSignUp ? 'Login' : 'Sign Up'}
                 </Button>
               </div>
@@ -157,10 +162,14 @@ export default function LoginPage() {
           )}
         </CardContent>
       </Card>
-       <footer className="absolute bottom-8 text-sm text-muted-foreground/70 z-10">
-        © {new Date().getFullYear()} SpiteSpiral. All rights reserved.
+       <footer className="absolute bottom-8 text-sm text-muted-foreground/70 z-10 flex flex-col items-center space-y-1">
+          <span>© {new Date().getFullYear()} SpiteSpiral. All rights reserved.</span>
+          <NextLink href="/legal/licenses" className="hover:text-accent hover:underline animate-link-glow">
+            Licenses & Acknowledgements
+          </NextLink>
       </footer>
     </div>
   );
 }
 
+    
