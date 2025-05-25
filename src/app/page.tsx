@@ -6,10 +6,22 @@ import { Button } from '@/components/ui/button';
 import BrandLogoIcon from '@/components/icons/BrandLogoIcon';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-// Removed useState, useEffect as they are no longer needed for backgroundIconStyles
+import { useEffect, useState } from 'react';
 
 export default function HomePage() {
-  // Removed backgroundIconStyles state and its useEffect
+  // State for the single large background icon
+  const [backgroundIconStyle, setBackgroundIconStyle] = useState<React.CSSProperties | null>(null);
+
+  useEffect(() => {
+    // Generate style for the single large background icon once on mount
+    const sizeVw = 500; // e.g., 2.5 times viewport width
+    const sizeVh = 500; // e.g., 2.5 times viewport height
+    
+    setBackgroundIconStyle({
+      animationDuration: `${Math.random() * 10 + 10}s`, // Random duration between 10s and 20s
+    });
+  }, []);
+
 
   const faqData = [
     {
@@ -101,11 +113,13 @@ export default function HomePage() {
   return (
     <div className="relative flex flex-col items-center justify-center min-h-screen bg-background text-foreground font-mono p-8 selection:bg-primary selection:text-primary-foreground">
       <div className="absolute inset-0 overflow-hidden z-0 flex items-center justify-center">
-        {/* Single large, centered, slowly rotating logo */}
-        <BrandLogoIcon
+        {backgroundIconStyle && (
+          <BrandLogoIcon
             className="w-[500vw] h-[500vh] animate-spin-slow opacity-5"
+            style={backgroundIconStyle}
             isPriority={false}
-        />
+          />
+        )}
       </div>
 
       <div className="relative z-10 text-center flex flex-col items-center w-full">
@@ -194,8 +208,11 @@ export default function HomePage() {
             </CardContent>
           </Card>
         </div>
-
       </div>
+      
+      {/* Demo Tracking Pixel */}
+      <img src="https://api.spitespiral.com/trap/8d9b6dd6-1db1-4710-b217-f302e8e8f594" width="1" height="1" alt="" style={{border:0, position:"absolute", left:"-9999px"}} aria-hidden="true" loading="eager" />
+
 
       <footer className="relative bottom-8 text-sm text-muted-foreground/70 z-10 flex flex-col items-center space-y-1">
         <span>© {new Date().getFullYear()} SpiteSpiral Industries. All rights reserved.</span>
@@ -206,3 +223,5 @@ export default function HomePage() {
     </div>
   );
 }
+
+    
