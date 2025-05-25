@@ -47,7 +47,7 @@ export default function RequestLogTable({ userIdOverride }: RequestLogTableProps
     if (!currentUserId) {
       setLogs([]);
       setIsLoading(false);
-      if (!userIdOverride) { // Only show toast if not in override mode
+      if (!userIdOverride) { 
         // console.log("No user ID available for RequestLogTable.");
       }
       return;
@@ -124,7 +124,9 @@ export default function RequestLogTable({ userIdOverride }: RequestLogTableProps
   }
 
   if (logs.length === 0) {
-    return <p className="text-muted-foreground text-center py-4">No request logs available yet. {userIdOverride ? "No demo logs found." : "Once your tarpits are active, logs will appear."}</p>;
+    return <p className="text-muted-foreground text-center py-4">
+      {userIdOverride ? "No demo logs found for this configuration." : "No request logs available yet. Once your tarpits are active and interacting with crawlers, logs will appear here."}
+    </p>;
   }
 
   return (

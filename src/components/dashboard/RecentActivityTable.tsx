@@ -42,7 +42,7 @@ export default function RecentActivityTable({ userIdOverride }: RecentActivityTa
     if (!currentUserId) {
       setActivityLogs([]);
       setIsLoading(false);
-      if (!userIdOverride) { // Only show toast if not in override mode (i.e. expecting a logged-in user)
+      if (!userIdOverride) { 
         // console.log("No user ID available for RecentActivityTable.");
       }
       return;
@@ -114,7 +114,9 @@ export default function RecentActivityTable({ userIdOverride }: RecentActivityTa
   }
 
   if (activityLogs.length === 0) {
-    return <p className="text-muted-foreground text-center py-4">No recent activity logged yet.</p>;
+    return <p className="text-muted-foreground text-center py-4">
+      {userIdOverride ? "No recent demo activity found." : "No recent activity logged yet. Once your tarpits are active and interacting with crawlers, logs will appear here."}
+    </p>;
   }
 
   return (
