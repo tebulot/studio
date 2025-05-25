@@ -17,8 +17,10 @@ interface ActivityLogEntry {
   timestamp: Timestamp;
   trappedBotIp: string;
   userAgent: string;
-  managedUrlPath: string; // The path that was hit
+  managedUrlPath: string; // The path that was hit (e.g. /trap/uuid-xyz)
+  requestPath?: string; // Path requested *within* the tarpit (e.g. / or /login.php)
   userId: string;
+  // other fields like method, status, responseType might exist but are not displayed in this summary
 }
 
 interface RecentActivityTableProps {
@@ -53,13 +55,14 @@ export default function RecentActivityTable({ userIdOverride }: RecentActivityTa
       collection(db, "tarpit_logs"),
       where("userId", "==", currentUserId),
       orderBy("timestamp", "desc"),
-      limit(10)
+      limit(10) // Keep the limit for the dashboard summary
     );
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const fetchedLogs: ActivityLogEntry[] = [];
       querySnapshot.forEach((docSnap: QueryDocumentSnapshot<DocumentData>) => {
         const data = docSnap.data();
+        // Ensure core fields are present
         if (data.timestamp && data.trappedBotIp && data.userAgent && data.managedUrlPath && data.userId) {
           fetchedLogs.push({
             id: docSnap.id,
@@ -67,8 +70,11 @@ export default function RecentActivityTable({ userIdOverride }: RecentActivityTa
             trappedBotIp: data.trappedBotIp as string,
             userAgent: data.userAgent as string,
             managedUrlPath: data.managedUrlPath as string,
+            requestPath: data.requestPath as string | undefined,
             userId: data.userId as string,
           });
+        } else {
+            // console.warn("Skipping malformed recent activity log entry:", docSnap.id, data);
         }
       });
       setActivityLogs(fetchedLogs);
@@ -156,7 +162,8 @@ export default function RecentActivityTable({ userIdOverride }: RecentActivityTa
                       </span>
                     </TooltipTrigger>
                     <TooltipContent className="bg-popover text-popover-foreground border-primary/50 max-w-lg">
-                      <p>{log.managedUrlPath}</p>
+                      <p>Managed URL: {log.managedUrlPath}</p>
+                      {log.requestPath && <p>Internal Path: {log.requestPath}</p>}
                     </TooltipContent>
                   </Tooltip>
                 </TableCell>
@@ -168,3 +175,4 @@ export default function RecentActivityTable({ userIdOverride }: RecentActivityTa
     </TooltipProvider>
   );
 }
+

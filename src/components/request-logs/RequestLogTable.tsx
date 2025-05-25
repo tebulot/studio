@@ -18,7 +18,8 @@ interface TarpitLogEntry {
   trappedBotIp: string;
   userAgent: string;
   managedUrlId: string;
-  managedUrlPath: string;
+  managedUrlPath: string; // e.g., /trap/uuid-123
+  requestPath?: string; // e.g., /, /login.php - path requested *within* the tarpit
   userId: string;
   method?: "GET" | "POST" | "PUT" | "DELETE" | "OTHER" | string;
   status?: number;
@@ -64,7 +65,8 @@ export default function RequestLogTable({ userIdOverride }: RequestLogTableProps
       const fetchedLogs: TarpitLogEntry[] = [];
       querySnapshot.forEach((docSnap: QueryDocumentSnapshot<DocumentData>) => {
         const data = docSnap.data();
-        if (data.timestamp && data.trappedBotIp && data.userAgent && data.managedUrlPath) {
+        // Ensure all core fields are present
+        if (data.timestamp && data.trappedBotIp && data.userAgent && data.managedUrlPath && data.userId) {
           fetchedLogs.push({
             id: docSnap.id,
             timestamp: data.timestamp as Timestamp,
@@ -72,12 +74,15 @@ export default function RequestLogTable({ userIdOverride }: RequestLogTableProps
             userAgent: data.userAgent as string,
             managedUrlId: data.managedUrlId as string,
             managedUrlPath: data.managedUrlPath as string,
+            requestPath: data.requestPath as string | undefined,
             userId: data.userId as string,
             method: data.method as string | undefined,
             status: data.status as number | undefined,
             responseType: data.responseType as string | undefined,
             requestBodySnippet: data.requestBodySnippet as string | undefined,
           });
+        } else {
+          // console.warn("Skipping malformed log entry:", docSnap.id, data);
         }
       });
       setLogs(fetchedLogs);
@@ -137,7 +142,8 @@ export default function RequestLogTable({ userIdOverride }: RequestLogTableProps
             <TableRow>
               <TableHead className="text-accent w-[180px]">Timestamp</TableHead>
               <TableHead className="text-accent w-[80px]">Method</TableHead>
-              <TableHead className="text-accent">Path Hit</TableHead>
+              <TableHead className="text-accent">Managed URL Target</TableHead>
+              <TableHead className="text-accent">Internal Path Requested</TableHead>
               <TableHead className="text-accent w-[130px]">IP Address</TableHead>
               <TableHead className="text-accent">User Agent</TableHead>
               <TableHead className="text-accent w-[80px] text-center">Status</TableHead>
@@ -162,7 +168,7 @@ export default function RequestLogTable({ userIdOverride }: RequestLogTableProps
                       <span className="truncate block max-w-[200px] hover:underline cursor-help">{log.managedUrlPath}</span>
                     </TooltipTrigger>
                     <TooltipContent className="bg-popover text-popover-foreground border-primary/50 max-w-md">
-                      <p>{log.managedUrlPath}</p>
+                      <p>Full Managed URL Path: {log.managedUrlPath}</p>
                       {log.requestBodySnippet && (
                         <div className="mt-2 pt-2 border-t border-border">
                           <p className="text-xs font-semibold">Request Body Snippet:</p>
@@ -172,11 +178,14 @@ export default function RequestLogTable({ userIdOverride }: RequestLogTableProps
                     </TooltipContent>
                   </Tooltip>
                 </TableCell>
+                <TableCell className="text-sm text-muted-foreground/80 break-all">
+                    <span className="truncate block max-w-[150px]">{log.requestPath || '/'}</span>
+                </TableCell>
                 <TableCell className="text-sm text-muted-foreground">{log.trappedBotIp}</TableCell>
                 <TableCell className="text-xs text-muted-foreground max-w-xs truncate">
                    <Tooltip>
                     <TooltipTrigger asChild>
-                      <span className="truncate block max-w-[250px] cursor-help">{log.userAgent}</span>
+                      <span className="truncate block max-w-[200px] cursor-help">{log.userAgent}</span>
                     </TooltipTrigger>
                     <TooltipContent className="bg-popover text-popover-foreground border-primary/50 max-w-lg">
                       <p>{log.userAgent}</p>
