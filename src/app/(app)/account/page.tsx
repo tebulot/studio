@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { UserCog, CreditCard, ShieldCheck, Save, XCircle, Loader2, Mail, ExternalLink, CheckCircle, Zap, BarChartHorizontalBig } from "lucide-react";
+import { UserCog, CreditCard, ShieldCheck, Save, XCircle, Loader2, Mail, ExternalLink, CheckCircle, Zap, BarChartHorizontalBig, Eye } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
@@ -15,11 +15,27 @@ import { useToast } from "@/hooks/use-toast";
 // Define Subscription Tiers
 const subscriptionTiers = [
   {
+    id: "window_shopping",
+    name: "Window Shopping",
+    price: "Free (View-Only)",
+    features: [
+      "Dashboard Overview (Demo/Limited Data)",
+      "0 Managed URLs",
+      "Explore Features",
+      "Email Support",
+    ],
+    icon: Eye,
+    cta: "View Paid Plans",
+    variant: "outline" as const,
+    isCurrent: (currentTierId: string) => currentTierId === "window_shopping",
+    actionType: "view_plans" as const,
+  },
+  {
     id: "set_and_forget",
     name: "Set & Forget",
     price: "$9/mo (est.)",
     features: [
-      "Up to 1 Managed URL", // Updated
+      "Up to 1 Managed URL",
       "Dashboard Stats (30-min refresh)",
       "30-day Log Retention (for stats)",
       "Email Support",
@@ -28,22 +44,23 @@ const subscriptionTiers = [
     cta: "Switch to Set & Forget",
     variant: "default" as const,
     isCurrent: (currentTierId: string) => currentTierId === "set_and_forget",
+    actionType: "switch_plan" as const,
   },
   {
     id: "analytics",
-    name: "Analytics", // Renamed
+    name: "Analytics",
     price: "$29/mo (est.)",
     features: [
-      "Up to 3 Managed URLs", // Updated
+      "Up to 3 Managed URLs",
       "Full Dashboard Analytics",
-      "(Future) Detailed Log Explorer",
       "90-day Log Retention",
       "Priority Email Support",
     ],
     icon: BarChartHorizontalBig,
-    cta: "Upgrade to Analytics", // Updated CTA
+    cta: "Upgrade to Analytics",
     variant: "default" as const,
     isCurrent: (currentTierId: string) => currentTierId === "analytics",
+    actionType: "switch_plan" as const,
   },
 ];
 
@@ -51,8 +68,8 @@ export default function AccountPage() {
   const { user, loading: authLoading, updateUserEmail, updateUserDisplayName, sendPasswordReset } = useAuth();
   const { toast } = useToast();
 
-  // Simulate current subscription tier - default to the first available paid tier
-  const [currentUserTierId, setCurrentUserTierId] = useState("set_and_forget"); 
+  // Simulate current subscription tier - default to "Window Shopping"
+  const [currentUserTierId, setCurrentUserTierId] = useState("window_shopping"); 
 
   const [isEditingEmail, setIsEditingEmail] = useState(false);
   const [emailInputValue, setEmailInputValue] = useState("");
@@ -68,6 +85,8 @@ export default function AccountPage() {
     if (user) {
       setEmailInputValue(user.email || "");
       setUsernameInputValue(user.displayName || user.email?.split('@')[0] || "currentUser");
+      // In a real app, you would fetch the user's actual tier from your database here
+      // and setCurrentUserTierId(fetchedTierId);
     }
   }, [user]);
 
@@ -107,16 +126,29 @@ export default function AccountPage() {
     setIsSendingResetEmail(false);
   };
 
-  const handlePlanChangeClick = (tierId: string) => {
-    if (tierId === currentUserTierId) return;
-    toast({
-      title: "Coming Soon!",
-      description: `Subscription management for the ${subscriptionTiers.find(t => t.id === tierId)?.name} tier will be available soon.`,
-      duration: 5000,
-    });
-    // In a real app, this would initiate a Stripe checkout flow or similar.
-    // For now, we can simulate changing the tier for UI purposes if needed:
-    // setCurrentUserTierId(tierId); 
+  const handlePlanChangeClick = (tierId: string, actionType: string) => {
+    if (tierId === currentUserTierId && actionType === "switch_plan") return;
+
+    const targetTier = subscriptionTiers.find(t => t.id === tierId);
+    if (!targetTier) return;
+
+    if (actionType === "view_plans") {
+        toast({
+        title: "Explore Our Plans!",
+        description: `You are currently on the ${targetTier.name} tier. Check out our paid plans for more features!`,
+        duration: 5000,
+        });
+        // Optionally, scroll to the paid plans or highlight them
+    } else { // switch_plan
+        toast({
+        title: "Coming Soon!",
+        description: `Subscription management for the ${targetTier.name} tier will be available soon.`,
+        duration: 5000,
+        });
+        // In a real app, this would initiate a Stripe checkout flow or similar.
+        // For now, we can simulate changing the tier for UI purposes if needed:
+        // setCurrentUserTierId(tierId); 
+    }
   };
 
 
@@ -240,7 +272,7 @@ export default function AccountPage() {
             <CardDescription>Manage your SpiteSpiral subscription plan.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="grid md:grid-cols-2 lg:grid-cols-2 gap-6"> {/* Changed to grid-cols-2 for 2 tiers */}
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6"> {/* Adjusted for 3 tiers */}
               {subscriptionTiers.map((tier) => (
                 <Card key={tier.id} className={`flex flex-col ${tier.isCurrent(currentUserTierId) ? 'border-primary shadow-primary/20' : 'border-border'}`}>
                   <CardHeader>
@@ -262,13 +294,13 @@ export default function AccountPage() {
                   </CardContent>
                   <CardFooter>
                     <Button 
-                      className={`w-full ${tier.isCurrent(currentUserTierId) ? 'bg-muted text-muted-foreground cursor-not-allowed' : 'bg-primary text-primary-foreground hover:bg-primary/90' }`}
-                      variant={tier.isCurrent(currentUserTierId) ? "outline" : "default"}
-                      onClick={() => handlePlanChangeClick(tier.id)}
-                      disabled={tier.isCurrent(currentUserTierId)}
+                      className={`w-full ${tier.isCurrent(currentUserTierId) && tier.actionType === "switch_plan" ? 'bg-muted text-muted-foreground cursor-not-allowed' : 'bg-primary text-primary-foreground hover:bg-primary/90' }`}
+                      variant={tier.variant}
+                      onClick={() => handlePlanChangeClick(tier.id, tier.actionType)}
+                      disabled={tier.isCurrent(currentUserTierId) && tier.actionType === "switch_plan"}
                     >
-                      {tier.isCurrent(currentUserTierId) ? "Current Plan" : tier.cta}
-                      {!tier.isCurrent(currentUserTierId) && <span className="text-xs ml-1">(Soon)</span>}
+                      {tier.isCurrent(currentUserTierId) && tier.actionType === "switch_plan" ? "Current Plan" : tier.cta}
+                      {tier.actionType === "switch_plan" && !tier.isCurrent(currentUserTierId) && <span className="text-xs ml-1">(Soon)</span>}
                     </Button>
                   </CardFooter>
                 </Card>
@@ -326,7 +358,4 @@ export default function AccountPage() {
     </div>
   );
 }
-
-    
-
     
