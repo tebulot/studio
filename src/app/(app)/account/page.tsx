@@ -15,21 +15,6 @@ import { useToast } from "@/hooks/use-toast";
 // Define Subscription Tiers
 const subscriptionTiers = [
   {
-    id: "free",
-    name: "Free Tier",
-    price: "$0/mo",
-    features: [
-      "1 Managed URL",
-      "Basic Dashboard Stats (30-min refresh)",
-      "7-day Log Retention (for stats)",
-      "Community Support",
-    ],
-    icon: CheckCircle,
-    cta: "Current Plan",
-    variant: "outline" as const,
-    isCurrent: (currentTierId: string) => currentTierId === "free",
-  },
-  {
     id: "set_and_forget",
     name: "Set & Forget",
     price: "$9/mo (est.)",
@@ -66,8 +51,8 @@ export default function AccountPage() {
   const { user, loading: authLoading, updateUserEmail, updateUserDisplayName, sendPasswordReset } = useAuth();
   const { toast } = useToast();
 
-  // Simulate current subscription tier - in a real app, this would be fetched from user's profile
-  const [currentUserTierId, setCurrentUserTierId] = useState("free"); 
+  // Simulate current subscription tier - default to the first available paid tier
+  const [currentUserTierId, setCurrentUserTierId] = useState("set_and_forget"); 
 
   const [isEditingEmail, setIsEditingEmail] = useState(false);
   const [emailInputValue, setEmailInputValue] = useState("");
@@ -114,7 +99,7 @@ export default function AccountPage() {
 
   const handlePasswordResetRequest = async () => {
     if (!user || !user.email) {
-        alert("Error: User email not found."); 
+        toast({ title: "Error", description: "User email not found.", variant: "destructive" });
         return;
     }
     setIsSendingResetEmail(true);
@@ -255,7 +240,7 @@ export default function AccountPage() {
             <CardDescription>Manage your SpiteSpiral subscription plan.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="grid md:grid-cols-3 gap-6">
+            <div className="grid md:grid-cols-2 lg:grid-cols-2 gap-6"> {/* Changed to grid-cols-2 for 2 tiers */}
               {subscriptionTiers.map((tier) => (
                 <Card key={tier.id} className={`flex flex-col ${tier.isCurrent(currentUserTierId) ? 'border-primary shadow-primary/20' : 'border-border'}`}>
                   <CardHeader>
@@ -341,3 +326,5 @@ export default function AccountPage() {
     </div>
   );
 }
+
+    
