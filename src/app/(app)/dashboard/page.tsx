@@ -56,24 +56,25 @@ export default function DashboardPage() {
           if (data.trappedBotIp) {
             uniqueIps.add(data.trappedBotIp);
           }
-          let entryCost = 0.0005; // Base cost per log
+          
+          let entryCost = 0.0001; // Base cost per log entry
           if (data.recursionDepth && typeof data.recursionDepth === 'number' && data.recursionDepth > 5) {
-            entryCost += 0.001;
+            entryCost += 0.0005; // Bonus for deep recursion
           }
           if (data.method && typeof data.method === 'string' && data.method.toUpperCase() === 'POST') {
-            entryCost += 0.0005;
+            entryCost += 0.00005; // Bonus for POST requests
           }
           totalCost += entryCost;
         });
 
         setUniqueCrawlersCount(uniqueIps.size);
-        setWastedComputeCost(totalCost.toFixed(2));
+        setWastedComputeCost(totalCost.toFixed(4)); // Show more precision for smaller numbers
         setIsLoadingUniqueCrawlers(false);
         setIsLoadingWastedCompute(false);
       }, (error) => {
         console.error("Error fetching logs for dashboard:", error);
         setUniqueCrawlersCount(0);
-        setWastedComputeCost("0.00");
+        setWastedComputeCost("0.0000");
         setIsLoadingUniqueCrawlers(false);
         setIsLoadingWastedCompute(false);
       });
@@ -86,7 +87,7 @@ export default function DashboardPage() {
       // No user, so no instances, crawlers, or cost
       setActiveInstancesCount(0);
       setUniqueCrawlersCount(0);
-      setWastedComputeCost("0.00");
+      setWastedComputeCost("0.0000");
       setIsLoadingInstancesCount(false);
       setIsLoadingUniqueCrawlers(false);
       setIsLoadingWastedCompute(false);
@@ -140,9 +141,9 @@ export default function DashboardPage() {
             {isLoadingWastedCompute ? (
               <Skeleton className="h-8 w-1/2" />
             ) : (
-              <div className="text-3xl font-bold text-foreground">${wastedComputeCost ?? '0.00'}</div>
+              <div className="text-3xl font-bold text-foreground">${wastedComputeCost ?? '0.0000'}</div>
             )}
-            <p className="text-xs text-muted-foreground mt-1">Wasted by trapped crawlers this month</p>
+            <p className="text-xs text-muted-foreground mt-1">Illustrative cost of resources wasted by crawlers.</p>
           </CardContent>
         </Card>
       </section>
@@ -173,4 +174,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
