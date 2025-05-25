@@ -9,7 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { db } from "@/lib/firebase/clientApp";
 import { collection, query, where, getDocs, orderBy, Timestamp, type DocumentData } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
-import { format, subDays, startOfDay, endOfDay, isWithinInterval, eachDayOfInterval } from 'date-fns';
+import { format, subDays, startOfDay, endOfDay, eachDayOfInterval } from 'date-fns';
 
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 
@@ -203,3 +203,4 @@ export default function TrappedCrawlersChart({ userIdOverride }: TrappedCrawlers
   );
 }
 
+    
