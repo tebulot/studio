@@ -18,7 +18,7 @@ interface TarpitConfigForClientWrite {
   description: string;
   pathSegment: string;
   fullUrl: string;
-  instanceId?: string; // From Docker provisioning API response (specifically, containerId)
+  instanceId?: string; 
 }
 
 export async function provisionAndGenerateManagedTarpitConfigDetails(
@@ -65,10 +65,8 @@ export async function provisionAndGenerateManagedTarpitConfigDetails(
 
   try {
     const pathSegment = randomUUID();
-    // Ensure the path segment is URL-friendly if it's not already (UUIDs are fine)
     const fullUrl = `${tarpitBaseUrl}/trap/${pathSegment}`;
 
-    // Call your backend Docker provisioning API
     console.log(
       `Attempting to provision Docker instance via ${dockerApiEndpoint} for path: ${pathSegment}, user: ${userId}, name: ${name}`
     );
@@ -87,12 +85,22 @@ export async function provisionAndGenerateManagedTarpitConfigDetails(
     });
 
     if (!provisionResponse.ok) {
-      let errorMsg = `Failed to provision Docker instance via ${dockerApiEndpoint}. Status: ${provisionResponse.status}`;
+      let errorMsg = `Failed to provision Docker instance via ${dockerApiEndpoint}. Status: ${provisionResponse.status}. URL: ${dockerApiEndpoint}`;
+      let userFriendlyMessage = "Provisioning failed. Please try again.";
+
+      if (provisionResponse.status === 409) {
+        userFriendlyMessage = "Failed to provision: A tarpit with this configuration might already exist or there was a conflict. Please try a slightly different name or try again later.";
+      }
+      
       try {
         const errorData = await provisionResponse.json();
         errorMsg += ` - ${
           errorData.message || 'No additional error message from backend.'
         }`;
+        // Use backend's message if available and appropriate for user
+        if (errorData.message && provisionResponse.status !== 409) { // Don't override specific 409 message unless backend message is better
+             userFriendlyMessage = errorData.message;
+        }
       } catch (jsonError) {
         const rawText = await provisionResponse
           .text()
@@ -103,7 +111,7 @@ export async function provisionAndGenerateManagedTarpitConfigDetails(
         )}`;
       }
       console.error(errorMsg);
-      return { success: false, message: errorMsg };
+      return { success: false, message: userFriendlyMessage }; // Return user-friendly message
     }
 
     const provisionData = await provisionResponse.json();
@@ -112,7 +120,6 @@ export async function provisionAndGenerateManagedTarpitConfigDetails(
       provisionData
     );
 
-    // Use containerId from backend response for instanceId
     const instanceIdFromBackend = provisionData.containerId || provisionData.containerName || provisionData.instanceId;
 
     if (!instanceIdFromBackend) {
@@ -125,7 +132,7 @@ export async function provisionAndGenerateManagedTarpitConfigDetails(
       description: description || '',
       pathSegment,
       fullUrl,
-      instanceId: instanceIdFromBackend, // Store the actual Docker container ID or name
+      instanceId: instanceIdFromBackend,
     };
 
     return {
@@ -146,10 +153,9 @@ export async function provisionAndGenerateManagedTarpitConfigDetails(
   }
 }
 
-// Interface for data passed to deprovisionTarpitInstance
 interface DeprovisionTarpitData {
-  instanceId?: string; // This will be the Docker container ID from Firestore
-  pathSegment: string;  // Fallback or for logging
+  instanceId?: string; 
+  pathSegment: string;  
   userId: string;
 }
 
@@ -172,9 +178,7 @@ export async function deprovisionTarpitInstance(
         'Server configuration error: Docker de-provisioning API details missing.',
     };
   }
-
-  // The `containerName` sent to the backend will be the `instanceId` (Docker ID) if available,
-  // otherwise it falls back to the `pathSegment`. Your backend is designed to handle this.
+  
   const containerIdentifierForBackend = instanceId || pathSegment;
 
   if (!containerIdentifierForBackend) {
@@ -189,32 +193,42 @@ export async function deprovisionTarpitInstance(
     console.log(
       `Attempting to de-provision Docker instance via ${deprovisionApiEndpoint}. Body:`, {
         containerName: containerIdentifierForBackend,
-        instanceId: instanceId, // Send original instanceId (Docker ID) if present
-        pathSegment: pathSegment, // Send original pathSegment
+        instanceId: instanceId, 
+        pathSegment: pathSegment, 
         userId: userId,
       }
     );
     const response = await fetch(deprovisionApiEndpoint, {
-      method: 'POST',
+      method: 'POST', 
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${dockerApiKey}`,
       },
       body: JSON.stringify({
-        containerName: containerIdentifierForBackend, // Backend expects this field to identify the container
-        instanceId: instanceId, // Still send original field for backend flexibility/logging
-        pathSegment: pathSegment, // Still send original field
+        containerName: containerIdentifierForBackend, 
+        instanceId: instanceId, 
+        pathSegment: pathSegment, 
         userId: userId,
       }),
     });
 
     if (!response.ok) {
       let errorMsg = `Failed to de-provision Docker instance from ${deprovisionApiEndpoint}. Status: ${response.status}. URL: ${deprovisionApiEndpoint}`;
+      let userFriendlyMessage = "De-provisioning failed. Please try again.";
+
+      if (response.status === 404) {
+        userFriendlyMessage = "De-provisioning failed: The tarpit instance was not found on the server. It might have already been removed.";
+      }
+      
       try {
         const errorData = await response.json();
         errorMsg += ` - ${
           errorData.message || 'No additional error message from backend.'
         }`;
+        // Use backend's message if available and appropriate for user
+        if (errorData.message && response.status !== 404) { // Don't override specific 404 message unless backend message is better
+             userFriendlyMessage = errorData.message;
+        }
       } catch (jsonError) {
         const rawText = await response
           .text()
@@ -225,7 +239,7 @@ export async function deprovisionTarpitInstance(
         )}`;
       }
       console.error(errorMsg);
-      return { success: false, message: errorMsg };
+      return { success: false, message: userFriendlyMessage };
     }
 
     const responseData = await response.json();
@@ -247,3 +261,4 @@ export async function deprovisionTarpitInstance(
     };
   }
 }
+
