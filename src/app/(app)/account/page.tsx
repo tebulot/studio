@@ -19,7 +19,7 @@ const subscriptionTiers = [
     name: "Set & Forget",
     price: "$9/mo (est.)",
     features: [
-      "Up to 3 Managed URLs",
+      "Up to 1 Managed URL", // Updated
       "Dashboard Stats (30-min refresh)",
       "30-day Log Retention (for stats)",
       "Email Support",
@@ -31,17 +31,17 @@ const subscriptionTiers = [
   },
   {
     id: "analytics",
-    name: "Analytics Pro",
+    name: "Analytics", // Renamed
     price: "$29/mo (est.)",
     features: [
-      "Up to 10 Managed URLs",
+      "Up to 3 Managed URLs", // Updated
       "Full Dashboard Analytics",
       "(Future) Detailed Log Explorer",
       "90-day Log Retention",
       "Priority Email Support",
     ],
     icon: BarChartHorizontalBig,
-    cta: "Upgrade to Analytics Pro",
+    cta: "Upgrade to Analytics", // Updated CTA
     variant: "default" as const,
     isCurrent: (currentTierId: string) => currentTierId === "analytics",
   },
@@ -326,5 +326,7 @@ export default function AccountPage() {
     </div>
   );
 }
+
+    
 
     
