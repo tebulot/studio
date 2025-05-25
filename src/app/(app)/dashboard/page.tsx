@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from "react";
@@ -152,9 +151,10 @@ export default function DashboardPage() {
         <Card className="shadow-lg border-primary/20">
           <CardHeader>
             <CardTitle className="text-xl text-primary">Crawler Activity Over Time</CardTitle>
-            <CardDescription>Visual representation of trapped crawlers in the last 30 days.</CardDescription>
+            <CardDescription>Unique crawlers trapped daily in the last 30 days.</CardDescription>
           </CardHeader>
           <CardContent>
+            {/* TrappedCrawlersChart will use useAuth to get the user ID by default */}
             <TrappedCrawlersChart />
           </CardContent>
         </Card>

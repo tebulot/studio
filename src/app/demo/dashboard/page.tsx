@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from "react";
@@ -183,10 +182,11 @@ export default function DemoDashboardPage() {
         <Card className="shadow-lg border-primary/20">
           <CardHeader>
             <CardTitle className="text-xl text-primary">Crawler Activity Over Time (Demo)</CardTitle>
-            <CardDescription>Visual representation of trapped crawlers in the last 30 days for demo.</CardDescription>
+            <CardDescription>Unique crawlers trapped daily in the last 30 days for demo.</CardDescription>
           </CardHeader>
           <CardContent>
-            <TrappedCrawlersChart /> {/* Static chart for now */}
+            {/* Pass DEMO_USER_ID to the chart for demo data */}
+            {DEMO_USER_ID && <TrappedCrawlersChart userIdOverride={DEMO_USER_ID} />}
           </CardContent>
         </Card>
       </section>
@@ -205,5 +205,3 @@ export default function DemoDashboardPage() {
     </div>
   );
 }
-
-    
