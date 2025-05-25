@@ -71,7 +71,7 @@ export default function LicensesPage() {
               a versatile low-interaction honeypot created by Aaron. We are immensely grateful for his contributions to the security community.
             </p>
             <p className="text-foreground/80">
-              Nepenthes is distributed under the MIT License.
+              Nepenthes is distributed under the MIT License. Some of its common dependencies also utilize the X11 License.
             </p>
             <div className="flex flex-col sm:flex-row sm:items-center gap-4 mt-4">
                 <a
@@ -89,6 +89,14 @@ export default function LicensesPage() {
                     className="inline-flex items-center justify-center px-4 py-2 border border-primary text-primary rounded-md text-sm font-medium hover:bg-primary/10 hover:text-primary-foreground transition-colors"
                 >
                     <LinkIcon className="mr-2 h-4 w-4" /> View MIT License Details
+                </a>
+                <a
+                    href="https://opensource.org/licenses/X11"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center px-4 py-2 border border-primary text-primary rounded-md text-sm font-medium hover:bg-primary/10 hover:text-primary-foreground transition-colors"
+                >
+                    <LinkIcon className="mr-2 h-4 w-4" /> View X11 License Details
                 </a>
             </div>
           </CardContent>
