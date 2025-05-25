@@ -149,7 +149,7 @@ export default function LicensesPage() {
             <span className="text-sm font-semibold text-primary">SpiteSpiral</span>
           </NextLink>
           <p className="text-xs text-muted-foreground/70">
-            © {new Date().getFullYear()} SpiteSpiral Industries. Trap with malice.
+            © {new Date().getFullYear()} SpiteSpiral. Trap with malice.
           </p>
         </div>
       </footer>

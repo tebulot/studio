@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import BrandLogoIcon from '@/components/icons/BrandLogoIcon';
-import { useState, type FormEvent } from 'react'; 
+import { useState, type FormEvent, useEffect } from 'react'; 
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2, Mail } from 'lucide-react';
 
@@ -20,8 +20,14 @@ export default function LoginPage() {
   
   const { signIn, signUp, loading, sendPasswordReset } = useAuth();
   const [resetLoading, setResetLoading] = useState(false);
+  const [backgroundIconStyle, setBackgroundIconStyle] = useState<React.CSSProperties | null>(null);
 
-  // Removed backgroundIconStyles and useEffect
+  useEffect(() => {
+    setBackgroundIconStyle({
+      animationDuration: `${Math.random() * 10 + 10}s`,
+    });
+  }, []);
+
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -46,11 +52,13 @@ export default function LoginPage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground font-mono p-8 selection:bg-primary selection:text-primary-foreground">
       <div className="absolute inset-0 overflow-hidden z-0 flex items-center justify-center">
-        {/* Single large, centered, slowly rotating logo */}
-        <BrandLogoIcon
-            className="w-[500vw] h-[500vh] animate-spin-slow opacity-5"
+        {backgroundIconStyle && (
+           <BrandLogoIcon
+            className="w-[500vw] h-[500vh] opacity-5 animate-spin-slow"
+            style={backgroundIconStyle}
             isPriority={false}
-        />
+          />
+        )}
       </div>
       <Card className="w-full max-w-md z-10 bg-card/80 backdrop-blur-sm border-primary/20 shadow-xl shadow-primary/10">
         <CardHeader className="text-center">
@@ -150,8 +158,9 @@ export default function LoginPage() {
         </CardContent>
       </Card>
        <footer className="absolute bottom-8 text-sm text-muted-foreground/70 z-10">
-        © {new Date().getFullYear()} SpiteSpiral Industries. All rights reserved.
+        © {new Date().getFullYear()} SpiteSpiral. All rights reserved.
       </footer>
     </div>
   );
 }
+

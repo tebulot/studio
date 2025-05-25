@@ -14,8 +14,6 @@ export default function HomePage() {
 
   useEffect(() => {
     // Generate style for the single large background icon once on mount
-    const sizeVw = 500; // e.g., 2.5 times viewport width
-    const sizeVh = 500; // e.g., 2.5 times viewport height
     
     setBackgroundIconStyle({
       animationDuration: `${Math.random() * 10 + 10}s`, // Random duration between 10s and 20s
@@ -115,7 +113,7 @@ export default function HomePage() {
       <div className="absolute inset-0 overflow-hidden z-0 flex items-center justify-center">
         {backgroundIconStyle && (
           <BrandLogoIcon
-            className="w-[500vw] h-[500vh] animate-spin-slow opacity-5"
+            className="w-[500vw] h-[500vh] opacity-5 animate-spin-slow"
             style={backgroundIconStyle}
             isPriority={false}
           />
@@ -215,7 +213,7 @@ export default function HomePage() {
 
 
       <footer className="relative bottom-8 text-sm text-muted-foreground/70 z-10 flex flex-col items-center space-y-1">
-        <span>© {new Date().getFullYear()} SpiteSpiral Industries. All rights reserved.</span>
+        <span>© {new Date().getFullYear()} SpiteSpiral. All rights reserved.</span>
         <NextLink href="/legal/licenses" className="hover:text-accent hover:underline animate-link-glow">
           Licenses & Acknowledgements
         </NextLink>
