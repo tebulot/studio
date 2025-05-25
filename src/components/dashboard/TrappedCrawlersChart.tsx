@@ -82,9 +82,9 @@ export default function TrappedCrawlersChart({ userIdOverride }: TrappedCrawlers
         const todayDate = endOfDay(new Date());
 
         const q = query(
-          collection(db, "tarpit_activity_summaries"),
+          collection(db, "tarpit_activity_summaries"), // Query the new summaries collection
           where("userId", "==", currentUserId),
-          where("startTime", ">=", Timestamp.fromDate(thirtyDaysAgoDate)),
+          where("startTime", ">=", Timestamp.fromDate(thirtyDaysAgoDate)), // Filter by summaries starting in the last 30 days
           orderBy("startTime", "asc") 
         );
 
@@ -203,4 +203,3 @@ export default function TrappedCrawlersChart({ userIdOverride }: TrappedCrawlers
   );
 }
 
-    
