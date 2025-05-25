@@ -1,6 +1,6 @@
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Metadata } from "next";
+import type { Metadata } from "next";
 import NextLink from "next/link";
 import { Button } from "@/components/ui/button";
 import BrandLogoIcon from "@/components/icons/BrandLogoIcon";
@@ -62,7 +62,7 @@ export default function LicensesPage() {
           <CardHeader>
             <CardTitle className="text-2xl text-accent">Nepenthes</CardTitle>
             <CardDescription className="text-muted-foreground">
-              Core inspiration and foundational concepts.
+              Core inspiration and foundational concepts by Aaron.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -116,7 +116,7 @@ export default function LicensesPage() {
           <CardHeader>
             <CardTitle className="text-xl text-accent">Nepenthes Dependencies</CardTitle>
             <CardDescription className="text-muted-foreground">
-              Other open-source dependencies often included with Nepenthes, each with their own licenses (typically MIT/X11 style).
+              Other open-source dependencies often included with Nepenthes, each with their own licenses.
             </CardDescription>
           </CardHeader>
           <CardContent>
