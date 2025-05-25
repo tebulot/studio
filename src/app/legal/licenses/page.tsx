@@ -62,13 +62,13 @@ export default function LicensesPage() {
           <CardHeader>
             <CardTitle className="text-2xl text-accent">Nepenthes</CardTitle>
             <CardDescription className="text-muted-foreground">
-              Core inspiration and foundational concepts by Aaron.
+              Core inspiration and foundational concepts by "Aaron".
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-foreground/80">
               SpiteSpiral's tarpit functionality is heavily inspired by and originally based on concepts from Nepenthes,
-              a versatile low-interaction honeypot created by Aaron. We are immensely grateful for his contributions to the security community.
+              a versatile low-interaction honeypot created by "Aaron". We are immensely grateful for his contributions to the security community.
             </p>
             <p className="text-foreground/80">
               Nepenthes is distributed under the MIT License. Some of its common dependencies also utilize the X11 License.
@@ -104,9 +104,9 @@ export default function LicensesPage() {
 
         <Card className="shadow-lg border-accent/20 mb-8">
           <CardHeader>
-            <CardTitle className="text-xl text-primary">Nepenthes Associated Libraries (by Aaron)</CardTitle>
+            <CardTitle className="text-xl text-primary">Nepenthes Associated Libraries (by "Aaron")</CardTitle>
             <CardDescription className="text-muted-foreground">
-              Libraries by the creator of Nepenthes, Aaron, typically distributed under MIT license terms.
+              Libraries by the creator of Nepenthes, "Aaron", typically distributed under MIT license terms.
             </CardDescription>
           </CardHeader>
           <CardContent>
