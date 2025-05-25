@@ -11,7 +11,7 @@ import { collection, query, where, onSnapshot, getDocs, type DocumentData, type 
 import { Skeleton } from "@/components/ui/skeleton";
 import NextLink from "next/link";
 import { Button } from "@/components/ui/button";
-import { FileText } from "lucide-react";
+// FileText icon removed as the button is being removed
 import { useToast } from "@/hooks/use-toast"; // Added useToast
 
 const DEMO_USER_ID = process.env.NEXT_PUBLIC_DEMO_USER_ID;
@@ -141,11 +141,7 @@ export default function DemoDashboardPage() {
             This is a public demonstration of SpiteSpiral Tarpit activity.
             </p>
         </div>
-        <Button asChild variant="outline" className="border-accent text-accent hover:bg-accent/10 hover:text-accent-foreground">
-            <NextLink href="/demo/logs">
-                <FileText className="mr-2 h-4 w-4" /> View Demo Logs
-            </NextLink>
-        </Button>
+        {/* Button to View Demo Logs removed */}
       </header>
 
       <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
