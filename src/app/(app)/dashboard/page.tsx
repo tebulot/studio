@@ -19,10 +19,14 @@ export default function DashboardPage() {
   const [uniqueCrawlersCount, setUniqueCrawlersCount] = useState<number | null>(null);
   const [isLoadingUniqueCrawlers, setIsLoadingUniqueCrawlers] = useState(true);
 
+  const [wastedComputeCost, setWastedComputeCost] = useState<string | null>(null);
+  const [isLoadingWastedCompute, setIsLoadingWastedCompute] = useState(true);
+
   useEffect(() => {
     if (authLoading) {
       setIsLoadingInstancesCount(true);
       setIsLoadingUniqueCrawlers(true);
+      setIsLoadingWastedCompute(true);
       return;
     }
 
@@ -39,23 +43,39 @@ export default function DashboardPage() {
         setIsLoadingInstancesCount(false);
       });
 
-      // Listener for unique crawlers count
+      // Listener for unique crawlers count & wasted compute cost
       setIsLoadingUniqueCrawlers(true);
+      setIsLoadingWastedCompute(true);
       const logsQuery = query(collection(db, "tarpit_logs"), where("userId", "==", user.uid));
       const unsubscribeLogs = onSnapshot(logsQuery, (querySnapshot: QuerySnapshot<DocumentData>) => {
         const uniqueIps = new Set<string>();
+        let totalCost = 0;
+
         querySnapshot.forEach((doc) => {
           const data = doc.data();
           if (data.trappedBotIp) {
             uniqueIps.add(data.trappedBotIp);
           }
+          let entryCost = 0.0005; // Base cost per log
+          if (data.recursionDepth && typeof data.recursionDepth === 'number' && data.recursionDepth > 5) {
+            entryCost += 0.001;
+          }
+          if (data.method && typeof data.method === 'string' && data.method.toUpperCase() === 'POST') {
+            entryCost += 0.0005;
+          }
+          totalCost += entryCost;
         });
+
         setUniqueCrawlersCount(uniqueIps.size);
+        setWastedComputeCost(totalCost.toFixed(2));
         setIsLoadingUniqueCrawlers(false);
+        setIsLoadingWastedCompute(false);
       }, (error) => {
-        console.error("Error fetching unique crawlers count:", error);
+        console.error("Error fetching logs for dashboard:", error);
         setUniqueCrawlersCount(0);
+        setWastedComputeCost("0.00");
         setIsLoadingUniqueCrawlers(false);
+        setIsLoadingWastedCompute(false);
       });
 
       return () => {
@@ -63,11 +83,13 @@ export default function DashboardPage() {
         unsubscribeLogs();
       };
     } else {
-      // No user, so no instances or crawlers
+      // No user, so no instances, crawlers, or cost
       setActiveInstancesCount(0);
       setUniqueCrawlersCount(0);
+      setWastedComputeCost("0.00");
       setIsLoadingInstancesCount(false);
       setIsLoadingUniqueCrawlers(false);
+      setIsLoadingWastedCompute(false);
     }
   }, [user, authLoading]);
 
@@ -115,8 +137,12 @@ export default function DashboardPage() {
             <DollarSign className="h-5 w-5 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-foreground">$75.80</div> {/* Placeholder */}
-            <p className="text-xs text-muted-foreground mt-1">Wasted by trapped crawlers this month</p> {/* Placeholder */}
+            {isLoadingWastedCompute ? (
+              <Skeleton className="h-8 w-1/2" />
+            ) : (
+              <div className="text-3xl font-bold text-foreground">${wastedComputeCost ?? '0.00'}</div>
+            )}
+            <p className="text-xs text-muted-foreground mt-1">Wasted by trapped crawlers this month</p>
           </CardContent>
         </Card>
       </section>
@@ -147,3 +173,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+
