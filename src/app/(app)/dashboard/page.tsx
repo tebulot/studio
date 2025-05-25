@@ -4,17 +4,19 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import TrappedCrawlersChart from "@/components/dashboard/TrappedCrawlersChart";
-// RecentActivityTable is no longer imported or used
-import { ShieldCheck, Users, DollarSign } from "lucide-react"; // Cpu icon removed as it's not used
+import { ShieldCheck, Users, DollarSign, Info } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { db } from "@/lib/firebase/clientApp";
-import { collection, query, where, onSnapshot, getDocs, type DocumentData, type QuerySnapshot } from "firebase/firestore"; // Added getDocs
+import { collection, query, where, getDocs, type DocumentData, type QuerySnapshot, onSnapshot } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useToast } from "@/hooks/use-toast"; // Added useToast
+import { useToast } from "@/hooks/use-toast";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
+const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes in milliseconds
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
-  const { toast } = useToast(); // Initialize toast
+  const { toast } = useToast();
   const [activeInstancesCount, setActiveInstancesCount] = useState<number | null>(null);
   const [isLoadingInstancesCount, setIsLoadingInstancesCount] = useState(true);
 
@@ -49,12 +51,12 @@ export default function DashboardPage() {
     }
   }, [user, authLoading, toast]);
 
-  // One-time fetch for unique crawlers count & wasted compute cost
+  // Fetch for unique crawlers count & wasted compute cost with caching
   useEffect(() => {
     if (authLoading || !user) {
       setIsLoadingUniqueCrawlers(true);
       setIsLoadingWastedCompute(true);
-      if (!user && !authLoading) { // Clear data if user logs out or not available
+      if (!user && !authLoading) {
         setUniqueCrawlersCount(0);
         setWastedComputeCost("0.0000");
       }
@@ -64,7 +66,30 @@ export default function DashboardPage() {
     const fetchLogStats = async () => {
       setIsLoadingUniqueCrawlers(true);
       setIsLoadingWastedCompute(true);
+
+      const cacheKeyBase = `spiteSpiral_logStats_${user.uid}`;
+      const cachedCrawlersKey = `${cacheKeyBase}_uniqueCrawlers`;
+      const cachedCostKey = `${cacheKeyBase}_wastedCompute`;
+      const timestampKey = `${cacheKeyBase}_timestamp`;
+
       try {
+        const cachedTimestampStr = localStorage.getItem(timestampKey);
+        const cachedTimestamp = cachedTimestampStr ? parseInt(cachedTimestampStr, 10) : 0;
+
+        if (Date.now() - cachedTimestamp < CACHE_DURATION) {
+          const cachedCrawlers = localStorage.getItem(cachedCrawlersKey);
+          const cachedCost = localStorage.getItem(cachedCostKey);
+          if (cachedCrawlers !== null && cachedCost !== null) {
+            setUniqueCrawlersCount(JSON.parse(cachedCrawlers));
+            setWastedComputeCost(JSON.parse(cachedCost));
+            setIsLoadingUniqueCrawlers(false);
+            setIsLoadingWastedCompute(false);
+            // console.log("Loaded log stats from cache for user:", user.uid);
+            return;
+          }
+        }
+        // console.log("Fetching fresh log stats for user:", user.uid);
+
         const logsQuery = query(collection(db, "tarpit_logs"), where("userId", "==", user.uid));
         const querySnapshot = await getDocs(logsQuery);
 
@@ -87,8 +112,16 @@ export default function DashboardPage() {
           totalCost += entryCost;
         });
 
-        setUniqueCrawlersCount(uniqueIps.size);
-        setWastedComputeCost(totalCost.toFixed(4));
+        const currentUniqueCrawlers = uniqueIps.size;
+        const currentWastedCost = totalCost.toFixed(4);
+
+        setUniqueCrawlersCount(currentUniqueCrawlers);
+        setWastedComputeCost(currentWastedCost);
+
+        localStorage.setItem(cachedCrawlersKey, JSON.stringify(currentUniqueCrawlers));
+        localStorage.setItem(cachedCostKey, JSON.stringify(currentWastedCost));
+        localStorage.setItem(timestampKey, Date.now().toString());
+
       } catch (error) {
         console.error("Error fetching logs for dashboard stats:", error);
         toast({ title: "Error", description: "Could not fetch crawler statistics.", variant: "destructive" });
@@ -101,8 +134,6 @@ export default function DashboardPage() {
     };
 
     fetchLogStats();
-    // No unsubscribe needed for getDocs
-    // Effect dependencies: user and authLoading. Refetch if they change.
   }, [user, authLoading, toast]);
 
 
@@ -114,6 +145,14 @@ export default function DashboardPage() {
           Overview of your SpiteSpiral Tarpit activity and performance.
         </p>
       </header>
+
+      <Alert variant="default" className="border-accent/20 bg-card/50 mb-6">
+        <Info className="h-5 w-5 text-accent" />
+        <AlertTitle className="text-accent">Data Refresh Notice</AlertTitle>
+        <AlertDescription className="text-muted-foreground">
+          Log-based statistics (Unique Crawlers, Compute Wasted, Activity Chart) refresh approximately every 30 minutes. Active Tarpit Instances update in real-time.
+        </AlertDescription>
+      </Alert>
 
       <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <Card className="border-primary/30 shadow-lg shadow-primary/10 hover:shadow-primary/20 transition-shadow duration-300">
@@ -171,8 +210,6 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </section>
-
-      {/* Recent Activity Logs section removed */}
     </div>
   );
 }

@@ -4,17 +4,17 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import TrappedCrawlersChart from "@/components/dashboard/TrappedCrawlersChart";
-// RecentActivityTable is no longer imported or used
-import { ShieldCheck, Users, DollarSign } from "lucide-react";
+import { ShieldCheck, Users, DollarSign, Info } from "lucide-react";
 import { db } from "@/lib/firebase/clientApp";
-import { collection, query, where, onSnapshot, getDocs, type DocumentData, type QuerySnapshot, type Timestamp } from "firebase/firestore"; // Added getDocs
+import { collection, query, where, onSnapshot, getDocs, type DocumentData, type QuerySnapshot, type Timestamp } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 import NextLink from "next/link";
 import { Button } from "@/components/ui/button";
-// FileText icon removed as the button is being removed
-import { useToast } from "@/hooks/use-toast"; // Added useToast
+import { useToast } from "@/hooks/use-toast";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const DEMO_USER_ID = process.env.NEXT_PUBLIC_DEMO_USER_ID;
+const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes in milliseconds
 
 interface TarpitLogForDemo {
   trappedBotIp: string;
@@ -24,7 +24,7 @@ interface TarpitLogForDemo {
 }
 
 export default function DemoDashboardPage() {
-  const { toast } = useToast(); // Initialize toast
+  const { toast } = useToast();
   const [activeInstancesCount, setActiveInstancesCount] = useState<number | null>(null);
   const [isLoadingInstancesCount, setIsLoadingInstancesCount] = useState(true);
   
@@ -57,9 +57,9 @@ export default function DemoDashboardPage() {
       setIsLoadingInstancesCount(false);
       setIsDemoIdConfigured(false);
     }
-  }, [toast]); // Added toast to dependency array
+  }, [toast]);
 
-  // One-time fetch for demo unique crawlers & wasted compute cost
+  // One-time fetch for demo unique crawlers & wasted compute cost with caching
   useEffect(() => {
     if (DEMO_USER_ID && DEMO_USER_ID !== "public-demo-user-id-placeholder") {
       setIsDemoIdConfigured(true);
@@ -67,7 +67,30 @@ export default function DemoDashboardPage() {
       const fetchDemoLogStats = async () => {
         setIsLoadingDemoUniqueCrawlers(true);
         setIsLoadingDemoWastedCompute(true);
+
+        const cacheKeyBase = `spiteSpiral_logStats_${DEMO_USER_ID}`;
+        const cachedCrawlersKey = `${cacheKeyBase}_uniqueCrawlers`;
+        const cachedCostKey = `${cacheKeyBase}_wastedCompute`;
+        const timestampKey = `${cacheKeyBase}_timestamp`;
+
         try {
+          const cachedTimestampStr = localStorage.getItem(timestampKey);
+          const cachedTimestamp = cachedTimestampStr ? parseInt(cachedTimestampStr, 10) : 0;
+
+          if (Date.now() - cachedTimestamp < CACHE_DURATION) {
+            const cachedCrawlers = localStorage.getItem(cachedCrawlersKey);
+            const cachedCost = localStorage.getItem(cachedCostKey);
+            if (cachedCrawlers !== null && cachedCost !== null) {
+              setDemoUniqueCrawlersCount(JSON.parse(cachedCrawlers));
+              setDemoWastedComputeCost(JSON.parse(cachedCost));
+              setIsLoadingDemoUniqueCrawlers(false);
+              setIsLoadingDemoWastedCompute(false);
+              // console.log("Loaded demo log stats from cache for:", DEMO_USER_ID);
+              return;
+            }
+          }
+          // console.log("Fetching fresh demo log stats for:", DEMO_USER_ID);
+
           const logsQuery = query(collection(db, "tarpit_logs"), where("userId", "==", DEMO_USER_ID));
           const querySnapshot = await getDocs(logsQuery);
 
@@ -90,8 +113,16 @@ export default function DemoDashboardPage() {
             totalCost += entryCost;
           });
 
-          setDemoUniqueCrawlersCount(uniqueIps.size);
-          setDemoWastedComputeCost(totalCost.toFixed(4));
+          const currentUniqueCrawlers = uniqueIps.size;
+          const currentWastedCost = totalCost.toFixed(4);
+
+          setDemoUniqueCrawlersCount(currentUniqueCrawlers);
+          setDemoWastedComputeCost(currentWastedCost);
+
+          localStorage.setItem(cachedCrawlersKey, JSON.stringify(currentUniqueCrawlers));
+          localStorage.setItem(cachedCostKey, JSON.stringify(currentWastedCost));
+          localStorage.setItem(timestampKey, Date.now().toString());
+
         } catch (error) {
           console.error("Error fetching logs for demo dashboard stats:", error);
           toast({ title: "Error", description: "Could not fetch demo crawler statistics.", variant: "destructive" });
@@ -108,13 +139,13 @@ export default function DemoDashboardPage() {
       setDemoWastedComputeCost("0.0000");
       setIsLoadingDemoUniqueCrawlers(false);
       setIsLoadingDemoWastedCompute(false);
-      setIsDemoIdConfigured(false); // Ensure this is set if ID is missing
+      setIsDemoIdConfigured(false);
     }
-  }, [toast]); // Added toast to dependency array
+  }, [toast]);
 
 
   if (!DEMO_USER_ID || DEMO_USER_ID === "public-demo-user-id-placeholder") {
-      if (!isLoadingInstancesCount && !isLoadingDemoUniqueCrawlers && !isLoadingDemoWastedCompute && !isDemoIdConfigured) { // Check all loading states
+      if (!isLoadingInstancesCount && !isLoadingDemoUniqueCrawlers && !isLoadingDemoWastedCompute && !isDemoIdConfigured) {
         return (
             <div className="flex flex-col items-center justify-center text-center space-y-4 p-8 rounded-lg bg-card border border-destructive shadow-lg">
                 <ShieldCheck className="h-16 w-16 text-destructive" />
@@ -141,8 +172,15 @@ export default function DemoDashboardPage() {
             This is a public demonstration of SpiteSpiral Tarpit activity.
             </p>
         </div>
-        {/* Button to View Demo Logs removed */}
       </header>
+
+       <Alert variant="default" className="border-accent/20 bg-card/50 mb-6">
+        <Info className="h-5 w-5 text-accent" />
+        <AlertTitle className="text-accent">Data Refresh Notice</AlertTitle>
+        <AlertDescription className="text-muted-foreground">
+          Log-based statistics (Unique Crawlers, Compute Wasted, Activity Chart) refresh approximately every 30 minutes. Active Tarpit Instances update in real-time.
+        </AlertDescription>
+      </Alert>
 
       <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <Card className="border-primary/30 shadow-lg shadow-primary/10 hover:shadow-primary/20 transition-shadow duration-300">
@@ -200,8 +238,6 @@ export default function DemoDashboardPage() {
           </CardContent>
         </Card>
       </section>
-
-      {/* Recent Demo Activity Logs section removed */}
     </div>
   );
 }
