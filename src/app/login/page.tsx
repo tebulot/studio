@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import BrandLogoIcon from '@/components/icons/BrandLogoIcon';
-import { useState, type FormEvent, useEffect } from 'react'; 
+import { useState, type FormEvent } from 'react'; 
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2, Mail } from 'lucide-react';
 
@@ -21,7 +21,7 @@ export default function LoginPage() {
   const { signIn, signUp, loading, sendPasswordReset } = useAuth();
   const [resetLoading, setResetLoading] = useState(false);
 
-  // Removed useEffect for multiple random icons
+  // Removed backgroundIconStyles and useEffect
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -46,6 +46,7 @@ export default function LoginPage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground font-mono p-8 selection:bg-primary selection:text-primary-foreground">
       <div className="absolute inset-0 overflow-hidden z-0 flex items-center justify-center">
+        {/* Single large, centered, slowly rotating logo */}
         <BrandLogoIcon
             className="w-[500vw] h-[500vh] animate-spin-slow opacity-5"
             isPriority={false}

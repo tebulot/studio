@@ -6,26 +6,10 @@ import { Button } from '@/components/ui/button';
 import BrandLogoIcon from '@/components/icons/BrandLogoIcon';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { useState, useEffect } from 'react';
+// Removed useState, useEffect as they are no longer needed for backgroundIconStyles
 
 export default function HomePage() {
-  const [backgroundIconStyles, setBackgroundIconStyles] = useState<React.CSSProperties[]>([]);
-
-   useEffect(() => {
-    const generateStyles = () => {
-      const newStyles = Array.from({ length: 1 }).map(() => ({ // Changed to 1 for a single large icon
-        width: `500vw`, 
-        height: `500vh`, 
-        top: `50%`, 
-        left: `50%`,
-        transform: 'translate(-50%, -50%)', // Centering
-        animationDuration: `${Math.random() * 10 + 10}s`, // Randomize spin speed slightly
-        opacity: 0.05, // Low opacity
-      }));
-      setBackgroundIconStyles(newStyles);
-    };
-    generateStyles();
-  }, []);
+  // Removed backgroundIconStyles state and its useEffect
 
   const faqData = [
     {
@@ -118,14 +102,10 @@ export default function HomePage() {
     <div className="relative flex flex-col items-center justify-center min-h-screen bg-background text-foreground font-mono p-8 selection:bg-primary selection:text-primary-foreground">
       <div className="absolute inset-0 overflow-hidden z-0 flex items-center justify-center">
         {/* Single large, centered, slowly rotating logo */}
-        {backgroundIconStyles.map((style, index) => (
-          <BrandLogoIcon
-            key={index}
-            className="animate-spin-slow opacity-5" // Removed text-primary/5
-            style={style}
+        <BrandLogoIcon
+            className="w-[500vw] h-[500vh] animate-spin-slow opacity-5"
             isPriority={false}
-          />
-        ))}
+        />
       </div>
 
       <div className="relative z-10 text-center flex flex-col items-center w-full">
@@ -226,4 +206,3 @@ export default function HomePage() {
     </div>
   );
 }
-
