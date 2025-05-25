@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from "react";
@@ -37,7 +38,7 @@ export default function DemoDashboardPage() {
   const [isDemoIdProperlyConfigured, setIsDemoIdProperlyConfigured] = useState(false);
 
   useEffect(() => {
-    console.log("DemoDashboardPage: Using DEMO_USER_ID:", DEMO_USER_ID);
+    console.log("DemoDashboardPage: Using DEMO_USER_ID env var:", DEMO_USER_ID);
     if (DEMO_USER_ID && DEMO_USER_ID !== "public-demo-user-id-placeholder") {
       setIsDemoIdProperlyConfigured(true);
     } else {
@@ -65,7 +66,12 @@ export default function DemoDashboardPage() {
       setIsLoadingInstancesCount(false);
     }, (error) => {
       console.error("Error fetching demo active instances count:", error);
-      toast({ title: "Error", description: "Could not fetch demo active tarpit instances. Check Firestore rules and DEMO_USER_ID configuration.", variant: "destructive", duration: 7000 });
+      toast({ 
+        title: "Error Fetching Demo Instances", 
+        description: `Could not fetch demo active tarpit instances. Ensure Firestore rules allow public read for data where userId is '${DEMO_USER_ID}' and check DEMO_USER_ID configuration.`, 
+        variant: "destructive", 
+        duration: 10000 
+      });
       setActiveInstancesCount(0);
       setIsLoadingInstancesCount(false);
     });
@@ -136,7 +142,12 @@ export default function DemoDashboardPage() {
 
       } catch (error) {
         console.error("Error fetching activity summaries for demo dashboard stats:", error);
-        toast({ title: "Error", description: "Could not fetch demo crawler statistics. Check Firestore rules and DEMO_USER_ID configuration.", variant: "destructive", duration: 7000 });
+        toast({ 
+            title: "Error Fetching Demo Stats", 
+            description: `Could not fetch demo crawler statistics. Ensure Firestore rules allow public read for data where userId is '${DEMO_USER_ID}' and check DEMO_USER_ID configuration. Error: ${error instanceof Error ? error.message : 'Unknown error'}`, 
+            variant: "destructive", 
+            duration: 10000 
+        });
         setDemoUniqueCrawlersApproxCount(0);
         setDemoWastedComputeCost("0.0000");
       } finally {
@@ -256,3 +267,5 @@ export default function DemoDashboardPage() {
     </div>
   );
 }
+
+    
