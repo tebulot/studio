@@ -2,17 +2,72 @@
 'use client';
 
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { UserCog, CreditCard, ShieldCheck, Save, XCircle, Loader2, Mail, ExternalLink } from "lucide-react";
+import { UserCog, CreditCard, ShieldCheck, Save, XCircle, Loader2, Mail, ExternalLink, CheckCircle, Zap, BarChartHorizontalBig } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
-import NextLink from "next/link"; // For future billing page link
+import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/hooks/use-toast";
+
+// Define Subscription Tiers
+const subscriptionTiers = [
+  {
+    id: "free",
+    name: "Free Tier",
+    price: "$0/mo",
+    features: [
+      "1 Managed URL",
+      "Basic Dashboard Stats (30-min refresh)",
+      "7-day Log Retention (for stats)",
+      "Community Support",
+    ],
+    icon: CheckCircle,
+    cta: "Current Plan",
+    variant: "outline" as const,
+    isCurrent: (currentTierId: string) => currentTierId === "free",
+  },
+  {
+    id: "set_and_forget",
+    name: "Set & Forget",
+    price: "$9/mo (est.)",
+    features: [
+      "Up to 3 Managed URLs",
+      "Dashboard Stats (30-min refresh)",
+      "30-day Log Retention (for stats)",
+      "Email Support",
+    ],
+    icon: Zap,
+    cta: "Switch to Set & Forget",
+    variant: "default" as const,
+    isCurrent: (currentTierId: string) => currentTierId === "set_and_forget",
+  },
+  {
+    id: "analytics",
+    name: "Analytics Pro",
+    price: "$29/mo (est.)",
+    features: [
+      "Up to 10 Managed URLs",
+      "Full Dashboard Analytics",
+      "(Future) Detailed Log Explorer",
+      "90-day Log Retention",
+      "Priority Email Support",
+    ],
+    icon: BarChartHorizontalBig,
+    cta: "Upgrade to Analytics Pro",
+    variant: "default" as const,
+    isCurrent: (currentTierId: string) => currentTierId === "analytics",
+  },
+];
 
 export default function AccountPage() {
   const { user, loading: authLoading, updateUserEmail, updateUserDisplayName, sendPasswordReset } = useAuth();
+  const { toast } = useToast();
+
+  // Simulate current subscription tier - in a real app, this would be fetched from user's profile
+  const [currentUserTierId, setCurrentUserTierId] = useState("free"); 
 
   const [isEditingEmail, setIsEditingEmail] = useState(false);
   const [emailInputValue, setEmailInputValue] = useState("");
@@ -67,6 +122,18 @@ export default function AccountPage() {
     setIsSendingResetEmail(false);
   };
 
+  const handlePlanChangeClick = (tierId: string) => {
+    if (tierId === currentUserTierId) return;
+    toast({
+      title: "Coming Soon!",
+      description: `Subscription management for the ${subscriptionTiers.find(t => t.id === tierId)?.name} tier will be available soon.`,
+      duration: 5000,
+    });
+    // In a real app, this would initiate a Stripe checkout flow or similar.
+    // For now, we can simulate changing the tier for UI purposes if needed:
+    // setCurrentUserTierId(tierId); 
+  };
+
 
   return (
     <div className="space-y-8">
@@ -76,7 +143,7 @@ export default function AccountPage() {
           <h1 className="text-4xl font-bold tracking-tight text-primary glitch-text">Account Settings</h1>
         </div>
         <p className="text-muted-foreground mt-2 text-lg">
-          Manage your account details, billing information, and security settings.
+          Manage your account details, subscription, and security settings.
         </p>
       </header>
 
@@ -183,25 +250,60 @@ export default function AccountPage() {
           <CardHeader>
              <div className="flex items-center gap-2">
                 <CreditCard className="h-6 w-6 text-primary" />
-                <CardTitle className="text-xl text-accent">Billing Information</CardTitle>
+                <CardTitle className="text-xl text-accent">Subscription & Billing</CardTitle>
             </div>
-            <CardDescription>Manage your subscription and payment methods.</CardDescription>
+            <CardDescription>Manage your SpiteSpiral subscription plan.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6">
+            <div className="grid md:grid-cols-3 gap-6">
+              {subscriptionTiers.map((tier) => (
+                <Card key={tier.id} className={`flex flex-col ${tier.isCurrent(currentUserTierId) ? 'border-primary shadow-primary/20' : 'border-border'}`}>
+                  <CardHeader>
+                    <div className="flex items-center gap-2 mb-2">
+                      <tier.icon className={`h-7 w-7 ${tier.isCurrent(currentUserTierId) ? 'text-primary' : 'text-accent'}`} />
+                      <CardTitle className={`text-lg ${tier.isCurrent(currentUserTierId) ? 'text-primary' : 'text-accent'}`}>{tier.name}</CardTitle>
+                    </div>
+                    <CardDescription className="text-2xl font-semibold text-foreground">{tier.price}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex-grow space-y-2">
+                    <ul className="space-y-1 text-sm text-muted-foreground">
+                      {tier.features.map((feature, index) => (
+                        <li key={index} className="flex items-center">
+                          <CheckCircle className="h-4 w-4 mr-2 text-accent/70 flex-shrink-0" />
+                          {feature}
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                  <CardFooter>
+                    <Button 
+                      className={`w-full ${tier.isCurrent(currentUserTierId) ? 'bg-muted text-muted-foreground cursor-not-allowed' : 'bg-primary text-primary-foreground hover:bg-primary/90' }`}
+                      variant={tier.isCurrent(currentUserTierId) ? "outline" : "default"}
+                      onClick={() => handlePlanChangeClick(tier.id)}
+                      disabled={tier.isCurrent(currentUserTierId)}
+                    >
+                      {tier.isCurrent(currentUserTierId) ? "Current Plan" : tier.cta}
+                      {!tier.isCurrent(currentUserTierId) && <span className="text-xs ml-1">(Soon)</span>}
+                    </Button>
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+            <Separator />
             <div>
-              <p className="text-sm text-muted-foreground">Current Plan:</p>
-              <p className="text-lg font-semibold text-foreground">Free Tier (Limited)</p>
+                <h3 className="text-md font-semibold text-foreground/90 mb-1">Payment Method</h3>
+                <p className="text-sm text-muted-foreground mb-2">Your primary payment method will appear here.</p>
+                <Button variant="outline" className="border-accent text-accent hover:bg-accent/10" disabled>
+                    <ExternalLink className="mr-2 h-4 w-4" /> Manage Payment Methods (Soon)
+                </Button>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Next Billing Date:</p>
-              <p className="text-lg font-semibold text-muted-foreground">N/A</p>
+                <h3 className="text-md font-semibold text-foreground/90 mb-1">Billing History</h3>
+                <p className="text-sm text-muted-foreground mb-2">View your past invoices and billing details.</p>
+                <Button variant="outline" className="border-accent text-accent hover:bg-accent/10" disabled>
+                    View Invoices (Soon)
+                </Button>
             </div>
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90" disabled>
-              <ExternalLink className="mr-2 h-4 w-4" /> Upgrade to Pro (Soon)
-            </Button>
-            <Button variant="outline" className="ml-2 border-accent text-accent hover:bg-accent/10 hover:text-accent-foreground" disabled>
-              View Invoices (Soon)
-            </Button>
           </CardContent>
         </Card>
       </section>
@@ -231,7 +333,7 @@ export default function AccountPage() {
               </Button>
             <div className="mt-2">
                 <p className="text-sm text-muted-foreground">Two-Factor Authentication (2FA): <span className="text-destructive font-semibold">Disabled</span></p>
-                <Button variant="outline" className="mt-2 border-primary text-primary hover:bg-primary/10 hover:text-primary-foreground" disabled>Enable 2FA (Soon)</Button>
+                <Button variant="outline" className="mt-2 border-primary text-primary hover:bg-primary/10" disabled>Enable 2FA (Soon)</Button>
             </div>
           </CardContent>
         </Card>
