@@ -91,7 +91,7 @@ export default function LicensesPage() {
                     <LinkIcon className="mr-2 h-4 w-4" /> View MIT License Details
                 </a>
                 <a
-                    href="https://opensource.org/licenses/X11"
+                    href="https://spdx.org/licenses/X11.html"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center justify-center px-4 py-2 border border-primary text-primary rounded-md text-sm font-medium hover:bg-primary/10 hover:text-primary-foreground transition-colors"
