@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -6,7 +7,7 @@ import { ChartTooltipContent, ChartContainer, ChartConfig } from "@/components/u
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/AuthContext";
 import { db } from "@/lib/firebase/clientApp";
-import { collection, query, where, onSnapshot, orderBy, Timestamp, type DocumentData, type QuerySnapshot } from "firebase/firestore";
+import { collection, query, where, getDocs, orderBy, Timestamp, type DocumentData, type QuerySnapshot } from "firebase/firestore"; // Changed onSnapshot to getDocs
 import { useToast } from "@/hooks/use-toast";
 import { format, subDays, startOfDay } from 'date-fns';
 
@@ -22,7 +23,7 @@ interface TrappedCrawlersChartProps {
 }
 
 interface ChartDataPoint {
-  date: string; // "YYYY-MM-DD"
+  date: string; 
   crawlers: number;
 }
 
@@ -43,68 +44,64 @@ export default function TrappedCrawlersChart({ userIdOverride }: TrappedCrawlers
     if (!currentUserId) {
       setProcessedChartData([]);
       setIsLoading(false);
-      if (!userIdOverride && !authLoading) {
-        // console.log("No user ID available for TrappedCrawlersChart.");
-      }
       return;
     }
 
-    setIsLoading(true);
-    
-    // Query for logs in the last 30 days. Firestore doesn't directly support complex date range + aggregation in onSnapshot easily.
-    // So, fetch logs ordered by timestamp and process client-side.
-    // For performance on huge datasets, server-side aggregation or more specific queries would be better.
-    const thirtyDaysAgoTimestamp = Timestamp.fromDate(startOfDay(subDays(new Date(), 30)));
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const thirtyDaysAgoTimestamp = Timestamp.fromDate(startOfDay(subDays(new Date(), 30)));
+        const q = query(
+          collection(db, "tarpit_logs"),
+          where("userId", "==", currentUserId),
+          where("timestamp", ">=", thirtyDaysAgoTimestamp),
+          orderBy("timestamp", "asc")
+        );
 
-    const q = query(
-      collection(db, "tarpit_logs"),
-      where("userId", "==", currentUserId),
-      where("timestamp", ">=", thirtyDaysAgoTimestamp), // Filter logs from the last 30 days
-      orderBy("timestamp", "asc") // Order by timestamp
-    );
+        const querySnapshot = await getDocs(q); // Use getDocs for one-time fetch
 
-    const unsubscribe = onSnapshot(q, (querySnapshot: QuerySnapshot<DocumentData>) => {
-      const dailyActivity: { [dateStr: string]: Set<string> } = {}; // K: "YYYY-MM-DD", V: Set of IPs
+        const dailyActivity: { [dateStr: string]: Set<string> } = {}; 
 
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        if (data.timestamp && data.trappedBotIp && data.timestamp instanceof Timestamp) {
-          const logTimestamp = data.timestamp.toDate();
-          // Ensure the log is indeed within the last 30 days (double check due to potential Firestore query nuances)
-          if (logTimestamp >= startOfDay(subDays(new Date(), 30))) {
-            const dateStr = format(logTimestamp, 'yyyy-MM-dd');
-            if (!dailyActivity[dateStr]) {
-              dailyActivity[dateStr] = new Set<string>();
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          if (data.timestamp && data.trappedBotIp && data.timestamp instanceof Timestamp) {
+            const logTimestamp = data.timestamp.toDate();
+            if (logTimestamp >= startOfDay(subDays(new Date(), 30))) {
+              const dateStr = format(logTimestamp, 'yyyy-MM-dd');
+              if (!dailyActivity[dateStr]) {
+                dailyActivity[dateStr] = new Set<string>();
+              }
+              dailyActivity[dateStr].add(data.trappedBotIp as string);
             }
-            dailyActivity[dateStr].add(data.trappedBotIp as string);
           }
-        }
-      });
-
-      const finalChartData: ChartDataPoint[] = [];
-      for (let i = 0; i < 30; i++) {
-        const date = startOfDay(subDays(new Date(), 29 - i)); // Iterate from 29 days ago to today
-        const dateStr = format(date, 'yyyy-MM-dd');
-        
-        finalChartData.push({
-          date: dateStr,
-          crawlers: dailyActivity[dateStr] ? dailyActivity[dateStr].size : 0,
         });
-      }
-      
-      setProcessedChartData(finalChartData);
-      setIsLoading(false);
-    }, (error) => {
-      console.error("Error fetching chart data:", error);
-      toast({
-        title: "Error Fetching Chart Data",
-        description: "Could not fetch crawler activity for the chart. Please try again later.",
-        variant: "destructive",
-      });
-      setIsLoading(false);
-    });
 
-    return () => unsubscribe();
+        const finalChartData: ChartDataPoint[] = [];
+        for (let i = 0; i < 30; i++) {
+          const date = startOfDay(subDays(new Date(), 29 - i)); 
+          const dateStr = format(date, 'yyyy-MM-dd');
+          
+          finalChartData.push({
+            date: dateStr,
+            crawlers: dailyActivity[dateStr] ? dailyActivity[dateStr].size : 0,
+          });
+        }
+        
+        setProcessedChartData(finalChartData);
+      } catch (error) {
+        console.error("Error fetching chart data:", error);
+        toast({
+          title: "Error Fetching Chart Data",
+          description: "Could not fetch crawler activity for the chart. Please try again later.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+    // No unsubscribe needed for getDocs
   }, [userIdOverride, user, authLoading, toast]);
 
 
@@ -116,7 +113,10 @@ export default function TrappedCrawlersChart({ userIdOverride }: TrappedCrawlers
     );
   }
 
-  if (processedChartData.length === 0) {
+  // Check if all crawler counts are zero to display a more specific message
+  const noActivity = processedChartData.every(dataPoint => dataPoint.crawlers === 0);
+
+  if (processedChartData.length === 0 || noActivity) {
     return (
       <div className="h-[350px] w-full flex items-center justify-center">
         <p className="text-muted-foreground">
@@ -139,7 +139,7 @@ export default function TrappedCrawlersChart({ userIdOverride }: TrappedCrawlers
               tickLine={false} 
               axisLine={false} 
               tickMargin={8} 
-              tickFormatter={(value) => format(new Date(value + 'T00:00:00'), 'MMM dd')} // Ensure date is parsed correctly
+              tickFormatter={(value) => format(new Date(value + 'T00:00:00'), 'MMM dd')}
               stroke="hsl(var(--muted-foreground))"
             />
             <YAxis 
@@ -147,7 +147,7 @@ export default function TrappedCrawlersChart({ userIdOverride }: TrappedCrawlers
               axisLine={false} 
               tickMargin={8}
               stroke="hsl(var(--muted-foreground))"
-              allowDecimals={false} // Ensure Y-axis shows whole numbers for counts
+              allowDecimals={false}
             />
             <RechartsTooltip
               cursor={false}

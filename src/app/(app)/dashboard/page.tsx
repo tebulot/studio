@@ -1,17 +1,20 @@
+
 'use client';
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import TrappedCrawlersChart from "@/components/dashboard/TrappedCrawlersChart";
-import RecentActivityTable from "@/components/dashboard/RecentActivityTable";
-import { ShieldCheck, Users, DollarSign, Cpu } from "lucide-react";
+// RecentActivityTable is no longer imported or used
+import { ShieldCheck, Users, DollarSign } from "lucide-react"; // Cpu icon removed as it's not used
 import { useAuth } from "@/contexts/AuthContext";
 import { db } from "@/lib/firebase/clientApp";
-import { collection, query, where, onSnapshot, type DocumentData, type QuerySnapshot } from "firebase/firestore";
+import { collection, query, where, onSnapshot, getDocs, type DocumentData, type QuerySnapshot } from "firebase/firestore"; // Added getDocs
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast"; // Added useToast
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
+  const { toast } = useToast(); // Initialize toast
   const [activeInstancesCount, setActiveInstancesCount] = useState<number | null>(null);
   const [isLoadingInstancesCount, setIsLoadingInstancesCount] = useState(true);
 
@@ -21,16 +24,13 @@ export default function DashboardPage() {
   const [wastedComputeCost, setWastedComputeCost] = useState<string | null>(null);
   const [isLoadingWastedCompute, setIsLoadingWastedCompute] = useState(true);
 
+  // Listener for active instances count (remains onSnapshot for responsiveness)
   useEffect(() => {
     if (authLoading) {
       setIsLoadingInstancesCount(true);
-      setIsLoadingUniqueCrawlers(true);
-      setIsLoadingWastedCompute(true);
       return;
     }
-
     if (user) {
-      // Listener for active instances count
       setIsLoadingInstancesCount(true);
       const instancesQuery = query(collection(db, "tarpit_configs"), where("userId", "==", user.uid));
       const unsubscribeInstances = onSnapshot(instancesQuery, (querySnapshot: QuerySnapshot<DocumentData>) => {
@@ -38,15 +38,36 @@ export default function DashboardPage() {
         setIsLoadingInstancesCount(false);
       }, (error) => {
         console.error("Error fetching active instances count:", error);
+        toast({ title: "Error", description: "Could not fetch active tarpit instances.", variant: "destructive" });
         setActiveInstancesCount(0);
         setIsLoadingInstancesCount(false);
       });
+      return () => unsubscribeInstances();
+    } else {
+      setActiveInstancesCount(0);
+      setIsLoadingInstancesCount(false);
+    }
+  }, [user, authLoading, toast]);
 
-      // Listener for unique crawlers count & wasted compute cost
+  // One-time fetch for unique crawlers count & wasted compute cost
+  useEffect(() => {
+    if (authLoading || !user) {
       setIsLoadingUniqueCrawlers(true);
       setIsLoadingWastedCompute(true);
-      const logsQuery = query(collection(db, "tarpit_logs"), where("userId", "==", user.uid));
-      const unsubscribeLogs = onSnapshot(logsQuery, (querySnapshot: QuerySnapshot<DocumentData>) => {
+      if (!user && !authLoading) { // Clear data if user logs out or not available
+        setUniqueCrawlersCount(0);
+        setWastedComputeCost("0.0000");
+      }
+      return;
+    }
+
+    const fetchLogStats = async () => {
+      setIsLoadingUniqueCrawlers(true);
+      setIsLoadingWastedCompute(true);
+      try {
+        const logsQuery = query(collection(db, "tarpit_logs"), where("userId", "==", user.uid));
+        const querySnapshot = await getDocs(logsQuery);
+
         const uniqueIps = new Set<string>();
         let totalCost = 0;
 
@@ -56,42 +77,34 @@ export default function DashboardPage() {
             uniqueIps.add(data.trappedBotIp);
           }
           
-          let entryCost = 0.0001; // Base cost per log entry
+          let entryCost = 0.0001; 
           if (data.recursionDepth && typeof data.recursionDepth === 'number' && data.recursionDepth > 5) {
-            entryCost += 0.0005; // Bonus for deep recursion
+            entryCost += 0.0005; 
           }
           if (data.method && typeof data.method === 'string' && data.method.toUpperCase() === 'POST') {
-            entryCost += 0.00005; // Bonus for POST requests
+            entryCost += 0.00005;
           }
           totalCost += entryCost;
         });
 
         setUniqueCrawlersCount(uniqueIps.size);
-        setWastedComputeCost(totalCost.toFixed(4)); // Show more precision for smaller numbers
-        setIsLoadingUniqueCrawlers(false);
-        setIsLoadingWastedCompute(false);
-      }, (error) => {
-        console.error("Error fetching logs for dashboard:", error);
+        setWastedComputeCost(totalCost.toFixed(4));
+      } catch (error) {
+        console.error("Error fetching logs for dashboard stats:", error);
+        toast({ title: "Error", description: "Could not fetch crawler statistics.", variant: "destructive" });
         setUniqueCrawlersCount(0);
         setWastedComputeCost("0.0000");
+      } finally {
         setIsLoadingUniqueCrawlers(false);
         setIsLoadingWastedCompute(false);
-      });
+      }
+    };
 
-      return () => {
-        unsubscribeInstances();
-        unsubscribeLogs();
-      };
-    } else {
-      // No user, so no instances, crawlers, or cost
-      setActiveInstancesCount(0);
-      setUniqueCrawlersCount(0);
-      setWastedComputeCost("0.0000");
-      setIsLoadingInstancesCount(false);
-      setIsLoadingUniqueCrawlers(false);
-      setIsLoadingWastedCompute(false);
-    }
-  }, [user, authLoading]);
+    fetchLogStats();
+    // No unsubscribe needed for getDocs
+    // Effect dependencies: user and authLoading. Refetch if they change.
+  }, [user, authLoading, toast]);
+
 
   return (
     <div className="space-y-8">
@@ -154,23 +167,12 @@ export default function DashboardPage() {
             <CardDescription>Unique crawlers trapped daily in the last 30 days.</CardDescription>
           </CardHeader>
           <CardContent>
-            {/* TrappedCrawlersChart will use useAuth to get the user ID by default */}
             <TrappedCrawlersChart />
           </CardContent>
         </Card>
       </section>
 
-      <section>
-        <Card className="shadow-lg border-accent/20">
-          <CardHeader>
-            <CardTitle className="text-xl text-accent">Recent Activity Logs</CardTitle>
-            <CardDescription>Latest interactions with your tarpit instances.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <RecentActivityTable />
-          </CardContent>
-        </Card>
-      </section>
+      {/* Recent Activity Logs section removed */}
     </div>
   );
 }

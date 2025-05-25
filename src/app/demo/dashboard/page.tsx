@@ -1,16 +1,18 @@
+
 'use client';
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import TrappedCrawlersChart from "@/components/dashboard/TrappedCrawlersChart";
-import RecentActivityTable from "@/components/dashboard/RecentActivityTable";
+// RecentActivityTable is no longer imported or used
 import { ShieldCheck, Users, DollarSign } from "lucide-react";
 import { db } from "@/lib/firebase/clientApp";
-import { collection, query, where, onSnapshot, type DocumentData, type QuerySnapshot, type Timestamp } from "firebase/firestore";
+import { collection, query, where, onSnapshot, getDocs, type DocumentData, type QuerySnapshot, type Timestamp } from "firebase/firestore"; // Added getDocs
 import { Skeleton } from "@/components/ui/skeleton";
 import NextLink from "next/link";
 import { Button } from "@/components/ui/button";
 import { FileText } from "lucide-react";
+import { useToast } from "@/hooks/use-toast"; // Added useToast
 
 const DEMO_USER_ID = process.env.NEXT_PUBLIC_DEMO_USER_ID;
 
@@ -18,10 +20,11 @@ interface TarpitLogForDemo {
   trappedBotIp: string;
   recursionDepth?: number;
   method?: string;
-  timestamp: Timestamp; // for potential filtering if needed
+  timestamp: Timestamp; 
 }
 
 export default function DemoDashboardPage() {
+  const { toast } = useToast(); // Initialize toast
   const [activeInstancesCount, setActiveInstancesCount] = useState<number | null>(null);
   const [isLoadingInstancesCount, setIsLoadingInstancesCount] = useState(true);
   
@@ -33,11 +36,10 @@ export default function DemoDashboardPage() {
 
   const [isDemoIdConfigured, setIsDemoIdConfigured] = useState(false);
 
+  // Listener for active demo instances count (remains onSnapshot)
   useEffect(() => {
     if (DEMO_USER_ID && DEMO_USER_ID !== "public-demo-user-id-placeholder") {
       setIsDemoIdConfigured(true);
-      
-      // Listener for active demo instances count
       setIsLoadingInstancesCount(true);
       const instancesQuery = query(collection(db, "tarpit_configs"), where("userId", "==", DEMO_USER_ID));
       const unsubscribeInstances = onSnapshot(instancesQuery, (querySnapshot: QuerySnapshot<DocumentData>) => {
@@ -45,75 +47,88 @@ export default function DemoDashboardPage() {
         setIsLoadingInstancesCount(false);
       }, (error) => {
         console.error("Error fetching demo active instances count:", error);
+        toast({ title: "Error", description: "Could not fetch demo active tarpit instances.", variant: "destructive" });
         setActiveInstancesCount(0);
         setIsLoadingInstancesCount(false);
       });
-
-      // Listener for demo unique crawlers count & wasted compute cost
-      setIsLoadingDemoUniqueCrawlers(true);
-      setIsLoadingDemoWastedCompute(true);
-      const logsQuery = query(collection(db, "tarpit_logs"), where("userId", "==", DEMO_USER_ID));
-      const unsubscribeLogs = onSnapshot(logsQuery, (querySnapshot: QuerySnapshot<DocumentData>) => {
-        const uniqueIps = new Set<string>();
-        let totalCost = 0;
-
-        querySnapshot.forEach((doc) => {
-          const data = doc.data() as TarpitLogForDemo; // Cast for type safety
-          if (data.trappedBotIp) {
-            uniqueIps.add(data.trappedBotIp);
-          }
-          
-          let entryCost = 0.0001; // Base cost per log entry
-          if (data.recursionDepth && typeof data.recursionDepth === 'number' && data.recursionDepth > 5) {
-            entryCost += 0.0005; // Bonus for deep recursion
-          }
-          if (data.method && typeof data.method === 'string' && data.method.toUpperCase() === 'POST') {
-            entryCost += 0.00005; // Bonus for POST requests
-          }
-          totalCost += entryCost;
-        });
-
-        setDemoUniqueCrawlersCount(uniqueIps.size);
-        setDemoWastedComputeCost(totalCost.toFixed(4));
-        setIsLoadingDemoUniqueCrawlers(false);
-        setIsLoadingDemoWastedCompute(false);
-      }, (error) => {
-        console.error("Error fetching logs for demo dashboard:", error);
-        setDemoUniqueCrawlersCount(0);
-        setDemoWastedComputeCost("0.0000");
-        setIsLoadingDemoUniqueCrawlers(false);
-        setIsLoadingDemoWastedCompute(false);
-      });
-
-      return () => {
-        unsubscribeInstances();
-        unsubscribeLogs();
-      };
+      return () => unsubscribeInstances();
     } else {
       setActiveInstancesCount(0);
-      setDemoUniqueCrawlersCount(0);
-      setDemoWastedComputeCost("0.0000");
       setIsLoadingInstancesCount(false);
-      setIsLoadingDemoUniqueCrawlers(false);
-      setIsLoadingDemoWastedCompute(false);
       setIsDemoIdConfigured(false);
     }
-  }, []);
+  }, [toast]); // Added toast to dependency array
 
-  if (!isDemoIdConfigured && !isLoadingInstancesCount && !isLoadingDemoUniqueCrawlers && !isLoadingDemoWastedCompute) {
-    return (
-        <div className="flex flex-col items-center justify-center text-center space-y-4 p-8 rounded-lg bg-card border border-destructive shadow-lg">
-            <ShieldCheck className="h-16 w-16 text-destructive" />
-            <h2 className="text-2xl font-semibold text-destructive">Demo Not Configured</h2>
-            <p className="text-muted-foreground max-w-md">
-                The <code className="bg-muted px-1.5 py-0.5 rounded-sm font-semibold text-accent">NEXT_PUBLIC_DEMO_USER_ID</code> environment variable is not set or is still using the placeholder value.
-                Please configure this in your <code className="bg-muted px-1.5 py-0.5 rounded-sm font-semibold text-accent">.env</code> file and ensure the corresponding user and data exist in Firestore to view the demo.
-            </p>
-             <Button asChild>
-                <NextLink href="/">Return to Homepage</NextLink>
-            </Button>
-        </div>
-    );
+  // One-time fetch for demo unique crawlers & wasted compute cost
+  useEffect(() => {
+    if (DEMO_USER_ID && DEMO_USER_ID !== "public-demo-user-id-placeholder") {
+      setIsDemoIdConfigured(true);
+      
+      const fetchDemoLogStats = async () => {
+        setIsLoadingDemoUniqueCrawlers(true);
+        setIsLoadingDemoWastedCompute(true);
+        try {
+          const logsQuery = query(collection(db, "tarpit_logs"), where("userId", "==", DEMO_USER_ID));
+          const querySnapshot = await getDocs(logsQuery);
+
+          const uniqueIps = new Set<string>();
+          let totalCost = 0;
+
+          querySnapshot.forEach((doc) => {
+            const data = doc.data() as TarpitLogForDemo;
+            if (data.trappedBotIp) {
+              uniqueIps.add(data.trappedBotIp);
+            }
+            
+            let entryCost = 0.0001;
+            if (data.recursionDepth && typeof data.recursionDepth === 'number' && data.recursionDepth > 5) {
+              entryCost += 0.0005;
+            }
+            if (data.method && typeof data.method === 'string' && data.method.toUpperCase() === 'POST') {
+              entryCost += 0.00005;
+            }
+            totalCost += entryCost;
+          });
+
+          setDemoUniqueCrawlersCount(uniqueIps.size);
+          setDemoWastedComputeCost(totalCost.toFixed(4));
+        } catch (error) {
+          console.error("Error fetching logs for demo dashboard stats:", error);
+          toast({ title: "Error", description: "Could not fetch demo crawler statistics.", variant: "destructive" });
+          setDemoUniqueCrawlersCount(0);
+          setDemoWastedComputeCost("0.0000");
+        } finally {
+          setIsLoadingDemoUniqueCrawlers(false);
+          setIsLoadingDemoWastedCompute(false);
+        }
+      };
+      fetchDemoLogStats();
+    } else {
+      setDemoUniqueCrawlersCount(0);
+      setDemoWastedComputeCost("0.0000");
+      setIsLoadingDemoUniqueCrawlers(false);
+      setIsLoadingDemoWastedCompute(false);
+      setIsDemoIdConfigured(false); // Ensure this is set if ID is missing
+    }
+  }, [toast]); // Added toast to dependency array
+
+
+  if (!DEMO_USER_ID || DEMO_USER_ID === "public-demo-user-id-placeholder") {
+      if (!isLoadingInstancesCount && !isLoadingDemoUniqueCrawlers && !isLoadingDemoWastedCompute && !isDemoIdConfigured) { // Check all loading states
+        return (
+            <div className="flex flex-col items-center justify-center text-center space-y-4 p-8 rounded-lg bg-card border border-destructive shadow-lg">
+                <ShieldCheck className="h-16 w-16 text-destructive" />
+                <h2 className="text-2xl font-semibold text-destructive">Demo Not Configured</h2>
+                <p className="text-muted-foreground max-w-md">
+                    The <code className="bg-muted px-1.5 py-0.5 rounded-sm font-semibold text-accent">NEXT_PUBLIC_DEMO_USER_ID</code> environment variable is not set or is still using the placeholder value.
+                    Please configure this in your <code className="bg-muted px-1.5 py-0.5 rounded-sm font-semibold text-accent">.env</code> file and ensure the corresponding user and data exist in Firestore to view the demo.
+                </p>
+                 <Button asChild>
+                    <NextLink href="/">Return to Homepage</NextLink>
+                </Button>
+            </div>
+        );
+      }
   }
 
 
@@ -185,23 +200,12 @@ export default function DemoDashboardPage() {
             <CardDescription>Unique crawlers trapped daily in the last 30 days for demo.</CardDescription>
           </CardHeader>
           <CardContent>
-            {/* Pass DEMO_USER_ID to the chart for demo data */}
-            {DEMO_USER_ID && <TrappedCrawlersChart userIdOverride={DEMO_USER_ID} />}
+            {DEMO_USER_ID && isDemoIdConfigured && <TrappedCrawlersChart userIdOverride={DEMO_USER_ID} />}
           </CardContent>
         </Card>
       </section>
 
-      <section>
-        <Card className="shadow-lg border-accent/20">
-          <CardHeader>
-            <CardTitle className="text-xl text-accent">Recent Demo Activity Logs</CardTitle>
-            <CardDescription>Latest interactions with demo tarpit instances.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <RecentActivityTable userIdOverride={DEMO_USER_ID} />
-          </CardContent>
-        </Card>
-      </section>
+      {/* Recent Demo Activity Logs section removed */}
     </div>
   );
 }
