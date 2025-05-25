@@ -68,8 +68,8 @@ export default function AccountPage() {
   const { user, loading: authLoading, updateUserEmail, updateUserDisplayName, sendPasswordReset } = useAuth();
   const { toast } = useToast();
 
-  // Simulate current subscription tier - default to "Window Shopping"
-  const [currentUserTierId, setCurrentUserTierId] = useState("window_shopping"); 
+  // Simulate current subscription tier - default to "Analytics" now
+  const [currentUserTierId, setCurrentUserTierId] = useState("analytics"); 
 
   const [isEditingEmail, setIsEditingEmail] = useState(false);
   const [emailInputValue, setEmailInputValue] = useState("");
@@ -358,4 +358,6 @@ export default function AccountPage() {
     </div>
   );
 }
+    
+
     
