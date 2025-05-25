@@ -7,8 +7,8 @@ import BrandLogoIcon from "@/components/icons/BrandLogoIcon";
 import { Home, Link as LinkIcon } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Licenses & Acknowledgements - SpiteSpiral Tarpit",
-  description: "Licenses and acknowledgements for software used by SpiteSpiral Tarpit.",
+  title: "Licenses & Acknowledgements - SpiteSpiral",
+  description: "Licenses and acknowledgements for software used by SpiteSpiral.",
 };
 
 const dependencies = [
@@ -106,7 +106,7 @@ export default function LicensesPage() {
           <CardHeader>
             <CardTitle className="text-xl text-primary">Nepenthes Associated Libraries (by Aaron)</CardTitle>
             <CardDescription className="text-muted-foreground">
-              Libraries by the creator of Nepenthes, typically distributed under MIT license terms.
+              Libraries by the creator of Nepenthes, Aaron, typically distributed under MIT license terms.
             </CardDescription>
           </CardHeader>
           <CardContent>
