@@ -54,7 +54,7 @@ export default function LicensesPage() {
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold tracking-tight text-primary glitch-text sm:text-5xl">Licenses & Acknowledgements</h1>
           <p className="mt-4 text-lg text-muted-foreground">
-            SpiteSpiral Tarpit utilizes, is inspired by, and gratefully acknowledges the following open-source software and its creators.
+            SpiteSpiral utilizes, is inspired by, and gratefully acknowledges the following open-source software and its creators.
           </p>
         </div>
 
