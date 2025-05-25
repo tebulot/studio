@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from "react";
@@ -35,131 +34,147 @@ export default function DemoDashboardPage() {
   const [demoWastedComputeCost, setDemoWastedComputeCost] = useState<string | null>(null);
   const [isLoadingDemoWastedCompute, setIsLoadingDemoWastedCompute] = useState(true);
 
-  const [isDemoIdConfigured, setIsDemoIdConfigured] = useState(false);
+  const [isDemoIdProperlyConfigured, setIsDemoIdProperlyConfigured] = useState(false);
+
+  useEffect(() => {
+    console.log("DemoDashboardPage: Using DEMO_USER_ID:", DEMO_USER_ID);
+    if (DEMO_USER_ID && DEMO_USER_ID !== "public-demo-user-id-placeholder") {
+      setIsDemoIdProperlyConfigured(true);
+    } else {
+      setIsDemoIdProperlyConfigured(false);
+      // Set loading states to false if not configured, to prevent infinite loaders
+      setIsLoadingInstancesCount(false);
+      setIsLoadingDemoUniqueCrawlers(false);
+      setIsLoadingDemoWastedCompute(false);
+      setActiveInstancesCount(0);
+      setDemoUniqueCrawlersApproxCount(0);
+      setDemoWastedComputeCost("0.0000");
+    }
+  }, []); // Run once on mount to check config
+
 
   // Listener for active demo instances count (reads from tarpit_configs)
   useEffect(() => {
-    if (DEMO_USER_ID && DEMO_USER_ID !== "public-demo-user-id-placeholder") {
-      setIsDemoIdConfigured(true);
-      setIsLoadingInstancesCount(true);
-      const instancesQuery = query(collection(db, "tarpit_configs"), where("userId", "==", DEMO_USER_ID));
-      const unsubscribeInstances = onSnapshot(instancesQuery, (querySnapshot: QuerySnapshot<DocumentData>) => {
-        setActiveInstancesCount(querySnapshot.size);
-        setIsLoadingInstancesCount(false);
-      }, (error) => {
-        console.error("Error fetching demo active instances count:", error);
-        toast({ title: "Error", description: "Could not fetch demo active tarpit instances.", variant: "destructive" });
-        setActiveInstancesCount(0);
-        setIsLoadingInstancesCount(false);
-      });
-      return () => unsubscribeInstances();
-    } else {
+    if (!isDemoIdProperlyConfigured) {
+      return;
+    }
+    setIsLoadingInstancesCount(true);
+    const instancesQuery = query(collection(db, "tarpit_configs"), where("userId", "==", DEMO_USER_ID));
+    const unsubscribeInstances = onSnapshot(instancesQuery, (querySnapshot: QuerySnapshot<DocumentData>) => {
+      setActiveInstancesCount(querySnapshot.size);
+      setIsLoadingInstancesCount(false);
+    }, (error) => {
+      console.error("Error fetching demo active instances count:", error);
+      toast({ title: "Error", description: "Could not fetch demo active tarpit instances. Check Firestore rules and DEMO_USER_ID configuration.", variant: "destructive", duration: 7000 });
       setActiveInstancesCount(0);
       setIsLoadingInstancesCount(false);
-      setIsDemoIdConfigured(false);
-    }
-  }, [toast]);
+    });
+    return () => unsubscribeInstances();
+  }, [isDemoIdProperlyConfigured, toast]);
 
   // Fetch for demo unique crawlers approx. count & wasted compute cost from activity summaries with caching
   useEffect(() => {
-    if (DEMO_USER_ID && DEMO_USER_ID !== "public-demo-user-id-placeholder") {
-      setIsDemoIdConfigured(true);
-      
-      const fetchDemoSummaryStats = async () => {
-        setIsLoadingDemoUniqueCrawlers(true);
-        setIsLoadingDemoWastedCompute(true);
-
-        const cacheKeyBase = `spiteSpiral_summaryStats_${DEMO_USER_ID}`;
-        const cachedCrawlersKey = `${cacheKeyBase}_uniqueCrawlersApprox`;
-        const cachedCostKey = `${cacheKeyBase}_wastedComputeSummary`;
-        const timestampKey = `${cacheKeyBase}_timestamp`;
-
-        try {
-          const cachedTimestampStr = localStorage.getItem(timestampKey);
-          const cachedTimestamp = cachedTimestampStr ? parseInt(cachedTimestampStr, 10) : 0;
-
-          if (Date.now() - cachedTimestamp < CACHE_DURATION) {
-            const cachedCrawlers = localStorage.getItem(cachedCrawlersKey);
-            const cachedCost = localStorage.getItem(cachedCostKey);
-            if (cachedCrawlers !== null && cachedCost !== null) {
-              setDemoUniqueCrawlersApproxCount(JSON.parse(cachedCrawlers));
-              setDemoWastedComputeCost(JSON.parse(cachedCost));
-              setIsLoadingDemoUniqueCrawlers(false);
-              setIsLoadingDemoWastedCompute(false);
-              // console.log("Loaded demo summary stats from cache for:", DEMO_USER_ID);
-              return;
-            }
-          }
-          // console.log("Fetching fresh demo summary stats for:", DEMO_USER_ID);
-
-          const thirtyDaysAgoDate = startOfDay(subDays(new Date(), 29));
-          const summariesQuery = query(
-            collection(db, "tarpit_activity_summaries"), 
-            where("userId", "==", DEMO_USER_ID),
-            where("startTime", ">=", Timestamp.fromDate(thirtyDaysAgoDate)),
-            orderBy("startTime", "asc")
-          );
-          const querySnapshot = await getDocs(summariesQuery);
-
-          let summedUniqueIpCount = 0;
-          let totalHitsForCostCalc = 0;
-
-          querySnapshot.forEach((doc) => {
-            const data = doc.data() as ActivitySummaryDocForDemo;
-            if (data.uniqueIpCount) {
-              summedUniqueIpCount += data.uniqueIpCount;
-            }
-            if (data.totalHits) {
-              totalHitsForCostCalc += data.totalHits;
-            }
-          });
-
-          const currentWastedCost = (totalHitsForCostCalc * 0.0001).toFixed(4);
-
-          setDemoUniqueCrawlersApproxCount(summedUniqueIpCount);
-          setDemoWastedComputeCost(currentWastedCost);
-
-          localStorage.setItem(cachedCrawlersKey, JSON.stringify(summedUniqueIpCount));
-          localStorage.setItem(cachedCostKey, JSON.stringify(currentWastedCost));
-          localStorage.setItem(timestampKey, Date.now().toString());
-
-        } catch (error) {
-          console.error("Error fetching activity summaries for demo dashboard stats:", error);
-          toast({ title: "Error", description: "Could not fetch demo crawler statistics from summaries.", variant: "destructive" });
-          setDemoUniqueCrawlersApproxCount(0);
-          setDemoWastedComputeCost("0.0000");
-        } finally {
-          setIsLoadingDemoUniqueCrawlers(false);
-          setIsLoadingDemoWastedCompute(false);
-        }
-      };
-      fetchDemoSummaryStats();
-    } else {
-      setDemoUniqueCrawlersApproxCount(0);
-      setDemoWastedComputeCost("0.0000");
-      setIsLoadingDemoUniqueCrawlers(false);
-      setIsLoadingDemoWastedCompute(false);
-      setIsDemoIdConfigured(false);
+    if (!isDemoIdProperlyConfigured) {
+      return;
     }
-  }, [toast]);
+    
+    const fetchDemoSummaryStats = async () => {
+      setIsLoadingDemoUniqueCrawlers(true);
+      setIsLoadingDemoWastedCompute(true);
 
+      const cacheKeyBase = `spiteSpiral_summaryStats_${DEMO_USER_ID}`;
+      const cachedCrawlersKey = `${cacheKeyBase}_uniqueCrawlersApprox`;
+      const cachedCostKey = `${cacheKeyBase}_wastedComputeSummary`;
+      const timestampKey = `${cacheKeyBase}_timestamp`;
 
-  if (!DEMO_USER_ID || DEMO_USER_ID === "public-demo-user-id-placeholder") {
-      if (!isLoadingInstancesCount && !isLoadingDemoUniqueCrawlers && !isLoadingDemoWastedCompute && !isDemoIdConfigured) {
-        return (
-            <div className="flex flex-col items-center justify-center text-center space-y-4 p-8 rounded-lg bg-card border border-destructive shadow-lg">
-                <ShieldCheck className="h-16 w-16 text-destructive" />
-                <h2 className="text-2xl font-semibold text-destructive">Demo Not Configured</h2>
-                <p className="text-muted-foreground max-w-md">
-                    The <code className="bg-muted px-1.5 py-0.5 rounded-sm font-semibold text-accent">NEXT_PUBLIC_DEMO_USER_ID</code> environment variable is not set or is still using the placeholder value.
-                    Please configure this in your <code className="bg-muted px-1.5 py-0.5 rounded-sm font-semibold text-accent">.env</code> file and ensure the corresponding user and data exist in Firestore to view the demo.
-                </p>
-                 <Button asChild>
-                    <NextLink href="/">Return to Homepage</NextLink>
-                </Button>
-            </div>
+      try {
+        const cachedTimestampStr = localStorage.getItem(timestampKey);
+        const cachedTimestamp = cachedTimestampStr ? parseInt(cachedTimestampStr, 10) : 0;
+
+        if (Date.now() - cachedTimestamp < CACHE_DURATION) {
+          const cachedCrawlers = localStorage.getItem(cachedCrawlersKey);
+          const cachedCost = localStorage.getItem(cachedCostKey);
+          if (cachedCrawlers !== null && cachedCost !== null) {
+            setDemoUniqueCrawlersApproxCount(JSON.parse(cachedCrawlers));
+            setDemoWastedComputeCost(JSON.parse(cachedCost));
+            setIsLoadingDemoUniqueCrawlers(false);
+            setIsLoadingDemoWastedCompute(false);
+            return;
+          }
+        }
+
+        const thirtyDaysAgoDate = startOfDay(subDays(new Date(), 29));
+        const summariesQuery = query(
+          collection(db, "tarpit_activity_summaries"), 
+          where("userId", "==", DEMO_USER_ID),
+          where("startTime", ">=", Timestamp.fromDate(thirtyDaysAgoDate)),
+          orderBy("startTime", "asc")
         );
+        const querySnapshot = await getDocs(summariesQuery);
+
+        let summedUniqueIpCount = 0;
+        let totalHitsForCostCalc = 0;
+
+        querySnapshot.forEach((doc) => {
+          const data = doc.data() as ActivitySummaryDocForDemo;
+          if (data.uniqueIpCount) {
+            summedUniqueIpCount += data.uniqueIpCount;
+          }
+          if (data.totalHits) {
+            totalHitsForCostCalc += data.totalHits;
+          }
+        });
+
+        const currentWastedCost = (totalHitsForCostCalc * 0.0001).toFixed(4);
+
+        setDemoUniqueCrawlersApproxCount(summedUniqueIpCount);
+        setDemoWastedComputeCost(currentWastedCost);
+
+        localStorage.setItem(cachedCrawlersKey, JSON.stringify(summedUniqueIpCount));
+        localStorage.setItem(cachedCostKey, JSON.stringify(currentWastedCost));
+        localStorage.setItem(timestampKey, Date.now().toString());
+
+      } catch (error) {
+        console.error("Error fetching activity summaries for demo dashboard stats:", error);
+        toast({ title: "Error", description: "Could not fetch demo crawler statistics. Check Firestore rules and DEMO_USER_ID configuration.", variant: "destructive", duration: 7000 });
+        setDemoUniqueCrawlersApproxCount(0);
+        setDemoWastedComputeCost("0.0000");
+      } finally {
+        setIsLoadingDemoUniqueCrawlers(false);
+        setIsLoadingDemoWastedCompute(false);
       }
+    };
+    fetchDemoSummaryStats();
+  }, [isDemoIdProperlyConfigured, toast]);
+
+
+  if (!isDemoIdProperlyConfigured && (isLoadingInstancesCount || isLoadingDemoUniqueCrawlers || isLoadingDemoWastedCompute )) {
+    // Still determining configuration or initial loading
+    return (
+        <div className="flex flex-col items-center justify-center text-center space-y-4 p-8 rounded-lg bg-card border border-border shadow-lg">
+            <ShieldCheck className="h-16 w-16 text-primary animate-pulse" />
+            <h2 className="text-2xl font-semibold text-primary">Loading Demo...</h2>
+            <p className="text-muted-foreground max-w-md">
+                Verifying demo configuration...
+            </p>
+        </div>
+    );
+  }
+  
+  if (!isDemoIdProperlyConfigured) {
+      return (
+          <div className="flex flex-col items-center justify-center text-center space-y-4 p-8 rounded-lg bg-card border border-destructive shadow-lg">
+              <ShieldCheck className="h-16 w-16 text-destructive" />
+              <h2 className="text-2xl font-semibold text-destructive">Demo Not Configured</h2>
+              <p className="text-muted-foreground max-w-md">
+                  The <code className="bg-muted px-1.5 py-0.5 rounded-sm font-semibold text-accent">NEXT_PUBLIC_DEMO_USER_ID</code> environment variable is not set or is still using the placeholder value.
+                  Please configure this in your <code className="bg-muted px-1.5 py-0.5 rounded-sm font-semibold text-accent">.env</code> file (and ensure it's not the placeholder <code className="bg-muted px-1.5 py-0.5 rounded-sm text-destructive">public-demo-user-id-placeholder</code>) and ensure corresponding data and Firestore rules exist to view the demo.
+              </p>
+               <Button asChild>
+                  <NextLink href="/">Return to Homepage</NextLink>
+              </Button>
+          </div>
+      );
   }
 
 
@@ -234,13 +249,10 @@ export default function DemoDashboardPage() {
             <CardDescription>Total tarpit hits recorded daily in the last 30 days for demo from activity summaries.</CardDescription>
           </CardHeader>
           <CardContent>
-            {DEMO_USER_ID && isDemoIdConfigured && <TrappedCrawlersChart userIdOverride={DEMO_USER_ID} />}
+            {isDemoIdProperlyConfigured && <TrappedCrawlersChart userIdOverride={DEMO_USER_ID} />}
           </CardContent>
         </Card>
       </section>
     </div>
   );
 }
-
-
-    
