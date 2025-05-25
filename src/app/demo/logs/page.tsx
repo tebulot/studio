@@ -3,10 +3,11 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import RequestLogTable from "@/components/request-logs/RequestLogTable";
-import { FileText, ShieldCheck } from "lucide-react";
+import { FileText, ShieldCheck, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import NextLink from "next/link";
 import { useEffect, useState } from "react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const DEMO_USER_ID = process.env.NEXT_PUBLIC_DEMO_USER_ID;
 
@@ -65,12 +66,20 @@ export default function DemoRequestLogsPage() {
         </Button>
       </header>
 
+      <Alert variant="default" className="border-accent/20 bg-card/50 mb-6">
+        <Info className="h-5 w-5 text-accent" />
+        <AlertTitle className="text-accent">Raw Log Data Notice</AlertTitle>
+        <AlertDescription className="text-muted-foreground">
+          Due to our new log aggregation system for performance and cost, the detailed raw logs displayed here for the demo may be limited, not up-to-date, or may no longer be populated if the raw log collection (tarpit_logs) is deprecated for the demo user. The Demo Dashboard shows activity based on aggregated summaries.
+        </AlertDescription>
+      </Alert>
+
       <section>
         <Card className="shadow-lg border-primary/20">
           <CardHeader>
             <CardTitle className="text-xl text-primary">Demo Crawler Request Logs</CardTitle>
             <CardDescription>
-              Detailed log of incoming requests to demo tarpits.
+              Detailed log of incoming requests to demo tarpits (may be limited or based on historical data).
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -81,3 +90,5 @@ export default function DemoRequestLogsPage() {
     </div>
   );
 }
+
+    

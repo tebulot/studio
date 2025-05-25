@@ -9,13 +9,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { db } from "@/lib/firebase/clientApp";
 import { collection, query, where, getDocs, orderBy, Timestamp, type DocumentData } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
-import { format, subDays, startOfDay } from 'date-fns';
+import { format, subDays, startOfDay, endOfDay, isWithinInterval, eachDayOfInterval } from 'date-fns';
 
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 
 const chartConfig = {
-  crawlers: {
-    label: "Unique Crawlers",
+  hits: { // Changed from crawlers to hits
+    label: "Total Hits",
     color: "hsl(var(--primary))",
   },
 } satisfies ChartConfig;
@@ -26,7 +26,16 @@ interface TrappedCrawlersChartProps {
 
 interface ChartDataPoint {
   date: string; 
-  crawlers: number;
+  hits: number; // Changed from crawlers to hits
+}
+
+interface ActivitySummaryDoc {
+  // Assuming these fields exist in your tarpit_activity_summaries documents
+  startTime: Timestamp;
+  endTime: Timestamp;
+  totalHits: number;
+  userId: string;
+  // other fields like uniqueIpCount, etc., are not directly used by this chart version
 }
 
 export default function TrappedCrawlersChart({ userIdOverride }: TrappedCrawlersChartProps) {
@@ -51,8 +60,8 @@ export default function TrappedCrawlersChart({ userIdOverride }: TrappedCrawlers
 
     const fetchData = async () => {
       setIsLoading(true);
-      const cacheKey = `spiteSpiral_chartData_${currentUserId}`;
-      const timestampKey = `spiteSpiral_chartData_timestamp_${currentUserId}`;
+      const cacheKey = `spiteSpiral_summaryChartData_${currentUserId}`;
+      const timestampKey = `spiteSpiral_summaryChartData_timestamp_${currentUserId}`;
 
       try {
         const cachedTimestampStr = localStorage.getItem(timestampKey);
@@ -63,59 +72,63 @@ export default function TrappedCrawlersChart({ userIdOverride }: TrappedCrawlers
           if (cachedData) {
             setProcessedChartData(JSON.parse(cachedData));
             setIsLoading(false);
-            // console.log("Loaded chart data from cache for:", currentUserId);
+            // console.log("Loaded summary chart data from cache for:", currentUserId);
             return;
           }
         }
-        // console.log("Fetching fresh chart data for:", currentUserId);
+        // console.log("Fetching fresh summary chart data for:", currentUserId);
 
-        const thirtyDaysAgoTimestamp = Timestamp.fromDate(startOfDay(subDays(new Date(), 30)));
+        const thirtyDaysAgoDate = startOfDay(subDays(new Date(), 29)); // Ensure we include today
+        const todayDate = endOfDay(new Date());
+
         const q = query(
-          collection(db, "tarpit_logs"),
+          collection(db, "tarpit_activity_summaries"),
           where("userId", "==", currentUserId),
-          where("timestamp", ">=", thirtyDaysAgoTimestamp),
-          orderBy("timestamp", "asc")
+          where("startTime", ">=", Timestamp.fromDate(thirtyDaysAgoDate)),
+          orderBy("startTime", "asc") 
         );
 
         const querySnapshot = await getDocs(q);
+        
+        const dailyHits: { [dateStr: string]: number } = {};
+        const daysInPeriod = eachDayOfInterval({ start: thirtyDaysAgoDate, end: todayDate });
 
-        const dailyActivity: { [dateStr: string]: Set<string> } = {}; 
+        daysInPeriod.forEach(day => {
+          const dateStr = format(day, 'yyyy-MM-dd');
+          dailyHits[dateStr] = 0; // Initialize all days in the period with 0 hits
+        });
 
         querySnapshot.forEach((doc) => {
-          const data = doc.data();
-          if (data.timestamp && data.trappedBotIp && data.timestamp instanceof Timestamp) {
-            const logTimestamp = data.timestamp.toDate();
-            // Ensure we only count logs from the last 30 days relative to today
-            if (logTimestamp >= startOfDay(subDays(new Date(), 30))) { 
-              const dateStr = format(logTimestamp, 'yyyy-MM-dd');
-              if (!dailyActivity[dateStr]) {
-                dailyActivity[dateStr] = new Set<string>();
-              }
-              dailyActivity[dateStr].add(data.trappedBotIp as string);
+          const data = doc.data() as ActivitySummaryDoc;
+          if (data.startTime && data.totalHits && data.startTime instanceof Timestamp) {
+            const summaryStartDate = data.startTime.toDate();
+            // Check if the summary window (even partially) falls within the last 30 days until today
+            if (summaryStartDate <= todayDate && summaryStartDate >= thirtyDaysAgoDate) {
+                const dateStr = format(summaryStartDate, 'yyyy-MM-dd');
+                if (dailyHits[dateStr] !== undefined) { // Check if the date exists (it should due to initialization)
+                    dailyHits[dateStr] += data.totalHits;
+                }
             }
           }
         });
-
-        const finalChartData: ChartDataPoint[] = [];
-        for (let i = 0; i < 30; i++) {
-          const date = startOfDay(subDays(new Date(), 29 - i)); // Iterate from 29 days ago to today
-          const dateStr = format(date, 'yyyy-MM-dd');
-          
-          finalChartData.push({
-            date: dateStr, // Store as "YYYY-MM-DD"
-            crawlers: dailyActivity[dateStr] ? dailyActivity[dateStr].size : 0,
-          });
-        }
+        
+        const finalChartData: ChartDataPoint[] = daysInPeriod.map(day => {
+            const dateStr = format(day, 'yyyy-MM-dd');
+            return {
+                date: dateStr,
+                hits: dailyHits[dateStr] || 0,
+            };
+        });
         
         setProcessedChartData(finalChartData);
         localStorage.setItem(cacheKey, JSON.stringify(finalChartData));
         localStorage.setItem(timestampKey, Date.now().toString());
 
       } catch (error) {
-        console.error("Error fetching chart data:", error);
+        console.error("Error fetching summary chart data:", error);
         toast({
           title: "Error Fetching Chart Data",
-          description: "Could not fetch crawler activity for the chart. Please try again later.",
+          description: "Could not fetch activity summary for the chart. Please try again later.",
           variant: "destructive",
         });
       } finally {
@@ -135,15 +148,15 @@ export default function TrappedCrawlersChart({ userIdOverride }: TrappedCrawlers
     );
   }
 
-  const noActivity = processedChartData.every(dataPoint => dataPoint.crawlers === 0);
+  const noActivity = processedChartData.every(dataPoint => dataPoint.hits === 0);
 
   if (processedChartData.length === 0 || noActivity) {
     return (
       <div className="h-[350px] w-full flex items-center justify-center">
         <p className="text-muted-foreground">
           {userIdOverride 
-            ? "No crawler activity recorded for the demo in the last 30 days." 
-            : "No crawler activity recorded in the last 30 days."}
+            ? "No crawler activity summaries recorded for the demo in the last 30 days." 
+            : "No crawler activity summaries recorded in the last 30 days."}
         </p>
       </div>
     );
@@ -160,7 +173,7 @@ export default function TrappedCrawlersChart({ userIdOverride }: TrappedCrawlers
               tickLine={false} 
               axisLine={false} 
               tickMargin={8} 
-              tickFormatter={(value) => format(new Date(value + 'T00:00:00'), 'MMM dd')} // Ensure date is parsed correctly
+              tickFormatter={(value) => format(new Date(value + 'T00:00:00'), 'MMM dd')}
               stroke="hsl(var(--muted-foreground))"
             />
             <YAxis 
@@ -169,6 +182,7 @@ export default function TrappedCrawlersChart({ userIdOverride }: TrappedCrawlers
               tickMargin={8}
               stroke="hsl(var(--muted-foreground))"
               allowDecimals={false}
+              label={{ value: 'Total Hits', angle: -90, position: 'insideLeft', fill: 'hsl(var(--muted-foreground))', fontSize: 12, offset: 10 }}
             />
             <RechartsTooltip
               cursor={false}
@@ -181,10 +195,12 @@ export default function TrappedCrawlersChart({ userIdOverride }: TrappedCrawlers
                 color: 'hsl(var(--popover-foreground))'
               }}
             />
-            <Bar dataKey="crawlers" fill="var(--color-crawlers)" radius={4} />
+            <Bar dataKey="hits" fill="var(--color-hits)" radius={4} />
           </BarChart>
         </ResponsiveContainer>
       </ChartContainer>
     </div>
   );
 }
+
+    
