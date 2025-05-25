@@ -9,7 +9,6 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { useState, useEffect } from 'react';
 
 export default function HomePage() {
-  // Removed useEffect and backgroundIconStyles state for multiple random icons
 
   const faqData = [
     {
@@ -56,10 +55,6 @@ export default function HomePage() {
         </>
       )
     },
-     {
-      question: "So, why the name SpiteSpiral?",
-      answer: "I'm sure if you've read this far, you're either already pretty pissed off, or you're starting to get pretty annoyed. The creator of Nepenthes, the Tarpit SpiteSpiral utilises heavily as it's original codebase under the MIT license, speaks of AI crawlers with such a distaste and frustration, that I was moved to build this site and this service to allow those without the technical knowledge, infrastructure or time to set a Tarpit up for themselves on their own website. In some regards, it's an act of desperation, self damaging, and can lead to your website disappearing off of search engine results. The point is to do damage. It's a destructive, malicious, and spiteful measure to implement. SpiteSpiral allows us to take the punches, burn our CPU cycles and power to trap these things in a purgatory of endless recursion, and protect your website from the negative effects. And between you and me, this kind of abstract, compute based warfare is so darn interesting. So you can be sure I'm going to be utilising everything at my disposal to continue to mutate, adapt, and abstract SpiteSpiral to ensure we're on the front lines, ensuring we do as much damage as we possibly can."
-    },
     {
       question: "Will SpiteSpiral make my website slower for my actual human visitors?",
       answer: "No. The Managed URL you embed is designed to be unobtrusive (e.g., a 1x1 pixel image, an invisible stylesheet link). Your website loads from your server as usual. The \"slowing down\" effect is only experienced by the bot when it specifically requests that Managed URL, and that interaction happens with our separate SpiteSpiral tarpit servers."
@@ -94,6 +89,10 @@ export default function HomePage() {
     {
       question: "What if a \"good\" bot, like Googlebot, accidentally hits a SpiteSpiral Managed URL?",
       answer: "The recommended embedding methods are designed to make this unlikely for major search engine crawlers that are focused on your primary content. Our SpiteSpiral tarpits are also generally configured to be less immediately aggressive, so an accidental hit from a known, reputable crawler (which often identify themselves clearly) is unlikely to cause them significant, lasting issues. The primary targets are the persistent, unidentified, or clearly unwanted crawlers."
+    },
+    {
+      question: "So, why the name SpiteSpiral?",
+      answer: "I'm sure if you've read this far, you're either already pretty pissed off, or you're starting to get pretty annoyed. The creator of Nepenthes, the Tarpit SpiteSpiral utilises heavily as it's original codebase under the MIT license, speaks of AI crawlers with such a distaste and frustration, that I was moved to build this site and this service to allow those without the technical knowledge, infrastructure or time to set a Tarpit up for themselves on their own website. In some regards, it's an act of desperation, self damaging, and can lead to your website disappearing off of search engine results. The point is to do damage. It's a destructive, malicious, and spiteful measure to implement. SpiteSpiral allows us to take the punches, burn our CPU cycles and power to trap these things in a purgatory of endless recursion, and protect your website from the negative effects. And between you and me, this kind of abstract, compute based warfare is so darn interesting. So you can be sure I'm going to be utilising everything at my disposal to continue to mutate, adapt, and abstract SpiteSpiral to ensure we're on the front lines, ensuring we do as much damage as we possibly can."
     }
   ];
 
@@ -196,8 +195,11 @@ export default function HomePage() {
 
       </div>
 
-      <footer className="relative bottom-8 text-sm text-muted-foreground/70 z-10">
-        © {new Date().getFullYear()} SpiteSpiral Industries. All rights reserved.
+      <footer className="relative bottom-8 text-sm text-muted-foreground/70 z-10 flex flex-col items-center space-y-1">
+        <span>© {new Date().getFullYear()} SpiteSpiral Industries. All rights reserved.</span>
+        <NextLink href="/legal/licenses" className="hover:text-accent hover:underline">
+          Licenses & Acknowledgements
+        </NextLink>
       </footer>
     </div>
   );

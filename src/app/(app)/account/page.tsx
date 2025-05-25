@@ -6,9 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { UserCog, CreditCard, ShieldCheck, Save, XCircle, Loader2, Mail } from "lucide-react"; // Changed MailLock to Mail
+import { UserCog, CreditCard, ShieldCheck, Save, XCircle, Loader2, Mail, ExternalLink } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
+import NextLink from "next/link"; // For future billing page link
 
 export default function AccountPage() {
   const { user, loading: authLoading, updateUserEmail, updateUserDisplayName, sendPasswordReset } = useAuth();
@@ -39,8 +40,6 @@ export default function AccountPage() {
     const success = await updateUserEmail(emailInputValue);
     if (success) {
       setIsEditingEmail(false);
-      // EmailInputValue will be updated via useEffect if user object changes or user re-verifies.
-      // For now, we rely on the toast message for feedback.
     }
     setIsUpdatingEmail(false);
   };
@@ -54,21 +53,18 @@ export default function AccountPage() {
     const success = await updateUserDisplayName(usernameInputValue);
     if (success) {
       setIsEditingUsername(false);
-      // usernameInputValue should reflect change due to setUser in updateUserDisplayName
     }
     setIsUpdatingUsername(false);
   };
 
   const handlePasswordResetRequest = async () => {
     if (!user || !user.email) {
-        // This case should ideally not happen if the button is only enabled for logged-in users
         alert("Error: User email not found."); 
         return;
     }
     setIsSendingResetEmail(true);
     await sendPasswordReset(user.email);
     setIsSendingResetEmail(false);
-    // Toast is handled by sendPasswordReset in AuthContext
   };
 
 
@@ -182,7 +178,6 @@ export default function AccountPage() {
         </Card>
       </section>
 
-      {/* Billing Information Card (Placeholder) */}
       <section>
         <Card className="shadow-lg border-accent/20">
           <CardHeader>
@@ -195,19 +190,22 @@ export default function AccountPage() {
           <CardContent className="space-y-4">
             <div>
               <p className="text-sm text-muted-foreground">Current Plan:</p>
-              <p className="text-lg font-semibold text-foreground">Pro Tier (Monthly) - Placeholder</p>
+              <p className="text-lg font-semibold text-foreground">Free Tier (Limited)</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Next Billing Date:</p>
-              <p className="text-lg font-semibold text-foreground">July 15, 2024 - Placeholder</p>
+              <p className="text-lg font-semibold text-muted-foreground">N/A</p>
             </div>
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90" disabled>Manage Billing (Soon)</Button>
-             <Button variant="outline" className="ml-2 border-accent text-accent hover:bg-accent/10 hover:text-accent-foreground" disabled>View Invoices (Soon)</Button>
+            <Button className="bg-primary text-primary-foreground hover:bg-primary/90" disabled>
+              <ExternalLink className="mr-2 h-4 w-4" /> Upgrade to Pro (Soon)
+            </Button>
+            <Button variant="outline" className="ml-2 border-accent text-accent hover:bg-accent/10 hover:text-accent-foreground" disabled>
+              View Invoices (Soon)
+            </Button>
           </CardContent>
         </Card>
       </section>
 
-      {/* Security Settings Card (Placeholder) */}
       <section>
         <Card className="shadow-lg border-primary/20">
           <CardHeader>
