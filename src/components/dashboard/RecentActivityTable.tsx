@@ -19,6 +19,7 @@ interface ActivityLogEntry {
   userAgent: string;
   managedUrlPath: string; // The path that was hit (e.g. /trap/uuid-xyz)
   requestPath?: string; // Path requested *within* the tarpit (e.g. / or /login.php)
+  recursionDepth?: number; // New field for recursion depth
   userId: string;
   // other fields like method, status, responseType might exist but are not displayed in this summary
 }
@@ -44,7 +45,7 @@ export default function RecentActivityTable({ userIdOverride }: RecentActivityTa
     if (!currentUserId) {
       setActivityLogs([]);
       setIsLoading(false);
-      if (!userIdOverride) { 
+      if (!userIdOverride && !authLoading) { 
         // console.log("No user ID available for RecentActivityTable.");
       }
       return;
@@ -71,6 +72,7 @@ export default function RecentActivityTable({ userIdOverride }: RecentActivityTa
             userAgent: data.userAgent as string,
             managedUrlPath: data.managedUrlPath as string,
             requestPath: data.requestPath as string | undefined,
+            recursionDepth: data.recursionDepth as number | undefined,
             userId: data.userId as string,
           });
         } else {
@@ -121,7 +123,9 @@ export default function RecentActivityTable({ userIdOverride }: RecentActivityTa
 
   if (activityLogs.length === 0) {
     return <p className="text-muted-foreground text-center py-4">
-      {userIdOverride ? "No recent demo activity found." : "No recent activity logged yet. Once your tarpits are active and interacting with crawlers, logs will appear here."}
+      {userIdOverride 
+        ? "No recent demo activity found. Once the demo tarpit is active and interacts with crawlers, logs will appear here." 
+        : "No recent activity logged yet. Once your tarpits are active and interacting with crawlers, logs will appear here."}
     </p>;
   }
 
@@ -176,3 +180,4 @@ export default function RecentActivityTable({ userIdOverride }: RecentActivityTa
   );
 }
 
+    

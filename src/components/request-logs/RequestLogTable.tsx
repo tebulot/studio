@@ -20,6 +20,7 @@ interface TarpitLogEntry {
   managedUrlId: string;
   managedUrlPath: string; // e.g., /trap/uuid-123
   requestPath?: string; // e.g., /, /login.php - path requested *within* the tarpit
+  recursionDepth?: number; // New field for recursion depth
   userId: string;
   method?: "GET" | "POST" | "PUT" | "DELETE" | "OTHER" | string;
   status?: number;
@@ -48,7 +49,7 @@ export default function RequestLogTable({ userIdOverride }: RequestLogTableProps
     if (!currentUserId) {
       setLogs([]);
       setIsLoading(false);
-      if (!userIdOverride) { 
+      if (!userIdOverride && !authLoading) { 
         // console.log("No user ID available for RequestLogTable.");
       }
       return;
@@ -75,6 +76,7 @@ export default function RequestLogTable({ userIdOverride }: RequestLogTableProps
             managedUrlId: data.managedUrlId as string,
             managedUrlPath: data.managedUrlPath as string,
             requestPath: data.requestPath as string | undefined,
+            recursionDepth: data.recursionDepth as number | undefined, // Populate new field
             userId: data.userId as string,
             method: data.method as string | undefined,
             status: data.status as number | undefined,
@@ -130,7 +132,9 @@ export default function RequestLogTable({ userIdOverride }: RequestLogTableProps
 
   if (logs.length === 0) {
     return <p className="text-muted-foreground text-center py-4">
-      {userIdOverride ? "No demo logs found for this configuration." : "No request logs available yet. Once your tarpits are active and interacting with crawlers, logs will appear here."}
+      {userIdOverride 
+        ? "No demo logs found for this configuration. Once the demo tarpit is active and interacts with crawlers, logs will appear here." 
+        : "No request logs available yet. Once your tarpits are active and interacting with crawlers, logs will appear here."}
     </p>;
   }
 
@@ -144,6 +148,7 @@ export default function RequestLogTable({ userIdOverride }: RequestLogTableProps
               <TableHead className="text-accent w-[80px]">Method</TableHead>
               <TableHead className="text-accent">Managed URL Target</TableHead>
               <TableHead className="text-accent">Internal Path Requested</TableHead>
+              <TableHead className="text-accent w-[100px] text-center">Recursion</TableHead>
               <TableHead className="text-accent w-[130px]">IP Address</TableHead>
               <TableHead className="text-accent">User Agent</TableHead>
               <TableHead className="text-accent w-[80px] text-center">Status</TableHead>
@@ -181,6 +186,9 @@ export default function RequestLogTable({ userIdOverride }: RequestLogTableProps
                 <TableCell className="text-sm text-muted-foreground/80 break-all">
                     <span className="truncate block max-w-[150px]">{log.requestPath || '/'}</span>
                 </TableCell>
+                <TableCell className="text-center text-sm text-foreground/80">
+                  {log.recursionDepth !== undefined ? log.recursionDepth : 'N/A'}
+                </TableCell>
                 <TableCell className="text-sm text-muted-foreground">{log.trappedBotIp}</TableCell>
                 <TableCell className="text-xs text-muted-foreground max-w-xs truncate">
                    <Tooltip>
@@ -214,3 +222,5 @@ export default function RequestLogTable({ userIdOverride }: RequestLogTableProps
     </TooltipProvider>
   );
 }
+
+    
