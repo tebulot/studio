@@ -16,6 +16,7 @@ import { provisionAndGenerateManagedTarpitConfigDetails } from "@/lib/actions";
 import { db } from "@/lib/firebase/clientApp"; 
 import { collection, addDoc, serverTimestamp, query, where, getDocs } from "firebase/firestore"; 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton"; // Added this import
 
 const formSchema = z.object({
   name: z.string().min(1, "Tarpit Name is required."),
@@ -63,25 +64,40 @@ export default function AddUrlForm() {
         const querySnapshot = await getDocs(q);
         const count = querySnapshot.size;
         setCurrentUserUrlCount(count);
-        // For now, we use a placeholder for actual tier limits.
-        // If count is 0, they are "new" and can't add (simulating Window Shopping).
-        // If we wanted to allow 1 URL for a basic tier, it would be:
-        // setCanAddMoreUrls(count < ACTUAL_USER_TIER_LIMIT);
-        setCanAddMoreUrls(count < MAX_ALLOWED_URLS_PLACEHOLDER + 1 && count === 0); // Allows 0 if count is 0. Adjust if actual plans allow 1 for first tier.
-                                                                            // This effectively means if count is 0, canAddMoreUrls is false (0 < 1 && 0 === 0 is false)
-                                                                            // If you want the first tier (Set & Forget) to add 1, this logic needs to be more sophisticated
-                                                                            // by fetching user's actual tier.
-                                                                            // For now, let's simplify: if count is 0, they can't add.
+        
         if (count === 0) {
           setCanAddMoreUrls(false); // New users with 0 URLs are effectively on "Window Shopping"
         } else {
-          // If they have >0 URLs, it means they are on a "paid" tier.
-          // Here you would check against their *actual* tier's limit from Firestore.
-          // For this example, let's assume if they have any, they can't add more via this simple form.
-          // This logic needs to be replaced with real tier limit checks.
-          // For now, let's assume a very basic limit of 1 for demonstration if they already have one.
-          // This is a placeholder for a proper tier system.
-          setCanAddMoreUrls(count < 1); // Placeholder: if they have 1, they can't add more.
+          // This logic needs to be replaced with real tier limit checks from user's actual tier.
+          // For now, this placeholder allows up to 1 URL if they already have at least one.
+          // This means if they are on "Set & Forget" (1 URL limit) and have 1, they can't add.
+          // If they are on "Analytics" (3 URL limit) and have 1, they could add 2 more.
+          // A more robust check would fetch user's tier and its specific maxUrl.
+          // For simplicity in this step, let's assume a basic check against a small number if they have > 0.
+          // For a user who has > 0 URLs (meaning they are not "new"/Window Shopping):
+          // const userTierMaxUrls = 1; // Replace with actual fetched tier maxUrls (e.g. 1 for Set & Forget, 3 for Analytics)
+          // setCanAddMoreUrls(count < userTierMaxUrls); 
+          // As per current logic, it seems "Set & Forget allows 1, Analytics allows 3"
+          // For demo, we allow users who have existing URLs to add up to a hypothetical limit
+          // This is a placeholder for real tier enforcement.
+          // A more practical approach for a real app would be to fetch the user's current tier
+          // from Firestore, then get the maxUrls for that tier.
+          // const currentTier = await fetchUserTier(user.uid); // hypothetical function
+          // if (currentTier.id === 'set_and_forget') setCanAddMoreUrls(count < 1);
+          // else if (currentTier.id === 'analytics') setCanAddMoreUrls(count < 3);
+          // else setCanAddMoreUrls(false);
+
+          // Simplified placeholder logic:
+          // If they have > 0 URLs, they are not on "Window Shopping".
+          // Let's assume "Set & Forget" has 1 URL, "Analytics" has 3.
+          // If they have any URL, we can't know their tier from just URL count here.
+          // For now, if they have > 0, let's allow them to add up to a limit like 1, to simulate
+          // a basic tier. This needs to be replaced.
+          // The Account page simulates their tier; this form doesn't know it.
+          // The previous placeholder `setCanAddMoreUrls(count < 1)` for users with > 0 URLs was too restrictive.
+          // A more general placeholder if they have > 0 URLs:
+          const placeholderMaxForExistingUsers = 3; // Allows up to 3 URLs if they already have some
+          setCanAddMoreUrls(count < placeholderMaxForExistingUsers);
         }
 
 
@@ -108,20 +124,21 @@ export default function AddUrlForm() {
       return;
     }
 
-    if (!canAddMoreUrls && currentUserUrlCount >= MAX_ALLOWED_URLS_PLACEHOLDER && currentUserUrlCount > 0) {
-         toast({
-            title: "Limit Reached",
-            description: "You've reached the maximum number of Managed URLs for your current plan. Please upgrade to add more.",
-            variant: "default",
+    if (!canAddMoreUrls && currentUserUrlCount === 0) { 
+        toast({
+            title: "Subscription Required",
+            description: "To add your first Managed URL, please select a subscription plan on your Account page.",
+            variant: "default", // Changed from destructive to default
             duration: 7000,
         });
         return;
     }
-     if (currentUserUrlCount === 0 && !canAddMoreUrls) { // Explicitly for the "0 existing URLs" case
-        toast({
-            title: "Subscription Required",
-            description: "Please select a subscription plan on the Account page to add Managed URLs.",
-            variant: "default",
+
+     if (!canAddMoreUrls && currentUserUrlCount > 0) {
+         toast({
+            title: "Limit Reached",
+            description: "You've reached the maximum number of Managed URLs for your current plan. Please upgrade to add more.",
+            variant: "default", // Changed from destructive to default
             duration: 7000,
         });
         return;
@@ -135,6 +152,7 @@ export default function AddUrlForm() {
             variant: "default",
             duration: 10000,
         });
+        // Not returning here, allow local testing if user proceeds
     }
 
     setIsLoading(true);
@@ -175,11 +193,13 @@ export default function AddUrlForm() {
         const querySnapshot = await getDocs(q);
         const count = querySnapshot.size;
         setCurrentUserUrlCount(count);
-        // This simplified logic will need to be replaced by actual tier limit checks
+        
         if (count === 0) {
             setCanAddMoreUrls(false);
         } else {
-            setCanAddMoreUrls(count < 1); // Placeholder
+          // Placeholder: replace with actual tier limit check
+          const placeholderMaxForExistingUsers = 3; 
+          setCanAddMoreUrls(count < placeholderMaxForExistingUsers); 
         }
 
     } catch (error) {
@@ -207,14 +227,21 @@ export default function AddUrlForm() {
 
   return (
     <>
-      {!canAddMoreUrls && !isCheckingUrlCount && user && (
-        <Alert variant="destructive" className="mb-6 border-amber-500/50 text-amber-500 [&>svg]:text-amber-500">
+      {!canAddMoreUrls && !isCheckingUrlCount && user && currentUserUrlCount === 0 && ( // Specific message for 0 URLs
+        <Alert variant="default" className="mb-6 border-amber-500/50 text-amber-500 [&>svg]:text-amber-500 bg-amber-500/10">
           <ShieldAlert className="h-5 w-5" />
-          <AlertTitle>URL Limit Reached or Subscription Required</AlertTitle>
+          <AlertTitle>Subscription Required</AlertTitle>
           <AlertDescription>
-            {currentUserUrlCount === 0 
-              ? "To add your first Managed URL, please select a subscription plan on your Account page."
-              : "You have reached the maximum number of Managed URLs for your current plan. Please upgrade to add more."}
+            To add your first Managed URL, please select a subscription plan on your Account page.
+          </AlertDescription>
+        </Alert>
+      )}
+      {!canAddMoreUrls && !isCheckingUrlCount && user && currentUserUrlCount > 0 && ( // Specific message for >0 URLs but limit reached
+        <Alert variant="default" className="mb-6 border-amber-500/50 text-amber-500 [&>svg]:text-amber-500 bg-amber-500/10">
+          <ShieldAlert className="h-5 w-5" />
+          <AlertTitle>URL Limit Reached</AlertTitle>
+          <AlertDescription>
+            You have reached the maximum number of Managed URLs for your current plan. Please upgrade to add more.
           </AlertDescription>
         </Alert>
       )}
