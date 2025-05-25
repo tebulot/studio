@@ -9,6 +9,23 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { useState, useEffect } from 'react';
 
 export default function HomePage() {
+  const [backgroundIconStyles, setBackgroundIconStyles] = useState<React.CSSProperties[]>([]);
+
+   useEffect(() => {
+    const generateStyles = () => {
+      const newStyles = Array.from({ length: 1 }).map(() => ({ // Changed to 1 for a single large icon
+        width: `500vw`, 
+        height: `500vh`, 
+        top: `50%`, 
+        left: `50%`,
+        transform: 'translate(-50%, -50%)', // Centering
+        animationDuration: `${Math.random() * 10 + 10}s`, // Randomize spin speed slightly
+        opacity: 0.05, // Low opacity
+      }));
+      setBackgroundIconStyles(newStyles);
+    };
+    generateStyles();
+  }, []);
 
   const faqData = [
     {
@@ -55,7 +72,7 @@ export default function HomePage() {
         </>
       )
     },
-    {
+     {
       question: "Will SpiteSpiral make my website slower for my actual human visitors?",
       answer: "No. The Managed URL you embed is designed to be unobtrusive (e.g., a 1x1 pixel image, an invisible stylesheet link). Your website loads from your server as usual. The \"slowing down\" effect is only experienced by the bot when it specifically requests that Managed URL, and that interaction happens with our separate SpiteSpiral tarpit servers."
     },
@@ -100,10 +117,15 @@ export default function HomePage() {
   return (
     <div className="relative flex flex-col items-center justify-center min-h-screen bg-background text-foreground font-mono p-8 selection:bg-primary selection:text-primary-foreground">
       <div className="absolute inset-0 overflow-hidden z-0 flex items-center justify-center">
-        <BrandLogoIcon
-          className="w-[500vw] h-[500vh] animate-spin-slow opacity-5"
-          isPriority={false}
-        />
+        {/* Single large, centered, slowly rotating logo */}
+        {backgroundIconStyles.map((style, index) => (
+          <BrandLogoIcon
+            key={index}
+            className="animate-spin-slow opacity-5" // Removed text-primary/5
+            style={style}
+            isPriority={false}
+          />
+        ))}
       </div>
 
       <div className="relative z-10 text-center flex flex-col items-center w-full">
@@ -197,10 +219,11 @@ export default function HomePage() {
 
       <footer className="relative bottom-8 text-sm text-muted-foreground/70 z-10 flex flex-col items-center space-y-1">
         <span>© {new Date().getFullYear()} SpiteSpiral Industries. All rights reserved.</span>
-        <NextLink href="/legal/licenses" className="hover:text-accent hover:underline">
+        <NextLink href="/legal/licenses" className="hover:text-accent hover:underline animate-link-glow">
           Licenses & Acknowledgements
         </NextLink>
       </footer>
     </div>
   );
 }
+
