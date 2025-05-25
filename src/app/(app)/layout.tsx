@@ -3,7 +3,7 @@
 
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset, SidebarTrigger, SidebarFooter } from "@/components/ui/sidebar";
 import AppHeaderContent from '@/components/layout/AppHeaderContent';
-import { LayoutDashboard, Link2, FileText, Menu, LogOut, UserCog } from 'lucide-react'; 
+import { LayoutDashboard, Link2, Menu, LogOut, UserCog } from 'lucide-react'; // FileText icon removed
 import NextLink from 'next/link'; 
 import { Button } from '@/components/ui/button';
 import BrandLogoIcon from '@/components/icons/BrandLogoIcon';
@@ -42,14 +42,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   </NextLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip={{content:"Logs", side:"right", className:"bg-popover text-popover-foreground border-primary/50"}} className="justify-start">
-                  <NextLink href="/anomaly-detection" className="flex items-center"> 
-                    <FileText className="mr-2 h-5 w-5 text-accent" /> 
-                    <span className="text-base">Logs</span> 
-                  </NextLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              {/* Logs menu item removed */}
               <SidebarMenuItem>
                 <SidebarMenuButton asChild tooltip={{content:"Account", side:"right", className:"bg-popover text-popover-foreground border-primary/50"}} className="justify-start">
                   <NextLink href="/account" className="flex items-center">
