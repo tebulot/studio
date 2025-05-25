@@ -18,7 +18,7 @@ interface TarpitConfigForClientWrite {
   description: string;
   pathSegment: string;
   fullUrl: string;
-  instanceId?: string; // From Docker provisioning API response
+  instanceId?: string; // From Docker provisioning API response (specifically, containerId)
 }
 
 export async function provisionAndGenerateManagedTarpitConfigDetails(
@@ -65,7 +65,8 @@ export async function provisionAndGenerateManagedTarpitConfigDetails(
 
   try {
     const pathSegment = randomUUID();
-    const fullUrl = `${tarpitBaseUrl}/trap/${pathSegment}`; // Ensure /trap/ prefix or similar as needed
+    // Ensure the path segment is URL-friendly if it's not already (UUIDs are fine)
+    const fullUrl = `${tarpitBaseUrl}/trap/${pathSegment}`;
 
     // Call your backend Docker provisioning API
     console.log(
@@ -75,13 +76,13 @@ export async function provisionAndGenerateManagedTarpitConfigDetails(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${dockerApiKey}`, // Ensure your backend expects a Bearer token
+        Authorization: `Bearer ${dockerApiKey}`,
       },
       body: JSON.stringify({
-        userId, // Pass userId to backend
+        userId,
         name,
         description: description || '',
-        pathSegment, // Pass pathSegment to backend for routing/config
+        pathSegment,
       }),
     });
 
@@ -93,7 +94,6 @@ export async function provisionAndGenerateManagedTarpitConfigDetails(
           errorData.message || 'No additional error message from backend.'
         }`;
       } catch (jsonError) {
-        // If parsing fails, it's useful to see the raw text if available
         const rawText = await provisionResponse
           .text()
           .catch(() => 'Could not get raw text response.');
@@ -106,26 +106,32 @@ export async function provisionAndGenerateManagedTarpitConfigDetails(
       return { success: false, message: errorMsg };
     }
 
-    const provisionData = await provisionResponse.json(); // Assuming backend returns { success: true, instanceId: '...', ... }
+    const provisionData = await provisionResponse.json();
     console.log(
       'Docker instance provisioned successfully by backend:',
       provisionData
     );
 
-    // Prepare data for Firestore write on the client side
+    // Use containerId from backend response for instanceId
+    const instanceIdFromBackend = provisionData.containerId || provisionData.containerName || provisionData.instanceId;
+
+    if (!instanceIdFromBackend) {
+        console.warn("Backend provisioning response did not include containerId, containerName, or instanceId. instanceId will be undefined in Firestore.");
+    }
+
     const configDetails: TarpitConfigForClientWrite = {
       userId,
       name,
       description: description || '',
       pathSegment,
       fullUrl,
-      instanceId: provisionData.instanceId, // Capture instanceId from backend response
+      instanceId: instanceIdFromBackend, // Store the actual Docker container ID or name
     };
 
     return {
       success: true,
       message:
-        'Docker instance provisioned and configuration details generated!',
+        provisionData.message || 'Docker instance provisioned and configuration details generated!',
       configData: configDetails,
       fullUrl: fullUrl,
     };
@@ -142,8 +148,8 @@ export async function provisionAndGenerateManagedTarpitConfigDetails(
 
 // Interface for data passed to deprovisionTarpitInstance
 interface DeprovisionTarpitData {
-  instanceId?: string;
-  pathSegment: string;
+  instanceId?: string; // This will be the Docker container ID from Firestore
+  pathSegment: string;  // Fallback or for logging
   userId: string;
 }
 
@@ -153,7 +159,7 @@ export async function deprovisionTarpitInstance(
   const { instanceId, pathSegment, userId } = data;
 
   const deprovisionApiEndpoint = process.env.DOCKER_DEPROVISIONING_API_ENDPOINT;
-  const dockerApiKey = process.env.DOCKER_PROVISIONING_API_KEY; // Assuming same key for simplicity
+  const dockerApiKey = process.env.DOCKER_PROVISIONING_API_KEY;
 
   if (!deprovisionApiEndpoint || !dockerApiKey) {
     console.error(
@@ -167,29 +173,37 @@ export async function deprovisionTarpitInstance(
     };
   }
 
-  const containerName = instanceId || pathSegment;
-  if (!containerName) {
-    console.error('Deprovisioning error: Missing instanceId or pathSegment.');
+  // The `containerName` sent to the backend will be the `instanceId` (Docker ID) if available,
+  // otherwise it falls back to the `pathSegment`. Your backend is designed to handle this.
+  const containerIdentifierForBackend = instanceId || pathSegment;
+
+  if (!containerIdentifierForBackend) {
+    console.error('Deprovisioning error: Missing instanceId and pathSegment. Cannot identify container.');
     return {
       success: false,
-      message: 'Missing instanceId or pathSegment for de-provisioning.',
+      message: 'Missing identifier (instanceId or pathSegment) for de-provisioning.',
     };
   }
 
   try {
     console.log(
-      `Attempting to de-provision Docker instance via ${deprovisionApiEndpoint}. Identifier (containerName): ${containerName} for user: ${userId}`
+      `Attempting to de-provision Docker instance via ${deprovisionApiEndpoint}. Body:`, {
+        containerName: containerIdentifierForBackend,
+        instanceId: instanceId, // Send original instanceId (Docker ID) if present
+        pathSegment: pathSegment, // Send original pathSegment
+        userId: userId,
+      }
     );
     const response = await fetch(deprovisionApiEndpoint, {
-      method: 'POST', // Changed from DELETE to POST based on backend logs
+      method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${dockerApiKey}`,
       },
       body: JSON.stringify({
-        containerName: containerName,
-        instanceId: instanceId, // Still send original fields for backend flexibility
-        pathSegment: pathSegment,
+        containerName: containerIdentifierForBackend, // Backend expects this field to identify the container
+        instanceId: instanceId, // Still send original field for backend flexibility/logging
+        pathSegment: pathSegment, // Still send original field
         userId: userId,
       }),
     });
