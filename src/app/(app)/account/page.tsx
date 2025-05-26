@@ -33,9 +33,9 @@ const subscriptionTiers = [
   {
     id: "set_and_forget",
     name: "Set & Forget",
-    price: "$4/mo", // Updated Price
+    price: "$5/mo", // Updated Price
     features: [
-      "1 Managed URL", // Updated Feature
+      "1 Managed URL",
       "Dashboard Stats (30-min refresh)",
       "Email Support",
     ],
@@ -48,7 +48,7 @@ const subscriptionTiers = [
   {
     id: "analytics",
     name: "Analytics",
-    price: "$12/mo", // Updated Price
+    price: "$12/mo",
     features: [
       "Up to 3 Managed URLs",
       "Full Dashboard Analytics",
@@ -266,7 +266,7 @@ export default function AccountPage() {
           <CardHeader>
              <div className="flex items-center gap-2">
                 <CreditCard className="h-6 w-6 text-primary" />
-                <CardTitle className="text-xl text-accent">Subscription & Billing</CardTitle>
+                <CardTitle className="text-xl text-accent">Subscription &amp; Billing</CardTitle>
             </div>
             <CardDescription>Manage your SpiteSpiral subscription plan.</CardDescription>
           </CardHeader>
