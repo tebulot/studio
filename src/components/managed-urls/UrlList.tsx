@@ -19,7 +19,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useAuth } from "@/contexts/AuthContext";
 import { db } from "@/lib/firebase/clientApp";
-import { collection, query, where, onSnapshot, Timestamp, type DocumentData, type QueryDocumentSnapshot, doc, updateDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
+import { collection, query, where, onSnapshot, Timestamp, type DocumentData, type QueryDocumentSnapshot, doc, updateDoc, deleteDoc, serverTimestamp, orderBy } from "firebase/firestore"; // Added orderBy
 import { deprovisionTarpitInstance } from '@/lib/actions';
 
 interface ManagedUrlFirestoreData {
@@ -271,7 +271,7 @@ export default function UrlList() {
               </CardContent>
               <CardFooter className="flex justify-end gap-2 border-t border-border pt-4">
                 <Button variant="ghost" size="icon" title="Get Embed Code & Instructions" onClick={() => handleEmbedOpen(url)} className="text-muted-foreground hover:text-primary">
-                  <HelpCircle className="h-4 w-4" />
+                  <HelpCircle className="mr-2 h-4 w-4" />
                 </Button>
                 <Button variant="ghost" size="icon" onClick={() => handleCopy(url.fullUrl, "URL")} title="Copy URL" className="text-muted-foreground hover:text-primary">
                   <Copy className="h-4 w-4" />
@@ -358,7 +358,6 @@ export default function UrlList() {
                     </ul>
                   </AccordionContent>
                 </AccordionItem>
-
                 {/*
                 <AccordionItem value="item-5">
                   <AccordionTrigger className="text-accent hover:text-primary">Do's and Don'ts (SEO & Best Practices)</AccordionTrigger>
@@ -371,9 +370,9 @@ export default function UrlList() {
                     </ul>
                     <p className="font-semibold text-foreground/90 mt-2">Don't:</p>
                      <ul className="list-disc pl-5 space-y-1">
-                      <li>Make the Managed URL a standard, visible, crawlable link for your human users.</li>
-                      <li>If you must use an anchor tag, add rel="nofollow".</li>
-                      <li>Modify the URL part of the snippet.</li>
+                        <li>Make the Managed URL a standard, visible, crawlable link for your human users.</li>
+                        <li>If you must use an anchor tag, add rel="nofollow".</li>
+                        <li>Modify the URL part of the snippet.</li>
                     </ul>
                   </AccordionContent>
                 </AccordionItem>
