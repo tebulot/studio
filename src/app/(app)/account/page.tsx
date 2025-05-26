@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { loadStripe, type Stripe } from '@stripe/stripe-js';
 
 // Define Subscription Tiers
 const subscriptionTiers = [
@@ -45,7 +46,7 @@ const subscriptionTiers = [
     variant: "default" as const,
     isCurrent: (currentTierId: string) => currentTierId === "set_and_forget",
     actionType: "switch_plan" as const,
-    stripePriceId: "price_xxxxxxxxxxxxxx_set_forget", // Replace with your actual Stripe Price ID
+    stripePriceId: "price_REPLACE_WITH_YOUR_SET_FORGET_PRICE_ID", // Replace with your actual Stripe Price ID
   },
   {
     id: "analytics",
@@ -61,9 +62,13 @@ const subscriptionTiers = [
     variant: "default" as const,
     isCurrent: (currentTierId: string) => currentTierId === "analytics",
     actionType: "switch_plan" as const,
-    stripePriceId: "price_yyyyyyyyyyyyyy_analytics", // Replace with your actual Stripe Price ID
+    stripePriceId: "price_REPLACE_WITH_YOUR_ANALYTICS_PRICE_ID", // Replace with your actual Stripe Price ID
   },
 ];
+
+const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY 
+  ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) 
+  : null;
 
 export default function AccountPage() {
   const { user, loading: authLoading, updateUserEmail, updateUserDisplayName, sendPasswordReset } = useAuth();
@@ -71,7 +76,7 @@ export default function AccountPage() {
 
   const [currentUserTierId, setCurrentUserTierId] = useState("window_shopping"); 
   const [isSubmittingPlanChange, setIsSubmittingPlanChange] = useState<string | null>(null);
-
+  const [isManagingSubscription, setIsManagingSubscription] = useState(false);
 
   const [isEditingEmail, setIsEditingEmail] = useState(false);
   const [emailInputValue, setEmailInputValue] = useState("");
@@ -90,8 +95,7 @@ export default function AccountPage() {
       // In a real app, you would fetch the user's actual tier from your database here
       // (e.g., Firestore /user_profiles/{userId}) and setCurrentUserTierId(fetchedTierId);
       // For now, we simulate by defaulting to "window_shopping".
-      // To simulate being on "Analytics" tier:
-      // setCurrentUserTierId("analytics"); 
+      // setCurrentUserTierId("analytics"); // To simulate being on Analytics
     }
   }, [user]);
 
@@ -132,6 +136,10 @@ export default function AccountPage() {
   };
 
   const handlePlanChangeClick = async (tierId: string, actionType: string, stripePriceId: string | null) => {
+    if (!user) {
+      toast({ title: "Authentication Error", description: "Please log in to change your plan.", variant: "destructive" });
+      return;
+    }
     if (tierId === currentUserTierId && actionType === "switch_plan") return;
 
     const targetTier = subscriptionTiers.find(t => t.id === tierId);
@@ -143,41 +151,105 @@ export default function AccountPage() {
         description: `You are currently on the ${targetTier.name} tier. Check out our paid plans for more features!`,
         duration: 5000,
         });
-    } else { // switch_plan
+    } else if (actionType === "switch_plan") {
+        if (!stripePriceId) {
+            toast({ title: "Error", description: "Stripe Price ID not configured for this plan.", variant: "destructive" });
+            return;
+        }
+        if (!stripePromise) {
+            toast({ title: "Stripe Error", description: "Stripe is not configured correctly. Please contact support.", variant: "destructive" });
+            console.error("Stripe Publishable Key not found.");
+            return;
+        }
         setIsSubmittingPlanChange(tierId);
-        // TODO: Implement Stripe Checkout Flow
-        // 1. Call a Server Action that calls your backend's /create-checkout-session endpoint
-        //    - Pass the stripePriceId and user ID.
-        // 2. Backend creates a Stripe Checkout Session, returns a sessionId.
-        // 3. Server Action returns sessionId to this client function.
-        // 4. Use Stripe.js (loadStripe(NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY).then(stripe => stripe.redirectToCheckout({ sessionId })))
-        //    to redirect the user to Stripe.
+        try {
+            const idToken = await user.getIdToken();
+            const apiBaseUrl = process.env.NEXT_PUBLIC_SPITESPIRAL_API_BASE_URL;
+            if (!apiBaseUrl) {
+              throw new Error("API base URL not configured.");
+            }
 
-        // For now, simulate:
-        await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate API call
-        toast({
-        title: "Stripe Checkout (Pending)",
-        description: `Initiating checkout for ${targetTier.name}. Full Stripe integration is required.`,
-        duration: 7000,
-        });
-        // In a real app, upon successful payment via Stripe webhook, you'd update the user's tier in your DB.
-        // For simulation here, we can change the UI:
-        // setCurrentUserTierId(tierId); 
-        setIsSubmittingPlanChange(null);
+            const response = await fetch(`${apiBaseUrl}/v1/stripe/create-checkout-session`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${idToken}`,
+                },
+                body: JSON.stringify({ priceId: stripePriceId }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ message: "Failed to create Stripe Checkout session. Please try again." }));
+                throw new Error(errorData.message || "Failed to create Stripe Checkout session.");
+            }
+
+            const { sessionId } = await response.json();
+            if (!sessionId) {
+                throw new Error("Stripe Checkout session ID not received.");
+            }
+
+            const stripe = await stripePromise;
+            if (stripe) {
+                const { error } = await stripe.redirectToCheckout({ sessionId });
+                if (error) {
+                    console.error("Stripe redirect error:", error);
+                    toast({ title: "Stripe Error", description: error.message || "Could not redirect to Stripe Checkout.", variant: "destructive" });
+                }
+            } else {
+                 throw new Error("Stripe.js failed to load.");
+            }
+        } catch (error) {
+            console.error("Plan change error:", error);
+            toast({ title: "Error", description: (error as Error).message || "An unexpected error occurred.", variant: "destructive" });
+        } finally {
+            setIsSubmittingPlanChange(null);
+        }
     }
   };
 
   const handleManageSubscription = async () => {
-    // TODO: Implement Stripe Customer Portal Flow
-    // 1. Call a Server Action that calls your backend's /create-customer-portal-session endpoint
-    // 2. Backend creates a Stripe Customer Portal session, returns a portalUrl.
-    // 3. Server Action returns portalUrl.
-    // 4. Redirect the user: window.location.href = portalUrl;
-    toast({
-        title: "Manage Subscription (Pending)",
-        description: "This will redirect to the Stripe Customer Portal. Integration required.",
-        duration: 7000,
-    });
+    if (!user) {
+      toast({ title: "Authentication Error", description: "Please log in to manage your subscription.", variant: "destructive" });
+      return;
+    }
+     if (!stripePromise) {
+        toast({ title: "Stripe Error", description: "Stripe is not configured correctly. Please contact support.", variant: "destructive" });
+        console.error("Stripe Publishable Key not found.");
+        return;
+    }
+    setIsManagingSubscription(true);
+    try {
+        const idToken = await user.getIdToken();
+        const apiBaseUrl = process.env.NEXT_PUBLIC_SPITESPIRAL_API_BASE_URL;
+        if (!apiBaseUrl) {
+          throw new Error("API base URL not configured.");
+        }
+        
+        const response = await fetch(`${apiBaseUrl}/v1/stripe/create-customer-portal-session`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json', // Though no body is sent, it's good practice
+                'Authorization': `Bearer ${idToken}`,
+            },
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ message: "Failed to create Stripe Customer Portal session. Please try again." }));
+            throw new Error(errorData.message || "Failed to create Stripe Customer Portal session.");
+        }
+
+        const { portalUrl } = await response.json();
+        if (!portalUrl) {
+            throw new Error("Stripe Customer Portal URL not received.");
+        }
+        window.location.href = portalUrl;
+
+    } catch (error) {
+        console.error("Manage subscription error:", error);
+        toast({ title: "Error", description: (error as Error).message || "Could not open subscription management.", variant: "destructive" });
+    } finally {
+        setIsManagingSubscription(false);
+    }
   }
 
 
@@ -326,7 +398,7 @@ export default function AccountPage() {
                       className={`w-full ${tier.isCurrent(currentUserTierId) && tier.actionType === "switch_plan" ? 'bg-muted text-muted-foreground cursor-not-allowed' : 'bg-primary text-primary-foreground hover:bg-primary/90' }`}
                       variant={tier.variant}
                       onClick={() => handlePlanChangeClick(tier.id, tier.actionType, tier.stripePriceId)}
-                      disabled={(tier.isCurrent(currentUserTierId) && tier.actionType === "switch_plan") || isSubmittingPlanChange === tier.id}
+                      disabled={(tier.isCurrent(currentUserTierId) && tier.actionType === "switch_plan") || isSubmittingPlanChange === tier.id || authLoading}
                     >
                       {isSubmittingPlanChange === tier.id ? <Loader2 className="h-5 w-5 animate-spin" /> : 
                        tier.isCurrent(currentUserTierId) && tier.actionType === "switch_plan" ? "Current Plan" : tier.cta}
@@ -337,10 +409,16 @@ export default function AccountPage() {
             </div>
             <Separator />
              <div>
-                <h3 className="text-md font-semibold text-foreground/90 mb-1">Payment &amp; Invoices</h3>
+                <h3 className="text-md font-semibold text-foreground/90 mb-1">Payment & Invoices</h3>
                 <p className="text-sm text-muted-foreground mb-2">Manage your payment method and view billing history via Stripe.</p>
-                <Button variant="outline" className="border-accent text-accent hover:bg-accent/10" onClick={handleManageSubscription}>
-                    <ExternalLink className="mr-2 h-4 w-4" /> Manage Subscription (Stripe)
+                <Button 
+                  variant="outline" 
+                  className="border-accent text-accent hover:bg-accent/10" 
+                  onClick={handleManageSubscription}
+                  disabled={isManagingSubscription || authLoading}
+                >
+                    {isManagingSubscription ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ExternalLink className="mr-2 h-4 w-4" /> }
+                    Manage Subscription (Stripe)
                 </Button>
             </div>
           </CardContent>
