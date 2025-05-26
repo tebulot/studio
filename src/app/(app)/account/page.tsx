@@ -29,11 +29,12 @@ const subscriptionTiers = [
     variant: "outline" as const,
     isCurrent: (currentTierId: string) => currentTierId === "window_shopping",
     actionType: "view_plans" as const,
+    stripePriceId: null, // No Stripe price for a free/view-only tier
   },
   {
     id: "set_and_forget",
     name: "Set & Forget",
-    price: "$5/mo", // Updated Price
+    price: "$5/mo",
     features: [
       "1 Managed URL",
       "Dashboard Stats (30-min refresh)",
@@ -44,6 +45,7 @@ const subscriptionTiers = [
     variant: "default" as const,
     isCurrent: (currentTierId: string) => currentTierId === "set_and_forget",
     actionType: "switch_plan" as const,
+    stripePriceId: "price_xxxxxxxxxxxxxx_set_forget", // Replace with your actual Stripe Price ID
   },
   {
     id: "analytics",
@@ -59,6 +61,7 @@ const subscriptionTiers = [
     variant: "default" as const,
     isCurrent: (currentTierId: string) => currentTierId === "analytics",
     actionType: "switch_plan" as const,
+    stripePriceId: "price_yyyyyyyyyyyyyy_analytics", // Replace with your actual Stripe Price ID
   },
 ];
 
@@ -67,6 +70,8 @@ export default function AccountPage() {
   const { toast } = useToast();
 
   const [currentUserTierId, setCurrentUserTierId] = useState("window_shopping"); 
+  const [isSubmittingPlanChange, setIsSubmittingPlanChange] = useState<string | null>(null);
+
 
   const [isEditingEmail, setIsEditingEmail] = useState(false);
   const [emailInputValue, setEmailInputValue] = useState("");
@@ -83,8 +88,9 @@ export default function AccountPage() {
       setEmailInputValue(user.email || "");
       setUsernameInputValue(user.displayName || user.email?.split('@')[0] || "currentUser");
       // In a real app, you would fetch the user's actual tier from your database here
-      // and setCurrentUserTierId(fetchedTierId);
-      // For simulation, if you want your account to appear as "Analytics" by default:
+      // (e.g., Firestore /user_profiles/{userId}) and setCurrentUserTierId(fetchedTierId);
+      // For now, we simulate by defaulting to "window_shopping".
+      // To simulate being on "Analytics" tier:
       // setCurrentUserTierId("analytics"); 
     }
   }, [user]);
@@ -125,7 +131,7 @@ export default function AccountPage() {
     setIsSendingResetEmail(false);
   };
 
-  const handlePlanChangeClick = (tierId: string, actionType: string) => {
+  const handlePlanChangeClick = async (tierId: string, actionType: string, stripePriceId: string | null) => {
     if (tierId === currentUserTierId && actionType === "switch_plan") return;
 
     const targetTier = subscriptionTiers.find(t => t.id === tierId);
@@ -137,18 +143,42 @@ export default function AccountPage() {
         description: `You are currently on the ${targetTier.name} tier. Check out our paid plans for more features!`,
         duration: 5000,
         });
-        // Optionally, scroll to the paid plans or highlight them
     } else { // switch_plan
+        setIsSubmittingPlanChange(tierId);
+        // TODO: Implement Stripe Checkout Flow
+        // 1. Call a Server Action that calls your backend's /create-checkout-session endpoint
+        //    - Pass the stripePriceId and user ID.
+        // 2. Backend creates a Stripe Checkout Session, returns a sessionId.
+        // 3. Server Action returns sessionId to this client function.
+        // 4. Use Stripe.js (loadStripe(NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY).then(stripe => stripe.redirectToCheckout({ sessionId })))
+        //    to redirect the user to Stripe.
+
+        // For now, simulate:
+        await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate API call
         toast({
-        title: "Coming Soon!",
-        description: `Subscription management for the ${targetTier.name} tier will be available soon.`,
-        duration: 5000,
+        title: "Stripe Checkout (Pending)",
+        description: `Initiating checkout for ${targetTier.name}. Full Stripe integration is required.`,
+        duration: 7000,
         });
-        // In a real app, this would initiate a Stripe checkout flow or similar.
-        // For now, we can simulate changing the tier for UI purposes if needed:
+        // In a real app, upon successful payment via Stripe webhook, you'd update the user's tier in your DB.
+        // For simulation here, we can change the UI:
         // setCurrentUserTierId(tierId); 
+        setIsSubmittingPlanChange(null);
     }
   };
+
+  const handleManageSubscription = async () => {
+    // TODO: Implement Stripe Customer Portal Flow
+    // 1. Call a Server Action that calls your backend's /create-customer-portal-session endpoint
+    // 2. Backend creates a Stripe Customer Portal session, returns a portalUrl.
+    // 3. Server Action returns portalUrl.
+    // 4. Redirect the user: window.location.href = portalUrl;
+    toast({
+        title: "Manage Subscription (Pending)",
+        description: "This will redirect to the Stripe Customer Portal. Integration required.",
+        duration: 7000,
+    });
+  }
 
 
   return (
@@ -266,7 +296,7 @@ export default function AccountPage() {
           <CardHeader>
              <div className="flex items-center gap-2">
                 <CreditCard className="h-6 w-6 text-primary" />
-                <CardTitle className="text-xl text-accent">Subscription &amp; Billing</CardTitle>
+                <CardTitle className="text-xl text-accent">Subscription & Billing</CardTitle>
             </div>
             <CardDescription>Manage your SpiteSpiral subscription plan.</CardDescription>
           </CardHeader>
@@ -295,29 +325,22 @@ export default function AccountPage() {
                     <Button 
                       className={`w-full ${tier.isCurrent(currentUserTierId) && tier.actionType === "switch_plan" ? 'bg-muted text-muted-foreground cursor-not-allowed' : 'bg-primary text-primary-foreground hover:bg-primary/90' }`}
                       variant={tier.variant}
-                      onClick={() => handlePlanChangeClick(tier.id, tier.actionType)}
-                      disabled={tier.isCurrent(currentUserTierId) && tier.actionType === "switch_plan"}
+                      onClick={() => handlePlanChangeClick(tier.id, tier.actionType, tier.stripePriceId)}
+                      disabled={(tier.isCurrent(currentUserTierId) && tier.actionType === "switch_plan") || isSubmittingPlanChange === tier.id}
                     >
-                      {tier.isCurrent(currentUserTierId) && tier.actionType === "switch_plan" ? "Current Plan" : tier.cta}
-                      {tier.actionType === "switch_plan" && !tier.isCurrent(currentUserTierId) && <span className="text-xs ml-1">(Soon)</span>}
+                      {isSubmittingPlanChange === tier.id ? <Loader2 className="h-5 w-5 animate-spin" /> : 
+                       tier.isCurrent(currentUserTierId) && tier.actionType === "switch_plan" ? "Current Plan" : tier.cta}
                     </Button>
                   </CardFooter>
                 </Card>
               ))}
             </div>
             <Separator />
-            <div>
-                <h3 className="text-md font-semibold text-foreground/90 mb-1">Payment Method</h3>
-                <p className="text-sm text-muted-foreground mb-2">Your primary payment method will appear here.</p>
-                <Button variant="outline" className="border-accent text-accent hover:bg-accent/10" disabled>
-                    <ExternalLink className="mr-2 h-4 w-4" /> Manage Payment Methods (Soon)
-                </Button>
-            </div>
-            <div>
-                <h3 className="text-md font-semibold text-foreground/90 mb-1">Billing History</h3>
-                <p className="text-sm text-muted-foreground mb-2">View your past invoices and billing details.</p>
-                <Button variant="outline" className="border-accent text-accent hover:bg-accent/10" disabled>
-                    View Invoices (Soon)
+             <div>
+                <h3 className="text-md font-semibold text-foreground/90 mb-1">Payment &amp; Invoices</h3>
+                <p className="text-sm text-muted-foreground mb-2">Manage your payment method and view billing history via Stripe.</p>
+                <Button variant="outline" className="border-accent text-accent hover:bg-accent/10" onClick={handleManageSubscription}>
+                    <ExternalLink className="mr-2 h-4 w-4" /> Manage Subscription (Stripe)
                 </Button>
             </div>
           </CardContent>
@@ -357,6 +380,3 @@ export default function AccountPage() {
     </div>
   );
 }
-    
-
-    
