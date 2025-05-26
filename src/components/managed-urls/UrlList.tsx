@@ -23,7 +23,7 @@ import { collection, query, where, onSnapshot, Timestamp, type DocumentData, typ
 import { deprovisionTarpitInstance } from '@/lib/actions';
 
 interface ManagedUrlFirestoreData {
-  id: string; 
+  id: string;
   name: string;
   description?: string;
   fullUrl: string;
@@ -55,7 +55,7 @@ export default function UrlList() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [currentUrlToDelete, setCurrentUrlToDelete] = useState<ManagedUrlFirestoreData | null>(null);
   const [isDeleteLoading, setIsDeleteLoading] = useState(false);
-  
+
   const [isEmbedDialogOpen, setIsEmbedDialogOpen] = useState(false);
   const [currentUrlForEmbed, setCurrentUrlForEmbed] = useState<ManagedUrlFirestoreData | null>(null);
 
@@ -104,7 +104,6 @@ export default function UrlList() {
           // console.warn(`Document ${docSnap.id} is missing required fields or has invalid createdAt. Data:`, data);
         }
       });
-      // Sorting is already handled by Firestore's orderBy, no need to sort client-side again
       setUrls(validUrls);
       setIsLoading(false);
     }, (error) => {
@@ -172,14 +171,8 @@ export default function UrlList() {
           duration: 7000,
         });
         setIsDeleteLoading(false);
-        return; 
+        return;
       }
-
-      toast({
-        title: "Instance De-provisioning Started",
-        description: deprovisionResult.message,
-        variant: "default",
-      });
 
       const docRef = doc(db, "tarpit_configs", currentUrlToDelete.id);
       await deleteDoc(docRef);
@@ -196,7 +189,7 @@ export default function UrlList() {
       setIsDeleteLoading(false);
     }
   };
-  
+
   const handleEmbedOpen = (url: ManagedUrlFirestoreData) => {
     setCurrentUrlForEmbed(url);
     setIsEmbedDialogOpen(true);
@@ -211,7 +204,7 @@ export default function UrlList() {
     );
   }
 
-  if (!user && !authLoading) { 
+  if (!user && !authLoading) {
     return <p className="text-muted-foreground text-center py-4">Please log in to see your managed URLs.</p>;
   }
 
@@ -227,14 +220,14 @@ export default function UrlList() {
       toast({ title: "Error", description: `Could not copy ${type}.`, variant: "destructive" });
     });
   };
-  
+
   const SnippetDisplay = ({ title, snippet, explanation }: { title: string, snippet: string, explanation: string }) => (
     <div className="space-y-2 mb-4">
       <h4 className="font-semibold text-sm text-primary">{title}</h4>
       <Textarea
         value={snippet}
         readOnly
-        rows={snippet.split('\n').length > 1 ? snippet.split('\n').length +1 : 3}
+        rows={snippet.split('\n').length > 1 ? snippet.split('\n').length + 1 : 3}
         className="bg-input border-border focus:ring-primary text-foreground/90 font-mono text-xs"
       />
       <p className="text-xs text-muted-foreground">{explanation}</p>
@@ -266,7 +259,7 @@ export default function UrlList() {
                   Instance ID: {url.instanceId || "N/A"}
                 </p>
                 <p className="text-sm text-foreground/90 break-all mt-1">
-                  <span className="font-semibold text-muted-foreground">Full URL: </span> 
+                  <span className="font-semibold text-muted-foreground">Full URL: </span>
                   <a href={url.fullUrl} target="_blank" rel="noopener noreferrer" className="hover:underline text-accent">{url.fullUrl}</a>
                 </p>
                 <p className="text-xs text-muted-foreground mt-2">
@@ -366,6 +359,7 @@ export default function UrlList() {
                   </AccordionContent>
                 </AccordionItem>
 
+                {/*
                 <AccordionItem value="item-5">
                   <AccordionTrigger className="text-accent hover:text-primary">Do's and Don'ts (SEO & Best Practices)</AccordionTrigger>
                   <AccordionContent className="text-sm text-foreground/80 space-y-2 pt-2">
@@ -377,12 +371,13 @@ export default function UrlList() {
                     </ul>
                     <p className="font-semibold text-foreground/90 mt-2">Don't:</p>
                      <ul className="list-disc pl-5 space-y-1">
-                      <li>Make the Managed URL a standard, visible, crawlable link (`<a href='...'>`) for your human users unless you have a specific, advanced reason and understand the SEO implications.</li>
-                      <li><strong className="text-destructive">If you absolutely must create an anchor tag (`<a>`) pointing to your Managed URL (not generally recommended for this purpose), ensure you add `rel="nofollow"` to it. This tells search engines not to follow the link or pass link equity.</strong></li>
-                      <li>Modify the <code className="bg-muted px-1 py-0.5 rounded text-xs text-accent">{currentUrlForEmbed.fullUrl}</code> part of the snippet.</li>
+                      <li>Make the Managed URL a standard, visible, crawlable link for your human users.</li>
+                      <li>If you must use an anchor tag, add rel="nofollow".</li>
+                      <li>Modify the URL part of the snippet.</li>
                     </ul>
                   </AccordionContent>
                 </AccordionItem>
+                */}
               </Accordion>
             )}
           </ScrollArea>
@@ -475,4 +470,5 @@ export default function UrlList() {
     </>
   );
 }
-
+    
+    
