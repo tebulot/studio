@@ -33,11 +33,10 @@ const subscriptionTiers = [
   {
     id: "set_and_forget",
     name: "Set & Forget",
-    price: "$9/mo (est.)",
+    price: "$4/mo", // Updated Price
     features: [
-      "Up to 1 Managed URL",
+      "1 Managed URL", // Updated Feature
       "Dashboard Stats (30-min refresh)",
-      "30-day Log Retention (for stats)",
       "Email Support",
     ],
     icon: Zap,
@@ -49,11 +48,10 @@ const subscriptionTiers = [
   {
     id: "analytics",
     name: "Analytics",
-    price: "$29/mo (est.)",
+    price: "$12/mo", // Updated Price
     features: [
       "Up to 3 Managed URLs",
       "Full Dashboard Analytics",
-      "90-day Log Retention",
       "Priority Email Support",
     ],
     icon: BarChartHorizontalBig,
@@ -68,8 +66,7 @@ export default function AccountPage() {
   const { user, loading: authLoading, updateUserEmail, updateUserDisplayName, sendPasswordReset } = useAuth();
   const { toast } = useToast();
 
-  // Simulate current subscription tier - default to "Analytics" now
-  const [currentUserTierId, setCurrentUserTierId] = useState("analytics"); 
+  const [currentUserTierId, setCurrentUserTierId] = useState("window_shopping"); 
 
   const [isEditingEmail, setIsEditingEmail] = useState(false);
   const [emailInputValue, setEmailInputValue] = useState("");
@@ -87,6 +84,8 @@ export default function AccountPage() {
       setUsernameInputValue(user.displayName || user.email?.split('@')[0] || "currentUser");
       // In a real app, you would fetch the user's actual tier from your database here
       // and setCurrentUserTierId(fetchedTierId);
+      // For simulation, if you want your account to appear as "Analytics" by default:
+      // setCurrentUserTierId("analytics"); 
     }
   }, [user]);
 
@@ -272,7 +271,7 @@ export default function AccountPage() {
             <CardDescription>Manage your SpiteSpiral subscription plan.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6"> {/* Adjusted for 3 tiers */}
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {subscriptionTiers.map((tier) => (
                 <Card key={tier.id} className={`flex flex-col ${tier.isCurrent(currentUserTierId) ? 'border-primary shadow-primary/20' : 'border-border'}`}>
                   <CardHeader>
