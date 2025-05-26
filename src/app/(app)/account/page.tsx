@@ -35,7 +35,7 @@ const subscriptionTiers = [
   {
     id: "set_and_forget",
     name: "Set & Forget",
-    price: "$5/mo",
+    price: "$5/mo", // Updated price
     features: [
       "1 Managed URL",
       "Dashboard Stats (30-min refresh)",
@@ -152,8 +152,9 @@ export default function AccountPage() {
         duration: 5000,
         });
     } else if (actionType === "switch_plan") {
-        if (!stripePriceId) {
-            toast({ title: "Error", description: "Stripe Price ID not configured for this plan.", variant: "destructive" });
+        if (!stripePriceId || stripePriceId.startsWith("price_REPLACE_WITH_YOUR_")) {
+            toast({ title: "Configuration Error", description: "Stripe Price ID not configured for this plan. Please contact support.", variant: "destructive" });
+            console.error("Stripe Price ID placeholder found or missing for tier:", tierId);
             return;
         }
         if (!stripePromise) {
@@ -166,7 +167,7 @@ export default function AccountPage() {
             const idToken = await user.getIdToken();
             const apiBaseUrl = process.env.NEXT_PUBLIC_SPITESPIRAL_API_BASE_URL;
             if (!apiBaseUrl) {
-              throw new Error("API base URL not configured.");
+              throw new Error("API base URL not configured. Please set NEXT_PUBLIC_SPITESPIRAL_API_BASE_URL.");
             }
 
             const response = await fetch(`${apiBaseUrl}/v1/stripe/create-checkout-session`, {
@@ -222,15 +223,16 @@ export default function AccountPage() {
         const idToken = await user.getIdToken();
         const apiBaseUrl = process.env.NEXT_PUBLIC_SPITESPIRAL_API_BASE_URL;
         if (!apiBaseUrl) {
-          throw new Error("API base URL not configured.");
+          throw new Error("API base URL not configured. Please set NEXT_PUBLIC_SPITESPIRAL_API_BASE_URL.");
         }
         
         const response = await fetch(`${apiBaseUrl}/v1/stripe/create-customer-portal-session`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json', // Though no body is sent, it's good practice
+                'Content-Type': 'application/json', // Though no body is sent, it's good practice for POST
                 'Authorization': `Bearer ${idToken}`,
             },
+            // body: JSON.stringify({ firebaseUid: user.uid }) // Send firebaseUid if your backend expects it
         });
 
         if (!response.ok) {
@@ -458,3 +460,5 @@ export default function AccountPage() {
     </div>
   );
 }
+
+    
