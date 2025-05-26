@@ -9,7 +9,8 @@ import { Label } from '@/components/ui/label';
 import BrandLogoIcon from '@/components/icons/BrandLogoIcon';
 import { useState, type FormEvent, useEffect } from 'react'; 
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2, Mail, Home } from 'lucide-react'; // Added Home icon
+import { Loader2, Mail, Home } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton'; // Added Skeleton import
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -18,12 +19,13 @@ export default function LoginPage() {
   const [isPasswordResetMode, setIsPasswordResetMode] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   
-  const { signIn, signUp, loading: authContextLoading, sendPasswordReset } = useAuth(); // Renamed loading from useAuth
+  const { signIn, signUp, loading: authContextLoading, sendPasswordReset } = useAuth();
   const [resetLoading, setResetLoading] = useState(false);
   const [backgroundIconStyle, setBackgroundIconStyle] = useState<React.CSSProperties | null>(null);
+  const [isMounted, setIsMounted] = useState(false); // State for client-side mount
 
   useEffect(() => {
-    // For the large single background icon
+    setIsMounted(true); // Set to true after component mounts on client
     setBackgroundIconStyle({
       animationDuration: `${Math.random() * 10 + 10}s`, 
     });
@@ -52,7 +54,7 @@ export default function LoginPage() {
 
   const handleAuthModeToggle = () => {
     setIsSignUp(prev => !prev);
-    setIsPasswordResetMode(false); // Explicitly exit password reset mode
+    setIsPasswordResetMode(false); 
   };
 
   return (
@@ -60,7 +62,7 @@ export default function LoginPage() {
       <div className="absolute inset-0 overflow-hidden z-0 flex items-center justify-center">
         {backgroundIconStyle && (
            <BrandLogoIcon
-            className="w-[500vw] h-[500vh] opacity-5 animate-spin-slow" // Single large background icon
+            className="w-[500vw] h-[500vh] opacity-5 animate-spin-slow"
             style={backgroundIconStyle}
             isPriority={false}
           />
@@ -83,7 +85,13 @@ export default function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {isPasswordResetMode ? (
+          {!isMounted ? (
+            <div className="space-y-6 py-4">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ) : isPasswordResetMode ? (
             <form onSubmit={handlePasswordResetRequest} className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="reset-email" className="text-foreground/80">Email</Label>
@@ -163,13 +171,13 @@ export default function LoginPage() {
           )}
         </CardContent>
       </Card>
-       <footer className="absolute bottom-8 text-sm text-muted-foreground/70 z-10 flex flex-col items-center space-y-2"> {/* Increased space-y for better separation */}
-          <div className="flex items-center space-x-4"> {/* Container for horizontal links */}
+       <footer className="absolute bottom-8 text-sm text-muted-foreground/70 z-10 flex flex-col items-center space-y-2">
+          <div className="flex items-center space-x-4">
             <NextLink href="/" className="hover:text-accent hover:underline animate-link-glow flex items-center">
-              <Home className="mr-1 h-3 w-3" /> {/* Added Home icon */}
+              <Home className="mr-1 h-3 w-3" />
               Back to Home
             </NextLink>
-            <span className="text-muted-foreground/50">|</span> {/* Separator */}
+            <span className="text-muted-foreground/50">|</span>
             <NextLink href="/legal/licenses" className="hover:text-accent hover:underline animate-link-glow">
               Licenses & Acknowledgements
             </NextLink>
@@ -179,6 +187,3 @@ export default function LoginPage() {
     </div>
   );
 }
-    
-
-    
