@@ -8,10 +8,10 @@ import * as z from "zod";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Copy, Edit3, Code, Loader2, Save, AlertTriangle, HelpCircle } from "lucide-react";
+import { Trash2, Copy, Edit3, Code, Loader2, Save, HelpCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from '@/components/ui/textarea';
@@ -20,7 +20,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { useAuth } from "@/contexts/AuthContext";
 import { db } from "@/lib/firebase/clientApp";
 import { collection, query, where, onSnapshot, Timestamp, type DocumentData, type QueryDocumentSnapshot, doc, updateDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
-import { deprovisionTarpitInstance } from '@/lib/actions'; // Import the new server action
+import { deprovisionTarpitInstance } from '@/lib/actions';
 
 interface ManagedUrlFirestoreData {
   id: string; 
@@ -28,7 +28,7 @@ interface ManagedUrlFirestoreData {
   description?: string;
   fullUrl: string;
   pathSegment: string;
-  instanceId?: string; // Added instanceId
+  instanceId?: string;
   createdAt: Timestamp;
   updatedAt?: Timestamp;
   status: "active" | "inactive";
@@ -80,7 +80,7 @@ export default function UrlList() {
     }
     setIsLoading(true);
     const currentUserId = user.uid;
-    const q = query(collection(db, "tarpit_configs"), where("userId", "==", currentUserId));
+    const q = query(collection(db, "tarpit_configs"), where("userId", "==", currentUserId), orderBy("createdAt", "desc"));
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const validUrls: ManagedUrlFirestoreData[] = [];
@@ -94,7 +94,7 @@ export default function UrlList() {
             description: data.description as string | undefined,
             fullUrl: data.fullUrl as string,
             pathSegment: data.pathSegment as string,
-            instanceId: data.instanceId as string | undefined, // Read instanceId
+            instanceId: data.instanceId as string | undefined,
             createdAt: data.createdAt as Timestamp,
             updatedAt: data.updatedAt as Timestamp | undefined,
             status: data.status as "active" | "inactive",
@@ -104,7 +104,7 @@ export default function UrlList() {
           // console.warn(`Document ${docSnap.id} is missing required fields or has invalid createdAt. Data:`, data);
         }
       });
-      validUrls.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+      // Sorting is already handled by Firestore's orderBy, no need to sort client-side again
       setUrls(validUrls);
       setIsLoading(false);
     }, (error) => {
@@ -158,7 +158,6 @@ export default function UrlList() {
     setIsDeleteLoading(true);
 
     try {
-      // Step 1: Attempt to de-provision the Docker instance via server action
       const deprovisionResult = await deprovisionTarpitInstance({
         instanceId: currentUrlToDelete.instanceId,
         pathSegment: currentUrlToDelete.pathSegment,
@@ -173,9 +172,6 @@ export default function UrlList() {
           duration: 7000,
         });
         setIsDeleteLoading(false);
-        // Optionally, close the dialog or keep it open for another attempt
-        // setIsDeleteDialogOpen(false); 
-        // setCurrentUrlToDelete(null);
         return; 
       }
 
@@ -185,7 +181,6 @@ export default function UrlList() {
         variant: "default",
       });
 
-      // Step 2: If de-provisioning was successful (or if you want to delete DB entry regardless), delete from Firestore
       const docRef = doc(db, "tarpit_configs", currentUrlToDelete.id);
       await deleteDoc(docRef);
 
@@ -306,7 +301,7 @@ export default function UrlList() {
           <DialogHeader>
             <DialogTitle className="text-primary flex items-center"><Code className="mr-2 h-5 w-5"/>Embed Instructions for: {currentUrlForEmbed?.name}</DialogTitle>
             <DialogDescription>
-              Follow these instructions to effectively embed your SpiteSpiral Tarpit link and start trapping crawlers.
+              Follow these instructions to effectively embed your SpiteSpiral Tarpit link and start trapping crawlers. These methods are designed to be SEO-neutral.
             </DialogDescription>
           </DialogHeader>
           <ScrollArea className="max-h-[70vh] p-1 pr-4">
@@ -318,12 +313,12 @@ export default function UrlList() {
                     <SnippetDisplay
                       title="1x1 Invisible Pixel Image"
                       snippet={`<img src="${currentUrlForEmbed.fullUrl}" width="1" height="1" alt="" style="border:0; position:absolute; left:-9999px;" aria-hidden="true" loading="eager" />`}
-                      explanation={`This creates a tiny, invisible image. Most web crawlers will try to fetch this image, leading them to your tarpit. The loading="eager" hint encourages it to load even if off-screen. It's designed to be completely invisible and not affect your page layout.`}
+                      explanation={`This creates a tiny, invisible image. Most web crawlers will try to fetch this image, leading them to your tarpit. The loading="eager" hint encourages it to load even if off-screen. It's designed to be completely invisible, not affect your page layout, and is semantically neutral for SEO.`}
                     />
                     <SnippetDisplay
                       title="Fake Stylesheet Link (for the <head>)"
                       snippet={`<link rel="stylesheet" href="${currentUrlForEmbed.fullUrl}" media="print" onload="this.media='all'; this.onload=null;" />`}
-                      explanation={`This looks like a stylesheet to crawlers. We use media="print" and an onload trick to ensure it doesn't block your page rendering for actual visitors while still being discoverable by many bots. Some bots specifically look for and parse CSS files.`}
+                      explanation={`This looks like a stylesheet to crawlers. We use media="print" and an onload trick to ensure it doesn't block your page rendering for actual visitors while still being discoverable by many bots. This method is generally not interpreted by search engines as a content link.`}
                     />
                   </AccordionContent>
                 </AccordionItem>
@@ -334,7 +329,7 @@ export default function UrlList() {
                     <SnippetDisplay
                       title="Fake Script Tag"
                       snippet={`<script src="${currentUrlForEmbed.fullUrl}" async defer></script>`}
-                      explanation={`This mimics a JavaScript file. 'async' and 'defer' help prevent it from blocking your page load for human visitors.`}
+                      explanation={`This mimics a JavaScript file. 'async' and 'defer' help prevent it from blocking your page load for human visitors. Script tags are generally not followed for link equity by search engines.`}
                     />
                   </AccordionContent>
                 </AccordionItem>
@@ -354,7 +349,7 @@ export default function UrlList() {
                 <AccordionItem value="item-4">
                   <AccordionTrigger className="text-accent hover:text-primary">Where to Place It to Catch the Most Crawlers</AccordionTrigger>
                   <AccordionContent className="text-sm text-foreground/80 space-y-2 pt-2">
-                    <p><strong className="text-primary">Goal:</strong> The Managed URL should be easily discoverable by automated crawlers but generally ignored by human visitors.</p>
+                    <p><strong className="text-primary">Goal:</strong> The Managed URL should be easily discoverable by automated crawlers but generally ignored by human visitors and have minimal SEO impact.</p>
                     <p className="font-semibold text-foreground/90">Key Locations on Their Website:</p>
                     <ul className="list-disc pl-5 space-y-1">
                       <li><strong className="text-primary/90">In the HTML &lt;head&gt;:</strong> Ideal for the &lt;link rel="stylesheet" ...&gt; method. Crawlers almost always parse the head for metadata and resource links.</li>
@@ -372,16 +367,18 @@ export default function UrlList() {
                 </AccordionItem>
 
                 <AccordionItem value="item-5">
-                  <AccordionTrigger className="text-accent hover:text-primary">Do's and Don'ts</AccordionTrigger>
+                  <AccordionTrigger className="text-accent hover:text-primary">Do's and Don'ts (SEO & Best Practices)</AccordionTrigger>
                   <AccordionContent className="text-sm text-foreground/80 space-y-2 pt-2">
                     <p className="font-semibold text-foreground/90">Do:</p>
                     <ul className="list-disc pl-5 space-y-1">
+                      <li>Use the provided snippets as they are designed for low SEO impact.</li>
                       <li>Place it where it's likely to be parsed by automated tools.</li>
-                      <li>Test your page after adding it to ensure it doesn't break your layout (though the provided snippets are designed to be safe).</li>
+                      <li>Test your page after adding it to ensure it doesn't break your layout.</li>
                     </ul>
                     <p className="font-semibold text-foreground/90 mt-2">Don't:</p>
                      <ul className="list-disc pl-5 space-y-1">
-                      <li>Make it a visible, clickable link for your human users unless you have a specific strategy for that.</li>
+                      <li>Make the Managed URL a standard, visible, crawlable link (`<a href='...'>`) for your human users unless you have a specific, advanced reason and understand the SEO implications.</li>
+                      <li><strong className="text-destructive">If you absolutely must create an anchor tag (`<a>`) pointing to your Managed URL (not generally recommended for this purpose), ensure you add `rel="nofollow"` to it. This tells search engines not to follow the link or pass link equity.</strong></li>
                       <li>Modify the <code className="bg-muted px-1 py-0.5 rounded text-xs text-accent">{currentUrlForEmbed.fullUrl}</code> part of the snippet.</li>
                     </ul>
                   </AccordionContent>
@@ -478,3 +475,4 @@ export default function UrlList() {
     </>
   );
 }
+
