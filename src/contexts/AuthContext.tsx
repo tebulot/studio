@@ -47,8 +47,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   useEffect(() => {
-    const publicPaths = ['/', '/login'];
-    const isPublicPath = publicPaths.includes(pathname) || pathname.startsWith('/_next/');
+    const publicPaths = ['/', '/login', '/legal/licenses']; // Added /legal/licenses as public
+    // Check if the current path starts with any of the public paths or specific internal Next.js paths
+    const isPublicPath = publicPaths.some(p => pathname === p || (p !== '/' && pathname.startsWith(p + '/'))) || 
+                         pathname.startsWith('/_next/') || 
+                         pathname.startsWith('/demo'); // Added /demo routes as public
 
     if (!loading && !user && !isPublicPath) {
       router.push('/login?redirect=' + encodeURIComponent(pathname));
@@ -182,9 +185,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   if (loading && !user) { 
-    const publicPaths = ['/', '/login'];
-    const isPublicPath = publicPaths.includes(pathname) || pathname.startsWith('/_next/');
-    if (!isPublicPath || (pathname === '/login' && user)) { 
+    const publicPathsForLoadingScreen = ['/', '/login', '/legal/licenses'];
+    const isPublicLoadingPath = publicPathsForLoadingScreen.some(p => pathname === p || (p !== '/' && pathname.startsWith(p + '/'))) || 
+                               pathname.startsWith('/_next/') || 
+                               pathname.startsWith('/demo');
+
+    if (!isPublicLoadingPath || (pathname === '/login' && user)) { 
         return (
         <div className="flex items-center justify-center min-h-screen bg-background text-foreground">
             <div className="flex flex-col items-center space-y-4">
