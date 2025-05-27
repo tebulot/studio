@@ -7,14 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { UserCog, CreditCard, ShieldCheck, Save, XCircle, Loader2, Mail, ExternalLink, CheckCircle, Zap, BarChartHorizontalBig, Eye } from "lucide-react";
-import { useAuth, type UserProfile } from "@/contexts/AuthContext"; // Import UserProfile
+import { useAuth, type UserProfile } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { loadStripe, type Stripe } from '@stripe/stripe-js';
-import { format } from 'date-fns'; // For formatting timestamp
+import { format } from 'date-fns';
 
-// Define Subscription Tiers
 const subscriptionTiers = [
   {
     id: "window_shopping",
@@ -27,10 +26,10 @@ const subscriptionTiers = [
       "Email Support",
     ],
     icon: Eye,
-    cta: "Switch to Window Shopping", // Updated CTA
+    cta: "Switch to Window Shopping",
     variant: "outline" as const,
     isCurrent: (currentTierId: string | null) => currentTierId === "window_shopping",
-    actionType: "switch_plan" as const, // Updated actionType
+    actionType: "switch_plan" as const,
     stripePriceId: null,
   },
   {
@@ -43,7 +42,7 @@ const subscriptionTiers = [
       "Email Support",
     ],
     icon: Zap,
-    cta: "Switch to Set & Forget", 
+    cta: "Switch to Set & Forget",
     variant: "default" as const,
     isCurrent: (currentTierId: string | null) => currentTierId === "set_and_forget",
     actionType: "switch_plan" as const,
@@ -52,14 +51,14 @@ const subscriptionTiers = [
   {
     id: "analytics",
     name: "Analytics",
-    price: "$20/mo", 
+    price: "$20/mo",
     features: [
       "Up to 3 Managed URLs",
       "Full Dashboard Analytics",
       "Priority Email Support",
     ],
     icon: BarChartHorizontalBig,
-    cta: "Switch to Analytics", 
+    cta: "Switch to Analytics",
     variant: "default" as const,
     isCurrent: (currentTierId: string | null) => currentTierId === "analytics",
     actionType: "switch_plan" as const,
@@ -88,7 +87,7 @@ export default function AccountPage() {
 
   const [isSendingResetEmail, setIsSendingResetEmail] = useState(false);
 
-  const loading = authContextLoading; 
+  const loading = authContextLoading;
 
   useEffect(() => {
     if (user) {
@@ -139,14 +138,12 @@ export default function AccountPage() {
       return;
     }
     if (userProfile && tierId === userProfile.activeTierId && actionType === "switch_plan") {
-        // If user clicks their current plan's "Switch to..." button (which should be "Current Plan")
         return;
     }
 
     const targetTier = subscriptionTiers.find(t => t.id === tierId);
     if (!targetTier) return;
 
-    // Handle "switching" to Window Shopping (i.e., cancelling current paid sub or exploring if already free)
     if (tierId === "window_shopping") {
       if (userProfile.activeTierId === "window_shopping") {
         toast({
@@ -156,19 +153,16 @@ export default function AccountPage() {
         });
         return;
       }
-      // If on a paid plan, and they click "Switch to Window Shopping"
-      // this means they want to manage/cancel their current subscription.
       toast({
         title: "Manage Subscription",
-        description: "To switch to the Window Shopping plan, please manage or cancel your current subscription via the Stripe Customer Portal.",
+        description: "To switch to the Window Shopping plan (which typically involves canceling your current paid subscription), please manage your subscription via the Stripe Customer Portal.",
         duration: 7000,
       });
       await handleManageSubscription();
       return;
     }
     
-    // For paid tiers:
-    if (actionType === "switch_plan") { // This will now only apply to set_and_forget and analytics
+    if (actionType === "switch_plan") {
         if (!stripePriceId || stripePriceId.startsWith("price_REPLACE_WITH_YOUR_")) {
             toast({ title: "Configuration Error", description: "Stripe Price ID not configured for this plan. Please contact support.", variant: "destructive" });
             console.error(`Stripe Price ID placeholder/issue for tier: ${tierId}. Actual stripePriceId value found: '${stripePriceId}'`);
@@ -242,7 +236,7 @@ export default function AccountPage() {
       toast({ title: "Authentication Error", description: "Please log in to manage your subscription.", variant: "destructive" });
       return;
     }
-     if (!stripePromise) {
+     if (!stripePromise) { // Though stripePromise itself doesn't call the backend, Stripe.js might be needed later.
         toast({ title: "Stripe Error", description: "Stripe is not configured correctly. Please contact support.", variant: "destructive" });
         console.error("Stripe Publishable Key (NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) not found in environment variables.");
         return;
@@ -262,9 +256,10 @@ export default function AccountPage() {
         const response = await fetch(`${apiBaseUrl}/v1/stripe/create-customer-portal-session`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
+                'Content-Type': 'application/json', // Though body might be empty, content-type can still be set
                 'Authorization': `Bearer ${idToken}`,
             },
+            // No body is sent as per backend Gemini's confirmation if backend derives user from token
         });
 
         if (!response.ok) {
@@ -285,6 +280,7 @@ export default function AccountPage() {
             if (error.message.includes("Failed to fetch")) {
                 errorMessage = "Could not connect to the server to manage subscription. Please check your internet connection and try again. If the issue persists, the service may be temporarily unavailable.";
             } else {
+                // This will now include the message thrown from the !response.ok block.
                 errorMessage = error.message;
             }
         }
@@ -299,7 +295,6 @@ export default function AccountPage() {
   const currentPeriodEnd = userProfile?.currentPeriodEnd;
   const downgradeToTierId = userProfile?.downgradeToTierId;
   const downgradeToTierName = downgradeToTierId ? subscriptionTiers.find(t => t.id === downgradeToTierId)?.name : null;
-
 
   return (
     <div className="space-y-8">
@@ -330,7 +325,6 @@ export default function AccountPage() {
               </>
             ) : (
               <>
-                {/* Email Section */}
                 <div className="space-y-2">
                   <Label htmlFor="email" className="text-foreground/80">Email Address</Label>
                   {isEditingEmail ? (
@@ -371,7 +365,6 @@ export default function AccountPage() {
                   {isEditingEmail && <p className="text-xs text-muted-foreground">A verification link will be sent to your new email address.</p>}
                 </div>
 
-                {/* Username Section */}
                 <div className="space-y-2">
                   <Label htmlFor="username" className="text-foreground/80">Username</Label>
                   {isEditingUsername ? (
@@ -474,8 +467,8 @@ export default function AccountPage() {
                         disabled={
                             loading || 
                             isSubmittingPlanChange === tier.id ||
-                            tier.id === currentActiveTierId || // Simpler: disable if it's the current tier
-                            (tier.id !== 'window_shopping' && userProfile && // Disable paid plan buttons if status isn't ideal
+                            tier.id === currentActiveTierId || 
+                            (tier.id !== 'window_shopping' && userProfile && 
                                 !['active', 'trialing', 'window_shopping', 'active_until_period_end', 'pending_downgrade'].includes(userProfile.subscriptionStatus || ''))
                         }
                       >
