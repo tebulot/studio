@@ -35,7 +35,7 @@ const subscriptionTiers = [
   {
     id: "set_and_forget",
     name: "Set & Forget",
-    price: "$5/mo", 
+    price: "$5/mo",
     features: [
       "1 Managed URL",
       "Dashboard Stats (30-min refresh)",
@@ -46,7 +46,7 @@ const subscriptionTiers = [
     variant: "default" as const,
     isCurrent: (currentTierId: string) => currentTierId === "set_and_forget",
     actionType: "switch_plan" as const,
-    stripePriceId: "price_REPLACE_WITH_YOUR_SET_FORGET_PRICE_ID", //  REPLACE THIS WITH YOUR ACTUAL STRIPE PRICE ID
+    stripePriceId: "price_REPLACE_WITH_YOUR_SET_FORGET_PRICE_ID", //  <<< --- YOU MUST REPLACE THIS WITH YOUR ACTUAL STRIPE PRICE ID
   },
   {
     id: "analytics",
@@ -62,7 +62,7 @@ const subscriptionTiers = [
     variant: "default" as const,
     isCurrent: (currentTierId: string) => currentTierId === "analytics",
     actionType: "switch_plan" as const,
-    stripePriceId: "price_REPLACE_WITH_YOUR_ANALYTICS_PRICE_ID", // REPLACE THIS WITH YOUR ACTUAL STRIPE PRICE ID
+    stripePriceId: "price_REPLACE_WITH_YOUR_ANALYTICS_PRICE_ID", // <<< --- YOU MUST REPLACE THIS WITH YOUR ACTUAL STRIPE PRICE ID
   },
 ];
 
@@ -74,7 +74,7 @@ export default function AccountPage() {
   const { user, loading: authLoading, updateUserEmail, updateUserDisplayName, sendPasswordReset } = useAuth();
   const { toast } = useToast();
 
-  const [currentUserTierId, setCurrentUserTierId] = useState("window_shopping"); 
+  const [currentUserTierId, setCurrentUserTierId] = useState("analytics"); // Default to "Analytics" for simulation
   const [isSubmittingPlanChange, setIsSubmittingPlanChange] = useState<string | null>(null);
   const [isManagingSubscription, setIsManagingSubscription] = useState(false);
 
@@ -94,8 +94,6 @@ export default function AccountPage() {
       setUsernameInputValue(user.displayName || user.email?.split('@')[0] || "currentUser");
       // In a real app, you would fetch the user's actual tier from your database here
       // (e.g., Firestore /user_profiles/{userId}) and setCurrentUserTierId(fetchedTierId);
-      // For now, we simulate by defaulting to "window_shopping".
-      // setCurrentUserTierId("analytics"); // To simulate being on Analytics
     }
   }, [user]);
 
