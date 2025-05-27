@@ -37,7 +37,7 @@ const subscriptionTiers = [
     name: "Set & Forget",
     price: "$5/mo",
     features: [
-      "1 Managed URL",
+      "1 Managed URL", // Explicitly 1
       "Dashboard Stats (30-min refresh)",
       "Email Support",
     ],
@@ -62,7 +62,7 @@ const subscriptionTiers = [
     variant: "default" as const,
     isCurrent: (currentTierId: string) => currentTierId === "analytics",
     actionType: "switch_plan" as const,
-    stripePriceId: "price_REPLACE_WITH_YOUR_ANALYTICS_PRICE_ID", // << YOU NEED TO REPLACE THIS
+    stripePriceId: "price_REPLACE_WITH_YOUR_ANALYTICS_PRICE_ID", // Needs to be replaced by user
   },
 ];
 
@@ -74,7 +74,8 @@ export default function AccountPage() {
   const { user, loading: authLoading, updateUserEmail, updateUserDisplayName, sendPasswordReset } = useAuth();
   const { toast } = useToast();
 
-  const [currentUserTierId, setCurrentUserTierId] = useState("analytics"); 
+  // Simulate current tier - this would be fetched from Firestore in a full implementation
+  const [currentUserTierId, setCurrentUserTierId] = useState("window_shopping"); 
   const [isSubmittingPlanChange, setIsSubmittingPlanChange] = useState<string | null>(null);
   const [isManagingSubscription, setIsManagingSubscription] = useState(false);
 
@@ -94,6 +95,8 @@ export default function AccountPage() {
       setUsernameInputValue(user.displayName || user.email?.split('@')[0] || "currentUser");
       // In a real app, you would fetch the user's actual tier from your database here
       // (e.g., Firestore /user_profiles/{userId}) and setCurrentUserTierId(fetchedTierId);
+      // For now, if user is logged in and tier is 'window_shopping', perhaps default them to 'set_and_forget' visually if appropriate
+      // This example keeps 'window_shopping' as default for new users.
     }
   }, [user]);
 
@@ -144,6 +147,8 @@ export default function AccountPage() {
     if (!targetTier) return;
 
     if (actionType === "view_plans") {
+        // This could scroll to the paid plans or simply indicate they are viewing them.
+        // For now, a toast is fine as a placeholder action.
         toast({
         title: "Explore Our Plans!",
         description: `You are currently on the ${subscriptionTiers.find(t=> t.id === currentUserTierId)?.name || 'current'} tier. Check out our paid plans for more features!`,
@@ -246,7 +251,6 @@ export default function AccountPage() {
                 'Content-Type': 'application/json', 
                 'Authorization': `Bearer ${idToken}`,
             },
-            // Backend Gemini confirmed empty body is fine if deriving user from ID token
         });
 
         if (!response.ok) {
@@ -439,11 +443,14 @@ export default function AccountPage() {
                   variant="outline" 
                   className="border-accent text-accent hover:bg-accent/10" 
                   onClick={handleManageSubscription}
-                  disabled={isManagingSubscription || authLoading}
+                  disabled={isManagingSubscription || authLoading || currentUserTierId === "window_shopping"} // Disable if on Window Shopping
                 >
                     {isManagingSubscription ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ExternalLink className="mr-2 h-4 w-4" /> }
                     Manage Subscription (Stripe)
                 </Button>
+                 {currentUserTierId === "window_shopping" && (
+                    <p className="text-xs text-muted-foreground mt-1">Select a paid plan to manage your subscription.</p>
+                )}
             </div>
           </CardContent>
         </Card>

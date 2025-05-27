@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { PlusCircle, Loader2, Info, ShieldAlert } from "lucide-react"; 
+import { PlusCircle, Loader2, ShieldAlert } from "lucide-react"; 
 import { useAuth } from "@/contexts/AuthContext";
 import { provisionAndGenerateManagedTarpitConfigDetails } from "@/lib/actions";
 import { db } from "@/lib/firebase/clientApp"; 
@@ -25,7 +25,8 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-const ADMIN_TEST_MAX_URLS = 5; // Allow up to 5 URLs for admin testing
+// Effective limit for users who can create URLs (e.g., "Set & Forget" tier)
+const MANAGED_URL_LIMIT = 1; 
 
 export default function AddUrlForm() {
   const [isLoading, setIsLoading] = useState(false);
@@ -51,7 +52,7 @@ export default function AddUrlForm() {
       return;
     }
     if (!user) {
-      setCanAddMoreUrls(false);
+      setCanAddMoreUrls(false); // Can't add if not logged in
       setIsCheckingUrlCount(false);
       return;
     }
@@ -64,8 +65,10 @@ export default function AddUrlForm() {
         const count = querySnapshot.size;
         setCurrentUserUrlCount(count);
         
-        // Allow admin user to add up to ADMIN_TEST_MAX_URLS
-        setCanAddMoreUrls(count < ADMIN_TEST_MAX_URLS); 
+        // If count is 0, it implies they might be on "Window Shopping" or new.
+        // The AccountPage handles guiding them to upgrade.
+        // If they have >= MANAGED_URL_LIMIT, they can't add more.
+        setCanAddMoreUrls(count < MANAGED_URL_LIMIT); 
 
       } catch (error) {
         console.error("Error fetching user URL count:", error);
@@ -93,21 +96,14 @@ export default function AddUrlForm() {
     if (!canAddMoreUrls) {
          toast({
             title: "Limit Reached",
-            description: `You've reached the maximum number of Managed URLs for testing (${ADMIN_TEST_MAX_URLS}).`,
+            description: `You have reached the Managed URL limit for your current plan (${MANAGED_URL_LIMIT}), or you need to select a plan to add URLs. Please check your Account page.`,
             variant: "default", 
             duration: 7000,
         });
         return;
     }
 
-    if (!tarpitBaseUrl || tarpitBaseUrl === "http://localhost:3001") {
-        toast({
-            title: "Configuration Notice",
-            description: `The Tarpit Base URL is currently set to "${tarpitBaseUrl}". Please update NEXT_PUBLIC_TARPIT_BASE_URL in your .env file to your public tarpit service domain for live functionality.`,
-            variant: "default",
-            duration: 10000,
-        });
-    }
+    // Removed Tarpit Base URL check alert, as it was previously requested to be removed.
 
     setIsLoading(true);
     try {
@@ -128,15 +124,14 @@ export default function AddUrlForm() {
       }
       
       const { instanceId, ...configDataForWrite } = provisionResult.configData;
-      const documentToWrite: any = { // Use 'any' temporarily or define a more precise type
+      const documentToWrite: any = { 
         ...configDataForWrite,
         createdAt: serverTimestamp(), 
         status: "active", 
       };
-      if (instanceId !== undefined) { // Only include instanceId if it's defined
+      if (instanceId !== undefined) { 
         documentToWrite.instanceId = instanceId;
       }
-
 
       await addDoc(collection(db, "tarpit_configs"), documentToWrite);
 
@@ -152,7 +147,7 @@ export default function AddUrlForm() {
         const querySnapshot = await getDocs(q);
         const count = querySnapshot.size;
         setCurrentUserUrlCount(count);
-        setCanAddMoreUrls(count < ADMIN_TEST_MAX_URLS);
+        setCanAddMoreUrls(count < MANAGED_URL_LIMIT);
 
     } catch (error) {
       console.error("Error in onSubmit AddUrlForm:", error);
@@ -182,9 +177,9 @@ export default function AddUrlForm() {
       {!canAddMoreUrls && !isCheckingUrlCount && user && (
         <Alert variant="default" className="mb-6 border-amber-500/50 text-amber-500 [&>svg]:text-amber-500 bg-amber-500/10">
           <ShieldAlert className="h-5 w-5" />
-          <AlertTitle>URL Limit Reached for Testing</AlertTitle>
+          <AlertTitle>URL Limit Reached or Plan Required</AlertTitle>
           <AlertDescription>
-            You have reached the current testing limit of {ADMIN_TEST_MAX_URLS} Managed URLs.
+            You have reached the Managed URL limit ({MANAGED_URL_LIMIT}) for your current plan, or you may need to select a subscription plan on your Account page to add URLs.
           </AlertDescription>
         </Alert>
       )}
