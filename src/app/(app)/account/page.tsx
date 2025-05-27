@@ -35,7 +35,7 @@ const subscriptionTiers = [
   {
     id: "set_and_forget",
     name: "Set & Forget",
-    price: "$5/mo", // Updated price
+    price: "$5/mo", 
     features: [
       "1 Managed URL",
       "Dashboard Stats (30-min refresh)",
@@ -46,7 +46,7 @@ const subscriptionTiers = [
     variant: "default" as const,
     isCurrent: (currentTierId: string) => currentTierId === "set_and_forget",
     actionType: "switch_plan" as const,
-    stripePriceId: "price_REPLACE_WITH_YOUR_SET_FORGET_PRICE_ID", // Replace with your actual Stripe Price ID
+    stripePriceId: "price_REPLACE_WITH_YOUR_SET_FORGET_PRICE_ID", //  REPLACE THIS WITH YOUR ACTUAL STRIPE PRICE ID
   },
   {
     id: "analytics",
@@ -62,7 +62,7 @@ const subscriptionTiers = [
     variant: "default" as const,
     isCurrent: (currentTierId: string) => currentTierId === "analytics",
     actionType: "switch_plan" as const,
-    stripePriceId: "price_REPLACE_WITH_YOUR_ANALYTICS_PRICE_ID", // Replace with your actual Stripe Price ID
+    stripePriceId: "price_REPLACE_WITH_YOUR_ANALYTICS_PRICE_ID", // REPLACE THIS WITH YOUR ACTUAL STRIPE PRICE ID
   },
 ];
 
@@ -154,7 +154,7 @@ export default function AccountPage() {
     } else if (actionType === "switch_plan") {
         if (!stripePriceId || stripePriceId.startsWith("price_REPLACE_WITH_YOUR_")) {
             toast({ title: "Configuration Error", description: "Stripe Price ID not configured for this plan. Please contact support.", variant: "destructive" });
-            console.error("Stripe Price ID placeholder found or missing for tier:", tierId);
+            console.error(`Stripe Price ID placeholder/issue for tier: ${tierId}. Actual stripePriceId value found: '${stripePriceId}'`); // Enhanced console error
             return;
         }
         if (!stripePromise) {
@@ -229,10 +229,9 @@ export default function AccountPage() {
         const response = await fetch(`${apiBaseUrl}/v1/stripe/create-customer-portal-session`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json', // Though no body is sent, it's good practice for POST
+                'Content-Type': 'application/json', 
                 'Authorization': `Bearer ${idToken}`,
             },
-            // body: JSON.stringify({ firebaseUid: user.uid }) // Send firebaseUid if your backend expects it
         });
 
         if (!response.ok) {
