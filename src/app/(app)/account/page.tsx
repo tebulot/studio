@@ -7,11 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { UserCog, CreditCard, ShieldCheck, Save, XCircle, Loader2, Mail, ExternalLink, CheckCircle, Zap, BarChartHorizontalBig, Eye } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth, type UserProfile } from "@/contexts/AuthContext"; // Import UserProfile
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { loadStripe, type Stripe } from '@stripe/stripe-js';
+import { format } from 'date-fns'; // For formatting timestamp
 
 // Define Subscription Tiers
 const subscriptionTiers = [
@@ -30,14 +31,14 @@ const subscriptionTiers = [
     variant: "outline" as const,
     isCurrent: (currentTierId: string) => currentTierId === "window_shopping",
     actionType: "view_plans" as const,
-    stripePriceId: null, 
+    stripePriceId: null,
   },
   {
     id: "set_and_forget",
     name: "Set & Forget",
     price: "$5/mo",
     features: [
-      "1 Managed URL", // Explicitly 1
+      "1 Managed URL",
       "Dashboard Stats (30-min refresh)",
       "Email Support",
     ],
@@ -46,7 +47,7 @@ const subscriptionTiers = [
     variant: "default" as const,
     isCurrent: (currentTierId: string) => currentTierId === "set_and_forget",
     actionType: "switch_plan" as const,
-    stripePriceId: "price_1RSzbxQO5aNncTFjyeaANlLf", // Confirmed Price ID
+    stripePriceId: "price_1RSzbxQO5aNncTFjyeaANlLf",
   },
   {
     id: "analytics",
@@ -62,20 +63,18 @@ const subscriptionTiers = [
     variant: "default" as const,
     isCurrent: (currentTierId: string) => currentTierId === "analytics",
     actionType: "switch_plan" as const,
-    stripePriceId: "price_REPLACE_WITH_YOUR_ANALYTICS_PRICE_ID", // Needs to be replaced by user
+    stripePriceId: "price_REPLACE_WITH_YOUR_ANALYTICS_PRICE_ID", // <-- REPLACE THIS
   },
 ];
 
-const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY 
-  ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) 
+const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+  ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
   : null;
 
 export default function AccountPage() {
-  const { user, loading: authLoading, updateUserEmail, updateUserDisplayName, sendPasswordReset } = useAuth();
+  const { user, userProfile, loading: authContextLoading, updateUserEmail, updateUserDisplayName, sendPasswordReset } = useAuth();
   const { toast } = useToast();
 
-  // Simulate current tier - this would be fetched from Firestore in a full implementation
-  const [currentUserTierId, setCurrentUserTierId] = useState("window_shopping"); 
   const [isSubmittingPlanChange, setIsSubmittingPlanChange] = useState<string | null>(null);
   const [isManagingSubscription, setIsManagingSubscription] = useState(false);
 
@@ -89,14 +88,12 @@ export default function AccountPage() {
 
   const [isSendingResetEmail, setIsSendingResetEmail] = useState(false);
 
+  const loading = authContextLoading; // Combined loading state for user auth and profile
+
   useEffect(() => {
     if (user) {
       setEmailInputValue(user.email || "");
       setUsernameInputValue(user.displayName || user.email?.split('@')[0] || "currentUser");
-      // In a real app, you would fetch the user's actual tier from your database here
-      // (e.g., Firestore /user_profiles/{userId}) and setCurrentUserTierId(fetchedTierId);
-      // For now, if user is logged in and tier is 'window_shopping', perhaps default them to 'set_and_forget' visually if appropriate
-      // This example keeps 'window_shopping' as default for new users.
     }
   }, [user]);
 
@@ -141,17 +138,15 @@ export default function AccountPage() {
       toast({ title: "Authentication Error", description: "Please log in to change your plan.", variant: "destructive" });
       return;
     }
-    if (tierId === currentUserTierId && actionType === "switch_plan") return;
+    if (userProfile && tierId === userProfile.activeTierId && actionType === "switch_plan") return;
 
     const targetTier = subscriptionTiers.find(t => t.id === tierId);
     if (!targetTier) return;
 
     if (actionType === "view_plans") {
-        // This could scroll to the paid plans or simply indicate they are viewing them.
-        // For now, a toast is fine as a placeholder action.
         toast({
         title: "Explore Our Plans!",
-        description: `You are currently on the ${subscriptionTiers.find(t=> t.id === currentUserTierId)?.name || 'current'} tier. Check out our paid plans for more features!`,
+        description: `You are currently on the ${subscriptionTiers.find(t=> userProfile && t.id === userProfile.activeTierId)?.name || 'current'} tier. Check out our paid plans for more features!`,
         duration: 5000,
         });
     } else if (actionType === "switch_plan") {
@@ -165,7 +160,7 @@ export default function AccountPage() {
             console.error("Stripe Publishable Key (NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) not found in environment variables.");
             return;
         }
-        
+
         const apiBaseUrl = process.env.NEXT_PUBLIC_SPITESPIRAL_API_BASE_URL;
         if (!apiBaseUrl) {
           toast({ title: "Configuration Error", description: "API base URL not configured. Please contact support.", variant: "destructive" });
@@ -176,14 +171,14 @@ export default function AccountPage() {
         setIsSubmittingPlanChange(tierId);
         try {
             const idToken = await user.getIdToken();
-            
+
             const response = await fetch(`${apiBaseUrl}/v1/stripe/create-checkout-session`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${idToken}`,
                 },
-                body: JSON.stringify({ priceId: stripePriceId }),
+                body: JSON.stringify({ priceId: stripePriceId }), // Backend will get firebaseUid from ID token
             });
 
             if (!response.ok) {
@@ -244,13 +239,14 @@ export default function AccountPage() {
     setIsManagingSubscription(true);
     try {
         const idToken = await user.getIdToken();
-        
+
         const response = await fetch(`${apiBaseUrl}/v1/stripe/create-customer-portal-session`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json', 
+                'Content-Type': 'application/json',
                 'Authorization': `Bearer ${idToken}`,
             },
+            // Backend derives firebaseUid from token, so body can be empty or contain other non-sensitive info if needed
         });
 
         if (!response.ok) {
@@ -280,6 +276,12 @@ export default function AccountPage() {
     }
   }
 
+  const currentActiveTierId = userProfile?.activeTierId || "window_shopping";
+  const currentSubscriptionStatus = userProfile?.subscriptionStatus;
+  const currentPeriodEnd = userProfile?.currentPeriodEnd;
+  const downgradeToTierId = userProfile?.downgradeToTierId;
+  const downgradeToTierName = downgradeToTierId ? subscriptionTiers.find(t => t.id === downgradeToTierId)?.name : null;
+
 
   return (
     <div className="space-y-8">
@@ -303,90 +305,95 @@ export default function AccountPage() {
             <CardDescription>View and update your personal information.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Email Section */}
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-foreground/80">Email Address</Label>
-              {authLoading ? (
-                <Skeleton className="h-10 w-full" />
-              ) : isEditingEmail ? (
-                <div className="flex items-center gap-2">
-                  <Input 
-                    id="email" 
-                    type="email" 
-                    value={emailInputValue}
-                    onChange={(e) => setEmailInputValue(e.target.value)}
-                    className="bg-input border-border focus:ring-primary" 
-                    disabled={isUpdatingEmail}
-                  />
-                  <Button onClick={handleEmailChange} size="icon" variant="ghost" className="text-primary hover:text-accent" disabled={isUpdatingEmail}>
-                    {isUpdatingEmail ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
-                  </Button>
-                  <Button onClick={() => { setIsEditingEmail(false); setEmailInputValue(user?.email || "");}} size="icon" variant="ghost" className="text-destructive hover:text-destructive/80" disabled={isUpdatingEmail}>
-                    <XCircle className="h-5 w-5" />
-                  </Button>
+            {loading ? (
+              <>
+                <Skeleton className="h-6 w-1/4 mb-2" /> <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-6 w-1/4 mb-2 mt-4" /> <Skeleton className="h-10 w-full" />
+              </>
+            ) : (
+              <>
+                {/* Email Section */}
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="text-foreground/80">Email Address</Label>
+                  {isEditingEmail ? (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id="email"
+                        type="email"
+                        value={emailInputValue}
+                        onChange={(e) => setEmailInputValue(e.target.value)}
+                        className="bg-input border-border focus:ring-primary"
+                        disabled={isUpdatingEmail}
+                      />
+                      <Button onClick={handleEmailChange} size="icon" variant="ghost" className="text-primary hover:text-accent" disabled={isUpdatingEmail}>
+                        {isUpdatingEmail ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
+                      </Button>
+                      <Button onClick={() => { setIsEditingEmail(false); setEmailInputValue(user?.email || "");}} size="icon" variant="ghost" className="text-destructive hover:text-destructive/80" disabled={isUpdatingEmail}>
+                        <XCircle className="h-5 w-5" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id="emailDisplay"
+                        type="email"
+                        value={user?.email || "Loading..."}
+                        readOnly
+                        className="bg-background border-border focus:ring-primary cursor-not-allowed flex-grow"
+                      />
+                      <Button
+                        variant="outline"
+                        className="border-accent text-accent hover:bg-accent/10 hover:text-accent-foreground"
+                        onClick={() => { setIsEditingEmail(true); setEmailInputValue(user?.email || ""); }}
+                      >
+                        Change Email
+                      </Button>
+                    </div>
+                  )}
+                  {isEditingEmail && <p className="text-xs text-muted-foreground">A verification link will be sent to your new email address.</p>}
                 </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Input 
-                    id="emailDisplay" 
-                    type="email" 
-                    value={user?.email || "Loading..."} 
-                    readOnly 
-                    className="bg-background border-border focus:ring-primary cursor-not-allowed flex-grow" 
-                  />
-                  <Button 
-                    variant="outline" 
-                    className="border-accent text-accent hover:bg-accent/10 hover:text-accent-foreground" 
-                    onClick={() => { setIsEditingEmail(true); setEmailInputValue(user?.email || ""); }}
-                  >
-                    Change Email
-                  </Button>
-                </div>
-              )}
-               {isEditingEmail && <p className="text-xs text-muted-foreground">A verification link will be sent to your new email address.</p>}
-            </div>
 
-            {/* Username Section */}
-            <div className="space-y-2">
-              <Label htmlFor="username" className="text-foreground/80">Username</Label>
-              {authLoading ? (
-                <Skeleton className="h-10 w-full" />
-              ) : isEditingUsername ? (
-                 <div className="flex items-center gap-2">
-                  <Input 
-                    id="username" 
-                    type="text" 
-                    value={usernameInputValue}
-                    onChange={(e) => setUsernameInputValue(e.target.value)}
-                    className="bg-input border-border focus:ring-primary" 
-                    disabled={isUpdatingUsername}
-                  />
-                  <Button onClick={handleUsernameChange} size="icon" variant="ghost" className="text-primary hover:text-accent" disabled={isUpdatingUsername}>
-                     {isUpdatingUsername ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
-                  </Button>
-                  <Button onClick={() => { setIsEditingUsername(false); setUsernameInputValue(user?.displayName || user?.email?.split('@')[0] || "currentUser");}} size="icon" variant="ghost" className="text-destructive hover:text-destructive/80" disabled={isUpdatingUsername}>
-                    <XCircle className="h-5 w-5" />
-                  </Button>
+                {/* Username Section */}
+                <div className="space-y-2">
+                  <Label htmlFor="username" className="text-foreground/80">Username</Label>
+                  {isEditingUsername ? (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id="username"
+                        type="text"
+                        value={usernameInputValue}
+                        onChange={(e) => setUsernameInputValue(e.target.value)}
+                        className="bg-input border-border focus:ring-primary"
+                        disabled={isUpdatingUsername}
+                      />
+                      <Button onClick={handleUsernameChange} size="icon" variant="ghost" className="text-primary hover:text-accent" disabled={isUpdatingUsername}>
+                        {isUpdatingUsername ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
+                      </Button>
+                      <Button onClick={() => { setIsEditingUsername(false); setUsernameInputValue(user?.displayName || user?.email?.split('@')[0] || "currentUser");}} size="icon" variant="ghost" className="text-destructive hover:text-destructive/80" disabled={isUpdatingUsername}>
+                        <XCircle className="h-5 w-5" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id="usernameDisplay"
+                        type="text"
+                        value={user?.displayName || user?.email?.split('@')[0] || "currentUser"}
+                        readOnly
+                        className="bg-background border-border focus:ring-primary cursor-not-allowed flex-grow"
+                      />
+                      <Button
+                        variant="outline"
+                        className="border-accent text-accent hover:bg-accent/10 hover:text-accent-foreground"
+                        onClick={() => { setIsEditingUsername(true); setUsernameInputValue(user?.displayName || user?.email?.split('@')[0] || "currentUser"); }}
+                      >
+                        Change Username
+                      </Button>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Input 
-                    id="usernameDisplay" 
-                    type="text" 
-                    value={user?.displayName || user?.email?.split('@')[0] || "currentUser"} 
-                    readOnly 
-                    className="bg-background border-border focus:ring-primary cursor-not-allowed flex-grow" 
-                  />
-                  <Button 
-                    variant="outline" 
-                    className="border-accent text-accent hover:bg-accent/10 hover:text-accent-foreground" 
-                    onClick={() => { setIsEditingUsername(true); setUsernameInputValue(user?.displayName || user?.email?.split('@')[0] || "currentUser"); }}
-                  >
-                    Change Username
-                  </Button>
-                </div>
-              )}
-            </div>
+              </>
+            )}
           </CardContent>
         </Card>
       </section>
@@ -398,57 +405,78 @@ export default function AccountPage() {
                 <CreditCard className="h-6 w-6 text-primary" />
                 <CardTitle className="text-xl text-accent">Subscription & Billing</CardTitle>
             </div>
-            <CardDescription>Manage your SpiteSpiral subscription plan.</CardDescription>
+            {loading ? (
+                <Skeleton className="h-5 w-3/4 mt-1" />
+            ) : userProfile ? (
+              <CardDescription>
+                Your current plan: <span className="font-semibold text-primary">{subscriptionTiers.find(t => t.id === userProfile.activeTierId)?.name || userProfile.activeTierId}</span>.
+                Status: <span className="font-semibold text-primary">{userProfile.subscriptionStatus}</span>.
+                {userProfile.currentPeriodEnd && (userProfile.subscriptionStatus === "active" || userProfile.subscriptionStatus === "trialing" || userProfile.subscriptionStatus === "active_until_period_end" || userProfile.subscriptionStatus === "pending_downgrade" ) && (
+                  <> Renews/Ends: <span className="font-semibold text-primary">{format(userProfile.currentPeriodEnd.toDate(), 'PPP')}</span>.</>
+                )}
+                { (userProfile.subscriptionStatus === "active_until_period_end" || userProfile.subscriptionStatus === "pending_downgrade") && downgradeToTierName && (
+                  <span className="block mt-1 text-sm text-amber-500">Your plan will change to {downgradeToTierName} on {userProfile.currentPeriodEnd ? format(userProfile.currentPeriodEnd.toDate(), 'PPP') : 'the next billing date'}.</span>
+                )}
+              </CardDescription>
+            ) : (
+              <CardDescription>Loading subscription details...</CardDescription>
+            )}
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {subscriptionTiers.map((tier) => (
-                <Card key={tier.id} className={`flex flex-col ${tier.isCurrent(currentUserTierId) ? 'border-primary shadow-primary/20' : 'border-border'}`}>
-                  <CardHeader>
-                    <div className="flex items-center gap-2 mb-2">
-                      <tier.icon className={`h-7 w-7 ${tier.isCurrent(currentUserTierId) ? 'text-primary' : 'text-accent'}`} />
-                      <CardTitle className={`text-lg ${tier.isCurrent(currentUserTierId) ? 'text-primary' : 'text-accent'}`}>{tier.name}</CardTitle>
-                    </div>
-                    <CardDescription className="text-2xl font-semibold text-foreground">{tier.price}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex-grow space-y-2">
-                    <ul className="space-y-1 text-sm text-muted-foreground">
-                      {tier.features.map((feature, index) => (
-                        <li key={index} className="flex items-center">
-                          <CheckCircle className="h-4 w-4 mr-2 text-accent/70 flex-shrink-0" />
-                          {feature}
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                  <CardFooter>
-                    <Button 
-                      className={`w-full ${tier.isCurrent(currentUserTierId) && tier.actionType === "switch_plan" ? 'bg-muted text-muted-foreground cursor-not-allowed' : 'bg-primary text-primary-foreground hover:bg-primary/90' }`}
-                      variant={tier.variant}
-                      onClick={() => handlePlanChangeClick(tier.id, tier.actionType, tier.stripePriceId)}
-                      disabled={(tier.isCurrent(currentUserTierId) && tier.actionType === "switch_plan") || isSubmittingPlanChange === tier.id || authLoading}
-                    >
-                      {isSubmittingPlanChange === tier.id ? <Loader2 className="h-5 w-5 animate-spin" /> : 
-                       tier.isCurrent(currentUserTierId) && tier.actionType === "switch_plan" ? "Current Plan" : tier.cta}
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
+            {loading ? (
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-60 w-full" />)}
+                </div>
+            ) : (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {subscriptionTiers.map((tier) => (
+                  <Card key={tier.id} className={`flex flex-col ${tier.id === currentActiveTierId ? 'border-primary shadow-primary/20' : 'border-border'}`}>
+                    <CardHeader>
+                      <div className="flex items-center gap-2 mb-2">
+                        <tier.icon className={`h-7 w-7 ${tier.id === currentActiveTierId ? 'text-primary' : 'text-accent'}`} />
+                        <CardTitle className={`text-lg ${tier.id === currentActiveTierId ? 'text-primary' : 'text-accent'}`}>{tier.name}</CardTitle>
+                      </div>
+                      <CardDescription className="text-2xl font-semibold text-foreground">{tier.price}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex-grow space-y-2">
+                      <ul className="space-y-1 text-sm text-muted-foreground">
+                        {tier.features.map((feature, index) => (
+                          <li key={index} className="flex items-center">
+                            <CheckCircle className="h-4 w-4 mr-2 text-accent/70 flex-shrink-0" />
+                            {feature}
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                    <CardFooter>
+                      <Button
+                        className={`w-full ${tier.id === currentActiveTierId && tier.actionType === "switch_plan" ? 'bg-muted text-muted-foreground cursor-not-allowed' : 'bg-primary text-primary-foreground hover:bg-primary/90' }`}
+                        variant={tier.variant}
+                        onClick={() => handlePlanChangeClick(tier.id, tier.actionType, tier.stripePriceId)}
+                        disabled={(tier.id === currentActiveTierId && tier.actionType === "switch_plan") || isSubmittingPlanChange === tier.id || loading || (currentSubscriptionStatus !== "active" && currentSubscriptionStatus !== "trialing" && tier.actionType === "switch_plan" && tier.id !== currentActiveTierId) }
+                      >
+                        {isSubmittingPlanChange === tier.id ? <Loader2 className="h-5 w-5 animate-spin" /> :
+                        tier.id === currentActiveTierId && tier.actionType === "switch_plan" ? "Current Plan" : tier.cta}
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                ))}
+              </div>
+            )}
             <Separator />
              <div>
                 <h3 className="text-md font-semibold text-foreground/90 mb-1">Payment & Invoices</h3>
                 <p className="text-sm text-muted-foreground mb-2">Manage your payment method and view billing history via Stripe.</p>
-                <Button 
-                  variant="outline" 
-                  className="border-accent text-accent hover:bg-accent/10" 
+                <Button
+                  variant="outline"
+                  className="border-accent text-accent hover:bg-accent/10"
                   onClick={handleManageSubscription}
-                  disabled={isManagingSubscription || authLoading || currentUserTierId === "window_shopping"} // Disable if on Window Shopping
+                  disabled={isManagingSubscription || loading || currentActiveTierId === "window_shopping"}
                 >
                     {isManagingSubscription ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ExternalLink className="mr-2 h-4 w-4" /> }
                     Manage Subscription (Stripe)
                 </Button>
-                 {currentUserTierId === "window_shopping" && (
+                 {currentActiveTierId === "window_shopping" && !loading &&(
                     <p className="text-xs text-muted-foreground mt-1">Select a paid plan to manage your subscription.</p>
                 )}
             </div>
@@ -460,22 +488,22 @@ export default function AccountPage() {
         <Card className="shadow-lg border-primary/20">
           <CardHeader>
             <div className="flex items-center gap-2">
-                <ShieldCheck className="h-6 w-6 text-accent" /> 
+                <ShieldCheck className="h-6 w-6 text-accent" />
                 <CardTitle className="text-xl text-primary">Security Settings</CardTitle>
             </div>
             <CardDescription>Enhance your account security.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-             <Button 
-                variant="outline" 
-                className="border-accent text-accent hover:bg-accent/10 hover:text-accent-foreground" 
+             <Button
+                variant="outline"
+                className="border-accent text-accent hover:bg-accent/10 hover:text-accent-foreground"
                 onClick={handlePasswordResetRequest}
-                disabled={authLoading || isSendingResetEmail || !user?.email}
+                disabled={loading || isSendingResetEmail || !user?.email}
               >
                 {isSendingResetEmail ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
-                    <Mail className="mr-2 h-4 w-4" /> 
+                    <Mail className="mr-2 h-4 w-4" />
                 )}
                 {isSendingResetEmail ? "Sending..." : "Change Password"}
               </Button>
@@ -490,3 +518,4 @@ export default function AccountPage() {
   );
 }
 
+    

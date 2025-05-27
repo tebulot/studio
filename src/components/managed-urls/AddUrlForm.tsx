@@ -10,11 +10,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { PlusCircle, Loader2, ShieldAlert } from "lucide-react"; 
+import { PlusCircle, Loader2, ShieldAlert } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { provisionAndGenerateManagedTarpitConfigDetails } from "@/lib/actions";
-import { db } from "@/lib/firebase/clientApp"; 
-import { collection, addDoc, serverTimestamp, query, where, getDocs } from "firebase/firestore"; 
+import { db } from "@/lib/firebase/clientApp";
+import { collection, addDoc, serverTimestamp, query, where, getDocs } from "firebase/firestore";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -25,18 +25,14 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-// Effective limit for users who can create URLs (e.g., "Set & Forget" tier)
-const MANAGED_URL_LIMIT = 1; 
-
 export default function AddUrlForm() {
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmittingForm, setIsSubmittingForm] = useState(false);
   const [isCheckingUrlCount, setIsCheckingUrlCount] = useState(true);
   const [currentUserUrlCount, setCurrentUserUrlCount] = useState(0);
   const [canAddMoreUrls, setCanAddMoreUrls] = useState(false);
 
   const { toast } = useToast();
-  const { user, loading: authLoading } = useAuth();
-  const tarpitBaseUrl = process.env.NEXT_PUBLIC_TARPIT_BASE_URL;
+  const { user, userProfile, loading: authContextLoading } = useAuth(); // Get userProfile
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -47,12 +43,12 @@ export default function AddUrlForm() {
   });
 
   useEffect(() => {
-    if (authLoading) {
+    if (authContextLoading) { // This now includes profile loading
       setIsCheckingUrlCount(true);
       return;
     }
-    if (!user) {
-      setCanAddMoreUrls(false); // Can't add if not logged in
+    if (!user || !userProfile) { // Check for userProfile as well
+      setCanAddMoreUrls(false);
       setIsCheckingUrlCount(false);
       return;
     }
@@ -65,47 +61,54 @@ export default function AddUrlForm() {
         const count = querySnapshot.size;
         setCurrentUserUrlCount(count);
         
-        // If count is 0, it implies they might be on "Window Shopping" or new.
-        // The AccountPage handles guiding them to upgrade.
-        // If they have >= MANAGED_URL_LIMIT, they can't add more.
-        setCanAddMoreUrls(count < MANAGED_URL_LIMIT); 
+        // Use managedUrlLimit from userProfile
+        const limit = userProfile.managedUrlLimit || 0; 
+        setCanAddMoreUrls(count < limit);
 
       } catch (error) {
         console.error("Error fetching user URL count:", error);
         toast({ title: "Error", description: "Could not verify your current URL count.", variant: "destructive" });
-        setCanAddMoreUrls(false); 
+        setCanAddMoreUrls(false);
       } finally {
         setIsCheckingUrlCount(false);
       }
     };
 
     fetchUrlCount();
-  }, [user, authLoading, toast]);
+  }, [user, userProfile, authContextLoading, toast]);
 
 
   const onSubmit: SubmitHandler<FormData> = async (formData) => {
-    if (!user) {
+    if (!user || !userProfile) {
       toast({
         title: "Error",
-        description: "You must be logged in to add a managed URL.",
+        description: "You must be logged in and have a profile to add a managed URL.",
         variant: "destructive",
       });
       return;
     }
 
+    if (userProfile.subscriptionStatus !== "active" && userProfile.subscriptionStatus !== "trialing") {
+        toast({
+            title: "Subscription Required",
+            description: `Your subscription status is '${userProfile.subscriptionStatus}'. Please activate your subscription to add Managed URLs.`,
+            variant: "default",
+            duration: 7000,
+        });
+        return;
+    }
+    
     if (!canAddMoreUrls) {
          toast({
             title: "Limit Reached",
-            description: `You have reached the Managed URL limit for your current plan (${MANAGED_URL_LIMIT}), or you need to select a plan to add URLs. Please check your Account page.`,
-            variant: "default", 
+            description: `You have reached the Managed URL limit of ${userProfile.managedUrlLimit} for your current plan. Please upgrade your plan or delete existing URLs.`,
+            variant: "default",
             duration: 7000,
         });
         return;
     }
 
-    // Removed Tarpit Base URL check alert, as it was previously requested to be removed.
-
-    setIsLoading(true);
+    setIsSubmittingForm(true);
     try {
       const provisionResult = await provisionAndGenerateManagedTarpitConfigDetails({
         userId: user.uid,
@@ -114,22 +117,27 @@ export default function AddUrlForm() {
       });
 
       if (!provisionResult.success || !provisionResult.configData || !provisionResult.fullUrl) {
+        let toastMessage = provisionResult.message || "Failed to provision tarpit instance or generate URL configuration.";
+        // Handle specific backend error messages for limits or inactive subscriptions
+        if (provisionResult.message.includes("limit reached") || provisionResult.message.includes("subscription status")) {
+            toastMessage = provisionResult.message; // Use the backend's specific message
+        }
         toast({
           title: "Provisioning Failed",
-          description: provisionResult.message || "Failed to provision tarpit instance or generate URL configuration.",
+          description: toastMessage,
           variant: "destructive",
         });
-        setIsLoading(false);
+        setIsSubmittingForm(false);
         return;
       }
-      
+
       const { instanceId, ...configDataForWrite } = provisionResult.configData;
-      const documentToWrite: any = { 
+      const documentToWrite: any = {
         ...configDataForWrite,
-        createdAt: serverTimestamp(), 
-        status: "active", 
+        createdAt: serverTimestamp(),
+        status: "active",
       };
-      if (instanceId !== undefined) { 
+      if (instanceId !== undefined) {
         documentToWrite.instanceId = instanceId;
       }
 
@@ -139,7 +147,7 @@ export default function AddUrlForm() {
         title: "Success!",
         description: `Tarpit instance provisioned and managed URL added!\nNew URL: ${provisionResult.fullUrl}`,
         variant: "default",
-        duration: 7000, 
+        duration: 7000,
       });
       form.reset();
       // Re-fetch URL count to update canAddMoreUrls state
@@ -147,7 +155,8 @@ export default function AddUrlForm() {
         const querySnapshot = await getDocs(q);
         const count = querySnapshot.size;
         setCurrentUserUrlCount(count);
-        setCanAddMoreUrls(count < MANAGED_URL_LIMIT);
+        const limit = userProfile.managedUrlLimit || 0;
+        setCanAddMoreUrls(count < limit);
 
     } catch (error) {
       console.error("Error in onSubmit AddUrlForm:", error);
@@ -158,11 +167,11 @@ export default function AddUrlForm() {
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setIsSubmittingForm(false);
     }
   };
 
-  if (authLoading || isCheckingUrlCount) {
+  if (authContextLoading || isCheckingUrlCount) {
     return (
         <div className="space-y-4">
             <Skeleton className="h-10 w-1/3" />
@@ -171,15 +180,23 @@ export default function AddUrlForm() {
         </div>
     );
   }
+  
+  const currentLimit = userProfile?.managedUrlLimit ?? 0;
 
   return (
     <>
-      {!canAddMoreUrls && !isCheckingUrlCount && user && (
+      {user && userProfile && (!canAddMoreUrls || (userProfile.subscriptionStatus !== "active" && userProfile.subscriptionStatus !== "trialing")) && !isCheckingUrlCount && (
         <Alert variant="default" className="mb-6 border-amber-500/50 text-amber-500 [&>svg]:text-amber-500 bg-amber-500/10">
           <ShieldAlert className="h-5 w-5" />
-          <AlertTitle>URL Limit Reached or Plan Required</AlertTitle>
+          <AlertTitle>
+            {userProfile.subscriptionStatus !== "active" && userProfile.subscriptionStatus !== "trialing"
+              ? "Subscription Inactive"
+              : "URL Limit Reached"}
+          </AlertTitle>
           <AlertDescription>
-            You have reached the Managed URL limit ({MANAGED_URL_LIMIT}) for your current plan, or you may need to select a subscription plan on your Account page to add URLs.
+            {userProfile.subscriptionStatus !== "active" && userProfile.subscriptionStatus !== "trialing"
+              ? `Your subscription status is '${userProfile.subscriptionStatus}'. Please check your Account page to activate your subscription.`
+              : `You have reached the Managed URL limit (${currentLimit}) for your current plan. Please upgrade or manage existing URLs.`}
           </AlertDescription>
         </Alert>
       )}
@@ -214,20 +231,22 @@ export default function AddUrlForm() {
               </FormItem>
             )}
           />
-          <Button 
-            type="submit" 
-            disabled={isLoading || !user || !canAddMoreUrls || isCheckingUrlCount} 
+          <Button
+            type="submit"
+            disabled={isSubmittingForm || !user || !userProfile || !canAddMoreUrls || isCheckingUrlCount || (userProfile.subscriptionStatus !== "active" && userProfile.subscriptionStatus !== "trialing")}
             className="w-full md:w-auto bg-primary text-primary-foreground hover:bg-accent hover:text-accent-foreground"
           >
-            {isLoading ? (
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" /> 
+            {isSubmittingForm ? (
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
             ) : (
               <PlusCircle className="mr-2 h-5 w-5" />
             )}
-            {isLoading ? "Provisioning & Adding..." : "Add Managed URL"}
+            {isSubmittingForm ? "Provisioning & Adding..." : "Add Managed URL"}
           </Button>
         </form>
       </Form>
     </>
   );
 }
+
+    
