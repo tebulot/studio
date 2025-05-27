@@ -35,9 +35,9 @@ const subscriptionTiers = [
   {
     id: "set_and_forget",
     name: "Set & Forget",
-    price: "$5/mo",
+    price: "$5/mo", // Updated price
     features: [
-      "1 Managed URL",
+      "1 Managed URL", // Updated limit
       "Dashboard Stats (30-min refresh)",
       "Email Support",
     ],
@@ -46,7 +46,7 @@ const subscriptionTiers = [
     variant: "default" as const,
     isCurrent: (currentTierId: string) => currentTierId === "set_and_forget",
     actionType: "switch_plan" as const,
-    stripePriceId: "price_REPLACE_WITH_YOUR_SET_FORGET_PRICE_ID", //  <<< --- YOU MUST REPLACE THIS WITH YOUR ACTUAL STRIPE PRICE ID
+    stripePriceId: "price_REPLACE_WITH_YOUR_SET_FORGET_PRICE_ID", // <<< --- YOU MUST REPLACE THIS WITH YOUR ACTUAL STRIPE PRICE ID
   },
   {
     id: "analytics",
@@ -146,7 +146,7 @@ export default function AccountPage() {
     if (actionType === "view_plans") {
         toast({
         title: "Explore Our Plans!",
-        description: `You are currently on the ${targetTier.name} tier. Check out our paid plans for more features!`,
+        description: `You are currently on the ${subscriptionTiers.find(t=> t.id === currentUserTierId)?.name || 'current'} tier. Check out our paid plans for more features!`,
         duration: 5000,
         });
     } else if (actionType === "switch_plan") {
@@ -230,6 +230,8 @@ export default function AccountPage() {
                 'Content-Type': 'application/json', 
                 'Authorization': `Bearer ${idToken}`,
             },
+            // For create-customer-portal-session, the body might be empty or just include firebaseUid if your backend needs it
+            // The backend should derive the Stripe Customer ID from the authenticated user (via ID token).
         });
 
         if (!response.ok) {
