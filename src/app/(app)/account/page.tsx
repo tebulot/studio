@@ -27,10 +27,10 @@ const subscriptionTiers = [
       "Email Support",
     ],
     icon: Eye,
-    cta: "View Paid Plans",
+    cta: "Switch to Window Shopping", // Updated CTA
     variant: "outline" as const,
     isCurrent: (currentTierId: string | null) => currentTierId === "window_shopping",
-    actionType: "view_plans" as const,
+    actionType: "switch_plan" as const, // Updated actionType
     stripePriceId: null,
   },
   {
@@ -43,7 +43,7 @@ const subscriptionTiers = [
       "Email Support",
     ],
     icon: Zap,
-    cta: "Switch to Set & Forget", // Updated CTA
+    cta: "Switch to Set & Forget", 
     variant: "default" as const,
     isCurrent: (currentTierId: string | null) => currentTierId === "set_and_forget",
     actionType: "switch_plan" as const,
@@ -52,14 +52,14 @@ const subscriptionTiers = [
   {
     id: "analytics",
     name: "Analytics",
-    price: "$20/mo", // Updated price
+    price: "$20/mo", 
     features: [
       "Up to 3 Managed URLs",
       "Full Dashboard Analytics",
       "Priority Email Support",
     ],
     icon: BarChartHorizontalBig,
-    cta: "Switch to Analytics", // Updated CTA
+    cta: "Switch to Analytics", 
     variant: "default" as const,
     isCurrent: (currentTierId: string | null) => currentTierId === "analytics",
     actionType: "switch_plan" as const,
@@ -88,7 +88,7 @@ export default function AccountPage() {
 
   const [isSendingResetEmail, setIsSendingResetEmail] = useState(false);
 
-  const loading = authContextLoading; // Combined loading state for user auth and profile
+  const loading = authContextLoading; 
 
   useEffect(() => {
     if (user) {
@@ -134,22 +134,41 @@ export default function AccountPage() {
   };
 
   const handlePlanChangeClick = async (tierId: string, actionType: string, stripePriceId: string | null) => {
-    if (!user) {
+    if (!user || !userProfile) {
       toast({ title: "Authentication Error", description: "Please log in to change your plan.", variant: "destructive" });
       return;
     }
-    if (userProfile && tierId === userProfile.activeTierId && actionType === "switch_plan") return;
+    if (userProfile && tierId === userProfile.activeTierId && actionType === "switch_plan") {
+        // If user clicks their current plan's "Switch to..." button (which should be "Current Plan")
+        return;
+    }
 
     const targetTier = subscriptionTiers.find(t => t.id === tierId);
     if (!targetTier) return;
 
-    if (actionType === "view_plans") {
+    // Handle "switching" to Window Shopping (i.e., cancelling current paid sub or exploring if already free)
+    if (tierId === "window_shopping") {
+      if (userProfile.activeTierId === "window_shopping") {
         toast({
-        title: "Explore Our Plans!",
-        description: `You are currently on the ${subscriptionTiers.find(t=> userProfile && t.id === userProfile.activeTierId)?.name || 'current'} tier. Check out our paid plans for more features!`,
-        duration: 5000,
+          title: "Explore Paid Plans",
+          description: "You are currently on the Window Shopping plan. Check out our paid plans for more features!",
+          duration: 5000,
         });
-    } else if (actionType === "switch_plan") {
+        return;
+      }
+      // If on a paid plan, and they click "Switch to Window Shopping"
+      // this means they want to manage/cancel their current subscription.
+      toast({
+        title: "Manage Subscription",
+        description: "To switch to the Window Shopping plan, please manage or cancel your current subscription via the Stripe Customer Portal.",
+        duration: 7000,
+      });
+      await handleManageSubscription();
+      return;
+    }
+    
+    // For paid tiers:
+    if (actionType === "switch_plan") { // This will now only apply to set_and_forget and analytics
         if (!stripePriceId || stripePriceId.startsWith("price_REPLACE_WITH_YOUR_")) {
             toast({ title: "Configuration Error", description: "Stripe Price ID not configured for this plan. Please contact support.", variant: "destructive" });
             console.error(`Stripe Price ID placeholder/issue for tier: ${tierId}. Actual stripePriceId value found: '${stripePriceId}'`);
@@ -178,7 +197,7 @@ export default function AccountPage() {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${idToken}`,
                 },
-                body: JSON.stringify({ priceId: stripePriceId }), // Backend will get firebaseUid from ID token
+                body: JSON.stringify({ priceId: stripePriceId }), 
             });
 
             if (!response.ok) {
@@ -246,7 +265,6 @@ export default function AccountPage() {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${idToken}`,
             },
-            // Backend derives firebaseUid from token, so body can be empty or contain other non-sensitive info if needed
         });
 
         if (!response.ok) {
@@ -456,12 +474,13 @@ export default function AccountPage() {
                         disabled={
                             loading || 
                             isSubmittingPlanChange === tier.id ||
-                            (tier.isCurrent(currentActiveTierId) && tier.actionType === "switch_plan") ||
-                            (tier.actionType === "switch_plan" && (!userProfile || (userProfile.subscriptionStatus !== "active" && userProfile.subscriptionStatus !== "trialing" && userProfile.subscriptionStatus !== "window_shopping" && userProfile.activeTierId !== "window_shopping")))
+                            tier.id === currentActiveTierId || // Simpler: disable if it's the current tier
+                            (tier.id !== 'window_shopping' && userProfile && // Disable paid plan buttons if status isn't ideal
+                                !['active', 'trialing', 'window_shopping', 'active_until_period_end', 'pending_downgrade'].includes(userProfile.subscriptionStatus || ''))
                         }
                       >
                         {isSubmittingPlanChange === tier.id ? <Loader2 className="h-5 w-5 animate-spin" /> :
-                        tier.isCurrent(currentActiveTierId) && tier.actionType === "switch_plan" ? "Current Plan" : tier.cta}
+                        tier.id === currentActiveTierId ? "Current Plan" : tier.cta}
                       </Button>
                     </CardFooter>
                   </Card>
@@ -522,5 +541,3 @@ export default function AccountPage() {
     </div>
   );
 }
-
-    
