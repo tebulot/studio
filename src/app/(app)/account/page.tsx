@@ -63,7 +63,7 @@ const subscriptionTiers = [
     variant: "default" as const,
     isCurrent: (currentTierId: string) => currentTierId === "analytics",
     actionType: "switch_plan" as const,
-    stripePriceId: "price_REPLACE_WITH_YOUR_ANALYTICS_PRICE_ID", // <-- REPLACE THIS
+    stripePriceId: "price_1RTNd2QO5aNncTFj6K8XaC4g", // <-- REPLACE THIS
   },
 ];
 

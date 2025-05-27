@@ -15,26 +15,26 @@ import {
 import { useRouter, usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { createContext, useContext, useEffect, useState } from 'react';
-import { auth, db } from '@/lib/firebase/clientApp'; // Added db
-import { doc, onSnapshot, type DocumentData, type Timestamp } from 'firebase/firestore'; // Added Firestore imports
+import { auth, db } from '@/lib/firebase/clientApp';
+import { doc, onSnapshot, type Timestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 
 // Define the structure of the user's profile/subscription data
 export interface UserProfile {
-  activeTierId: string; // e.g., "window_shopping", "set_and_forget", "analytics"
+  activeTierId: string;
   subscriptionStatus: "active" | "trialing" | "past_due" | "canceled" | "active_until_period_end" | "pending_downgrade" | string;
   managedUrlLimit: number;
-  currentPeriodEnd?: Timestamp; // Firestore Timestamp
+  currentPeriodEnd?: Timestamp;
   downgradeToTierId?: string;
   stripeCustomerId?: string;
   stripeSubscriptionId?: string;
-  // Add other fields as needed
+  // Add other fields as needed, e.g., displayName if you store it here too
 }
 
 interface AuthContextType {
   user: User | null;
-  userProfile: UserProfile | null; // Added userProfile
-  loading: boolean; // True if auth state or profile is loading
+  userProfile: UserProfile | null;
+  loading: boolean;
   signIn: (email: string, pass: string) => Promise<User | null>;
   signUp: (email: string, pass: string) => Promise<User | null>;
   signOut: () => Promise<void>;
@@ -47,9 +47,9 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null); // State for user profile
-  const [authLoading, setAuthLoading] = useState(true); // Loading for Firebase Auth state
-  const [profileLoading, setProfileLoading] = useState(true); // Loading for Firestore profile
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [profileLoading, setProfileLoading] = useState(true); // Initialize as true
 
   const router = useRouter();
   const pathname = usePathname();
@@ -60,49 +60,52 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(currentUser);
       setAuthLoading(false);
       if (!currentUser) {
-        // If user logs out or no user, clear profile and set profileLoading to false
         setUserProfile(null);
-        setProfileLoading(false);
+        setProfileLoading(false); // No profile to load if no user
+      } else {
+        setProfileLoading(true); // Reset profile loading when user changes
       }
     });
     return () => unsubscribeAuth();
   }, []);
 
-  // Effect to fetch/listen to user profile from Firestore
   useEffect(() => {
     if (user && user.uid) {
-      setProfileLoading(true); // Start loading profile
+      console.log(`AuthContext: Attempting to fetch profile for UID: ${user.uid}`); // Log UID
+      setProfileLoading(true);
       const profileDocRef = doc(db, "user_profiles", user.uid);
       const unsubscribeProfile = onSnapshot(profileDocRef, (docSnap) => {
         if (docSnap.exists()) {
           setUserProfile(docSnap.data() as UserProfile);
+          console.log(`AuthContext: Profile loaded for UID: ${user.uid}`, docSnap.data());
         } else {
-          // Handle case where profile doesn't exist (e.g., new user, default to a base profile)
-          // For now, setting to null. Backend should create a default profile on user creation or first subscription.
-          console.warn(`User profile not found for UID: ${user.uid}. Consider creating a default profile.`);
-          setUserProfile({ // Default to a window_shopping like profile if none exists
+          console.warn(`AuthContext: User profile not found for UID: ${user.uid}. Using default.`);
+          setUserProfile({
               activeTierId: "window_shopping",
-              subscriptionStatus: "active", // Or "trialing" if you have trials
+              subscriptionStatus: "active",
               managedUrlLimit: 0,
           });
         }
-        setProfileLoading(false); // Profile loaded or confirmed not to exist
+        setProfileLoading(false);
       }, (error) => {
-        console.error("Error fetching user profile:", error);
-        toast({ title: "Error", description: "Could not load user profile.", variant: "destructive" });
+        console.error(`AuthContext: Error fetching user profile for UID: ${user.uid}. Error:`, error);
+        toast({
+          title: "Profile Error",
+          description: `Could not load your profile data (UID: ${user.uid}). Some features might be limited. Error: ${error.message}`,
+          variant: "destructive",
+          duration: 7000,
+        });
         setUserProfile(null);
         setProfileLoading(false);
       });
       return () => unsubscribeProfile();
-    } else {
-      // No user, so no profile to fetch
-      setUserProfile(null);
-      setProfileLoading(false); // Not loading if no user
+    } else if (!user && !authLoading) { // If no user and auth is done loading
+        setUserProfile(null);
+        setProfileLoading(false);
     }
-  }, [user, toast]);
+  }, [user, authLoading, toast]); // Added authLoading as a dependency
 
-
-  const overallLoading = authLoading || (user != null && profileLoading); // Overall loading is true if auth is loading OR if there's a user but their profile is still loading
+  const overallLoading = authLoading || (user != null && profileLoading);
 
   useEffect(() => {
     const publicPaths = ['/', '/login', '/legal/licenses'];
@@ -119,31 +122,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [user, overallLoading, router, pathname]);
 
   const signIn = async (email: string, pass: string): Promise<User | null> => {
-    setAuthLoading(true);
-    setProfileLoading(true); // Expect profile to load after sign-in
+    // Local loading state for sign-in operation, not global authLoading
+    // setAuthLoading(true); // This is handled by onAuthStateChanged
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, pass);
       // User state will be set by onAuthStateChanged, which then triggers profile load
       toast({ title: "Signed In", description: "Welcome back!" });
-      router.push('/dashboard');
+      router.push('/dashboard'); // Explicit redirect after successful sign-in
       return userCredential.user;
     } catch (error) {
       const authError = error as AuthError;
       console.error("Sign-in error", authError);
       toast({ title: "Sign In Failed", description: authError.message || "Could not sign in.", variant: "destructive" });
-      setAuthLoading(false);
-      setProfileLoading(false);
       return null;
     }
-    // Loading state is managed by onAuthStateChanged and profile listener
   };
 
   const signUp = async (email: string, pass: string): Promise<User | null> => {
-    setAuthLoading(true);
-    setProfileLoading(true); // Expect profile to load or default profile logic to run
+    // setAuthLoading(true); // Handled by onAuthStateChanged
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
-      // User state set by onAuthStateChanged. Backend should create a default user_profile on new user creation.
       toast({ title: "Signed Up", description: "Welcome to SpiteSpiral!" });
       router.push('/dashboard');
       return userCredential.user;
@@ -151,33 +149,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const authError = error as AuthError;
       console.error("Sign-up error", authError);
       toast({ title: "Sign Up Failed", description: authError.message || "Could not sign up.", variant: "destructive" });
-      setAuthLoading(false);
-      setProfileLoading(false);
       return null;
     }
   };
 
   const signOut = async (): Promise<void> => {
-    setAuthLoading(true);
-    setUserProfile(null); // Clear profile immediately on sign out attempt
-    setProfileLoading(true);
+    // setAuthLoading(true); // Handled by onAuthStateChanged
     try {
       await firebaseSignOut(auth);
-      // User state will be set to null by onAuthStateChanged
+      setUserProfile(null); // Clear profile on sign out
       toast({ title: "Signed Out", description: "You have been successfully signed out." });
       router.push('/login');
     } catch (error) {
       const authError = error as AuthError;
       console.error("Sign-out error", authError);
       toast({ title: "Sign Out Failed", description: authError.message || "Could not sign out.", variant: "destructive" });
-    } finally {
-      setAuthLoading(false); // Auth state change will handle final loading state
-      setProfileLoading(false);
     }
   };
 
   const sendPasswordReset = async (email: string): Promise<boolean> => {
-    // This loading is local to the operation, not global auth state
     try {
       await sendPasswordResetEmail(auth, email);
       toast({
@@ -202,7 +192,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       toast({ title: "Error", description: "No user logged in.", variant: "destructive" });
       return false;
     }
-    // This loading is local to the operation
     try {
       await verifyBeforeUpdateEmail(auth.currentUser, newEmail);
       toast({
@@ -224,13 +213,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       toast({ title: "Error", description: "No user logged in.", variant: "destructive" });
       return false;
     }
-    // This loading is local to the operation
     try {
       await updateProfile(auth.currentUser, { displayName: newDisplayName });
-      // Manually trigger a refresh of user state if needed, though onAuthStateChanged might pick it up
-      // For immediate UI update, consider updating local user state if AuthContext manages a copy
-      // For now, Firebase backend change should eventually propagate to onAuthStateChanged listener.
-      setUser(auth.currentUser); // Optimistic update for displayName
+      setUser(prevUser => prevUser ? { ...prevUser, displayName: newDisplayName } as User : null); // Optimistic update
       toast({ title: "Username Updated", description: "Your username has been successfully updated." });
       return true;
     } catch (error) {
@@ -241,7 +226,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  if (overallLoading && !userProfile) { // Show global loader if auth is loading or if user exists but profile isn't loaded yet
+  if (overallLoading) { // Simplified condition for global loader
     const publicPathsForLoadingScreen = ['/', '/login', '/legal/licenses'];
     const isPublicLoadingPath = publicPathsForLoadingScreen.some(p => pathname === p || (p !== '/' && pathname.startsWith(p + '/'))) ||
                                pathname.startsWith('/_next/') ||
