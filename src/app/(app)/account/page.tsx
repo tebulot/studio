@@ -46,7 +46,7 @@ const subscriptionTiers = [
     variant: "default" as const,
     isCurrent: (currentTierId: string) => currentTierId === "set_and_forget",
     actionType: "switch_plan" as const,
-    stripePriceId: "price_1RSzbxQO5aNncTFjyeaANlLf", 
+    stripePriceId: "price_1RSzbxQO5aNncTFjyeaANlLf", // Confirmed Price ID
   },
   {
     id: "analytics",
@@ -62,7 +62,7 @@ const subscriptionTiers = [
     variant: "default" as const,
     isCurrent: (currentTierId: string) => currentTierId === "analytics",
     actionType: "switch_plan" as const,
-    stripePriceId: "price_REPLACE_WITH_YOUR_ANALYTICS_PRICE_ID", 
+    stripePriceId: "price_REPLACE_WITH_YOUR_ANALYTICS_PRICE_ID", // << YOU NEED TO REPLACE THIS
   },
 ];
 
@@ -182,8 +182,8 @@ export default function AccountPage() {
             });
 
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({ message: "Failed to create Stripe Checkout session. Please check server logs and API availability." }));
-                throw new Error(errorData.message || "Failed to create Stripe Checkout session.");
+                const errorData = await response.json().catch(() => ({ message: `Failed to create Stripe Checkout session. Status: ${response.status}. Please check server logs and API availability.` }));
+                throw new Error(errorData.message || `Failed to create Stripe Checkout session. Status: ${response.status}`);
             }
 
             const { sessionId } = await response.json();
@@ -250,8 +250,8 @@ export default function AccountPage() {
         });
 
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ message: "Failed to create Stripe Customer Portal session. Please check server logs and API availability." }));
-            throw new Error(errorData.message || "Failed to create Stripe Customer Portal session.");
+            const errorData = await response.json().catch(() => ({ message: `Failed to create Stripe Customer Portal session. Status: ${response.status}. Please check server logs and API availability.` }));
+            throw new Error(errorData.message || `Failed to create Stripe Customer Portal session. Status: ${response.status}`);
         }
 
         const { portalUrl } = await response.json();
@@ -482,3 +482,4 @@ export default function AccountPage() {
     </div>
   );
 }
+
