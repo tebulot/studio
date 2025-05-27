@@ -21,14 +21,14 @@ import { useToast } from '@/hooks/use-toast';
 
 // Define the structure of the user's profile/subscription data
 export interface UserProfile {
-  activeTierId: string;
+  activeTierId: string; // e.g., "window_shopping", "set_and_forget", "analytics"
   subscriptionStatus: "active" | "trialing" | "past_due" | "canceled" | "active_until_period_end" | "pending_downgrade" | string;
   managedUrlLimit: number;
-  currentPeriodEnd?: Timestamp;
-  downgradeToTierId?: string;
+  currentPeriodEnd?: Timestamp; // From Stripe, when the current subscription period ends
+  downgradeToTierId?: string; // If status is "pending_downgrade" or "active_until_period_end"
   stripeCustomerId?: string;
   stripeSubscriptionId?: string;
-  // Add other fields as needed, e.g., displayName if you store it here too
+  // Add other fields as needed
 }
 
 interface AuthContextType {
@@ -49,7 +49,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [profileLoading, setProfileLoading] = useState(true); // Initialize as true
+  const [profileLoading, setProfileLoading] = useState(true);
 
   const router = useRouter();
   const pathname = usePathname();
@@ -61,7 +61,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setAuthLoading(false);
       if (!currentUser) {
         setUserProfile(null);
-        setProfileLoading(false); // No profile to load if no user
+        setProfileLoading(false);
       } else {
         setProfileLoading(true); // Reset profile loading when user changes
       }
@@ -71,7 +71,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     if (user && user.uid) {
-      console.log(`AuthContext: Attempting to fetch profile for UID: ${user.uid}`); // Log UID
+      console.log(`AuthContext: Attempting to fetch profile for UID: ${user.uid}`);
       setProfileLoading(true);
       const profileDocRef = doc(db, "user_profiles", user.uid);
       const unsubscribeProfile = onSnapshot(profileDocRef, (docSnap) => {
@@ -79,39 +79,41 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUserProfile(docSnap.data() as UserProfile);
           console.log(`AuthContext: Profile loaded for UID: ${user.uid}`, docSnap.data());
         } else {
-          console.warn(`AuthContext: User profile not found for UID: ${user.uid}. Using default.`);
+          console.warn(`AuthContext: User profile not found for UID: ${user.uid}. Using default 'window_shopping' profile.`);
+          // Default to a base "window_shopping" profile if none exists
+          // Your backend should ideally create this document on new user sign-up or first subscription.
           setUserProfile({
               activeTierId: "window_shopping",
-              subscriptionStatus: "active",
+              subscriptionStatus: "active", // Or perhaps "needs_subscription"
               managedUrlLimit: 0,
           });
         }
         setProfileLoading(false);
       }, (error) => {
-        console.error(`AuthContext: Error fetching user profile for UID: ${user.uid}. Error:`, error);
+        console.error(`AuthContext: Error fetching user profile for UID ${user.uid}. Error:`, error.message, error.code, error);
         toast({
           title: "Profile Error",
-          description: `Could not load your profile data (UID: ${user.uid}). Some features might be limited. Error: ${error.message}`,
+          description: `Could not load your profile data. Some features might be limited. Error: ${error.message}. Please check Firestore rules for /user_profiles/{uid}.`,
           variant: "destructive",
-          duration: 7000,
+          duration: 10000,
         });
-        setUserProfile(null);
+        setUserProfile(null); // Or a default failsafe profile
         setProfileLoading(false);
       });
       return () => unsubscribeProfile();
-    } else if (!user && !authLoading) { // If no user and auth is done loading
+    } else if (!user && !authLoading) {
         setUserProfile(null);
         setProfileLoading(false);
     }
-  }, [user, authLoading, toast]); // Added authLoading as a dependency
+  }, [user, authLoading, toast]);
 
   const overallLoading = authLoading || (user != null && profileLoading);
 
   useEffect(() => {
     const publicPaths = ['/', '/login', '/legal/licenses'];
     const isPublicPath = publicPaths.some(p => pathname === p || (p !== '/' && pathname.startsWith(p + '/'))) ||
-                         pathname.startsWith('/_next/') ||
-                         pathname.startsWith('/demo');
+                         pathname.startsWith('/_next/') || // Allow Next.js internal paths
+                         pathname.startsWith('/demo');    // Allow all demo paths
 
     if (!overallLoading && !user && !isPublicPath) {
       router.push('/login?redirect=' + encodeURIComponent(pathname));
@@ -122,13 +124,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [user, overallLoading, router, pathname]);
 
   const signIn = async (email: string, pass: string): Promise<User | null> => {
-    // Local loading state for sign-in operation, not global authLoading
-    // setAuthLoading(true); // This is handled by onAuthStateChanged
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, pass);
-      // User state will be set by onAuthStateChanged, which then triggers profile load
       toast({ title: "Signed In", description: "Welcome back!" });
-      router.push('/dashboard'); // Explicit redirect after successful sign-in
+      // Redirection to /dashboard is handled by the useEffect above
       return userCredential.user;
     } catch (error) {
       const authError = error as AuthError;
@@ -139,11 +138,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signUp = async (email: string, pass: string): Promise<User | null> => {
-    // setAuthLoading(true); // Handled by onAuthStateChanged
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+      // Your backend should ideally create a user_profiles document for this new user
+      // with default tier ("window_shopping") upon new user creation (e.g., via a Firebase Auth trigger).
       toast({ title: "Signed Up", description: "Welcome to SpiteSpiral!" });
-      router.push('/dashboard');
+      // Redirection to /dashboard is handled by the useEffect above
       return userCredential.user;
     } catch (error) {
       const authError = error as AuthError;
@@ -154,10 +154,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signOut = async (): Promise<void> => {
-    // setAuthLoading(true); // Handled by onAuthStateChanged
     try {
       await firebaseSignOut(auth);
-      setUserProfile(null); // Clear profile on sign out
+      setUserProfile(null);
       toast({ title: "Signed Out", description: "You have been successfully signed out." });
       router.push('/login');
     } catch (error) {
@@ -215,7 +214,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
     try {
       await updateProfile(auth.currentUser, { displayName: newDisplayName });
-      setUser(prevUser => prevUser ? { ...prevUser, displayName: newDisplayName } as User : null); // Optimistic update
+      // Optimistically update local user state, or rely on onAuthStateChanged if it triggers for profile updates.
+      setUser(prevUser => prevUser ? { ...prevUser, displayName: newDisplayName } as User : null);
       toast({ title: "Username Updated", description: "Your username has been successfully updated." });
       return true;
     } catch (error) {
@@ -226,7 +226,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  if (overallLoading) { // Simplified condition for global loader
+  if (overallLoading) {
     const publicPathsForLoadingScreen = ['/', '/login', '/legal/licenses'];
     const isPublicLoadingPath = publicPathsForLoadingScreen.some(p => pathname === p || (p !== '/' && pathname.startsWith(p + '/'))) ||
                                pathname.startsWith('/_next/') ||
