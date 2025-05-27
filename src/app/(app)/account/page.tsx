@@ -43,7 +43,7 @@ const subscriptionTiers = [
       "Email Support",
     ],
     icon: Zap,
-    cta: "Switch to Set & Forget",
+    cta: "Switch to Set & Forget", // Updated CTA
     variant: "default" as const,
     isCurrent: (currentTierId: string | null) => currentTierId === "set_and_forget",
     actionType: "switch_plan" as const,
@@ -52,14 +52,14 @@ const subscriptionTiers = [
   {
     id: "analytics",
     name: "Analytics",
-    price: "$12/mo",
+    price: "$20/mo", // Updated price
     features: [
       "Up to 3 Managed URLs",
       "Full Dashboard Analytics",
       "Priority Email Support",
     ],
     icon: BarChartHorizontalBig,
-    cta: "Upgrade to Analytics",
+    cta: "Switch to Analytics", // Updated CTA
     variant: "default" as const,
     isCurrent: (currentTierId: string | null) => currentTierId === "analytics",
     actionType: "switch_plan" as const,
@@ -523,5 +523,4 @@ export default function AccountPage() {
   );
 }
 
-    
     
