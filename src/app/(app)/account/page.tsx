@@ -30,7 +30,7 @@ const subscriptionTiers = [
     variant: "outline" as const,
     isCurrent: (currentTierId: string) => currentTierId === "window_shopping",
     actionType: "view_plans" as const,
-    stripePriceId: null, // No Stripe price for a free/view-only tier
+    stripePriceId: null, 
   },
   {
     id: "set_and_forget",
@@ -46,7 +46,7 @@ const subscriptionTiers = [
     variant: "default" as const,
     isCurrent: (currentTierId: string) => currentTierId === "set_and_forget",
     actionType: "switch_plan" as const,
-    stripePriceId: "price_1RSzbxQO5aNncTFjyeaANlLf", // Corrected ID
+    stripePriceId: "price_1RSzbxQO5aNncTFjyeaANlLf", 
   },
   {
     id: "analytics",
@@ -62,7 +62,7 @@ const subscriptionTiers = [
     variant: "default" as const,
     isCurrent: (currentTierId: string) => currentTierId === "analytics",
     actionType: "switch_plan" as const,
-    stripePriceId: "price_REPLACE_WITH_YOUR_ANALYTICS_PRICE_ID", // Placeholder for Analytics tier
+    stripePriceId: "price_REPLACE_WITH_YOUR_ANALYTICS_PRICE_ID", 
   },
 ];
 
@@ -152,22 +152,26 @@ export default function AccountPage() {
     } else if (actionType === "switch_plan") {
         if (!stripePriceId || stripePriceId.startsWith("price_REPLACE_WITH_YOUR_")) {
             toast({ title: "Configuration Error", description: "Stripe Price ID not configured for this plan. Please contact support.", variant: "destructive" });
-            console.error(`Stripe Price ID placeholder/issue for tier: ${tierId}. Actual stripePriceId value found: '${stripePriceId}'`); // Enhanced console error
+            console.error(`Stripe Price ID placeholder/issue for tier: ${tierId}. Actual stripePriceId value found: '${stripePriceId}'`);
             return;
         }
         if (!stripePromise) {
             toast({ title: "Stripe Error", description: "Stripe is not configured correctly. Please contact support.", variant: "destructive" });
-            console.error("Stripe Publishable Key not found.");
+            console.error("Stripe Publishable Key (NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) not found in environment variables.");
             return;
         }
+        
+        const apiBaseUrl = process.env.NEXT_PUBLIC_SPITESPIRAL_API_BASE_URL;
+        if (!apiBaseUrl) {
+          toast({ title: "Configuration Error", description: "API base URL not configured. Please contact support.", variant: "destructive" });
+          console.error("NEXT_PUBLIC_SPITESPIRAL_API_BASE_URL environment variable is not set.");
+          return;
+        }
+
         setIsSubmittingPlanChange(tierId);
         try {
             const idToken = await user.getIdToken();
-            const apiBaseUrl = process.env.NEXT_PUBLIC_SPITESPIRAL_API_BASE_URL;
-            if (!apiBaseUrl) {
-              throw new Error("API base URL not configured. Please set NEXT_PUBLIC_SPITESPIRAL_API_BASE_URL.");
-            }
-
+            
             const response = await fetch(`${apiBaseUrl}/v1/stripe/create-checkout-session`, {
                 method: 'POST',
                 headers: {
@@ -178,13 +182,13 @@ export default function AccountPage() {
             });
 
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({ message: "Failed to create Stripe Checkout session. Please try again." }));
+                const errorData = await response.json().catch(() => ({ message: "Failed to create Stripe Checkout session. Please check server logs and API availability." }));
                 throw new Error(errorData.message || "Failed to create Stripe Checkout session.");
             }
 
             const { sessionId } = await response.json();
             if (!sessionId) {
-                throw new Error("Stripe Checkout session ID not received.");
+                throw new Error("Stripe Checkout session ID not received from backend.");
             }
 
             const stripe = await stripePromise;
@@ -199,7 +203,15 @@ export default function AccountPage() {
             }
         } catch (error) {
             console.error("Plan change error:", error);
-            toast({ title: "Error", description: (error as Error).message || "An unexpected error occurred.", variant: "destructive" });
+            let errorMessage = "An unexpected error occurred during plan change.";
+            if (error instanceof Error) {
+                if (error.message.includes("Failed to fetch")) {
+                    errorMessage = "Could not connect to the server to initiate plan change. Please check your internet connection and try again. If the issue persists, the service may be temporarily unavailable.";
+                } else {
+                    errorMessage = error.message;
+                }
+            }
+            toast({ title: "Error", description: errorMessage, variant: "destructive" });
         } finally {
             setIsSubmittingPlanChange(null);
         }
@@ -213,16 +225,20 @@ export default function AccountPage() {
     }
      if (!stripePromise) {
         toast({ title: "Stripe Error", description: "Stripe is not configured correctly. Please contact support.", variant: "destructive" });
-        console.error("Stripe Publishable Key not found.");
+        console.error("Stripe Publishable Key (NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) not found in environment variables.");
         return;
     }
+
+    const apiBaseUrl = process.env.NEXT_PUBLIC_SPITESPIRAL_API_BASE_URL;
+    if (!apiBaseUrl) {
+      toast({ title: "Configuration Error", description: "API base URL not configured. Please contact support.", variant: "destructive" });
+      console.error("NEXT_PUBLIC_SPITESPIRAL_API_BASE_URL environment variable is not set.");
+      return;
+    }
+
     setIsManagingSubscription(true);
     try {
         const idToken = await user.getIdToken();
-        const apiBaseUrl = process.env.NEXT_PUBLIC_SPITESPIRAL_API_BASE_URL;
-        if (!apiBaseUrl) {
-          throw new Error("API base URL not configured. Please set NEXT_PUBLIC_SPITESPIRAL_API_BASE_URL.");
-        }
         
         const response = await fetch(`${apiBaseUrl}/v1/stripe/create-customer-portal-session`, {
             method: 'POST',
@@ -230,22 +246,31 @@ export default function AccountPage() {
                 'Content-Type': 'application/json', 
                 'Authorization': `Bearer ${idToken}`,
             },
+            // Backend Gemini confirmed empty body is fine if deriving user from ID token
         });
 
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ message: "Failed to create Stripe Customer Portal session. Please try again." }));
+            const errorData = await response.json().catch(() => ({ message: "Failed to create Stripe Customer Portal session. Please check server logs and API availability." }));
             throw new Error(errorData.message || "Failed to create Stripe Customer Portal session.");
         }
 
         const { portalUrl } = await response.json();
         if (!portalUrl) {
-            throw new Error("Stripe Customer Portal URL not received.");
+            throw new Error("Stripe Customer Portal URL not received from backend.");
         }
         window.location.href = portalUrl;
 
     } catch (error) {
         console.error("Manage subscription error:", error);
-        toast({ title: "Error", description: (error as Error).message || "Could not open subscription management.", variant: "destructive" });
+        let errorMessage = "Could not open subscription management.";
+         if (error instanceof Error) {
+            if (error.message.includes("Failed to fetch")) {
+                errorMessage = "Could not connect to the server to manage subscription. Please check your internet connection and try again. If the issue persists, the service may be temporarily unavailable.";
+            } else {
+                errorMessage = error.message;
+            }
+        }
+        toast({ title: "Error", description: errorMessage, variant: "destructive" });
     } finally {
         setIsManagingSubscription(false);
     }
@@ -457,4 +482,3 @@ export default function AccountPage() {
     </div>
   );
 }
-
