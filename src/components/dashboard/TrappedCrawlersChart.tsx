@@ -14,7 +14,7 @@ import { format, subDays, startOfDay, endOfDay, eachDayOfInterval } from 'date-f
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 
 const chartConfig = {
-  hits: { // Changed from crawlers to hits
+  hits: { 
     label: "Total Hits",
     color: "hsl(var(--primary))",
   },
@@ -26,16 +26,14 @@ interface TrappedCrawlersChartProps {
 
 interface ChartDataPoint {
   date: string; 
-  hits: number; // Changed from crawlers to hits
+  hits: number; 
 }
 
 interface ActivitySummaryDoc {
-  // Assuming these fields exist in your tarpit_activity_summaries documents
   startTime: Timestamp;
   endTime: Timestamp;
   totalHits: number;
   userId: string;
-  // other fields like uniqueIpCount, etc., are not directly used by this chart version
 }
 
 export default function TrappedCrawlersChart({ userIdOverride }: TrappedCrawlersChartProps) {
@@ -62,50 +60,58 @@ export default function TrappedCrawlersChart({ userIdOverride }: TrappedCrawlers
       setIsLoading(true);
       const cacheKey = `spiteSpiral_summaryChartData_${currentUserId}`;
       const timestampKey = `spiteSpiral_summaryChartData_timestamp_${currentUserId}`;
+      const logPrefix = `TrappedCrawlersChart (User: ${currentUserId.substring(0,5)}...):`;
 
       try {
         const cachedTimestampStr = localStorage.getItem(timestampKey);
         const cachedTimestamp = cachedTimestampStr ? parseInt(cachedTimestampStr, 10) : 0;
+        const now = Date.now();
+        const cacheAge = now - cachedTimestamp;
 
-        if (Date.now() - cachedTimestamp < CACHE_DURATION) {
+        console.log(`${logPrefix} Cache check. Now: ${new Date(now).toISOString()}, Cached At: ${new Date(cachedTimestamp).toISOString()}, Age: ${cacheAge/1000}s, Max Age: ${CACHE_DURATION/1000}s`);
+        
+        if (cacheAge < CACHE_DURATION) {
           const cachedData = localStorage.getItem(cacheKey);
           if (cachedData) {
+            console.log(`${logPrefix} Using cached chart data.`);
             setProcessedChartData(JSON.parse(cachedData));
             setIsLoading(false);
-            // console.log("Loaded summary chart data from cache for:", currentUserId);
             return;
+          } else {
+             console.log(`${logPrefix} Chart cache valid by timestamp, but data missing. Fetching fresh.`);
           }
+        } else {
+           console.log(`${logPrefix} Chart cache stale or not found. Fetching fresh data.`);
         }
-        // console.log("Fetching fresh summary chart data for:", currentUserId);
 
-        const thirtyDaysAgoDate = startOfDay(subDays(new Date(), 29)); // Ensure we include today
+        const thirtyDaysAgoDate = startOfDay(subDays(new Date(), 29)); 
         const todayDate = endOfDay(new Date());
 
         const q = query(
-          collection(db, "tarpit_activity_summaries"), // Query the new summaries collection
+          collection(db, "tarpit_activity_summaries"), 
           where("userId", "==", currentUserId),
-          where("startTime", ">=", Timestamp.fromDate(thirtyDaysAgoDate)), // Filter by summaries starting in the last 30 days
+          where("startTime", ">=", Timestamp.fromDate(thirtyDaysAgoDate)), 
           orderBy("startTime", "asc") 
         );
 
         const querySnapshot = await getDocs(q);
+        console.log(`${logPrefix} Fetched ${querySnapshot.size} summary documents from Firestore for chart.`);
         
         const dailyHits: { [dateStr: string]: number } = {};
         const daysInPeriod = eachDayOfInterval({ start: thirtyDaysAgoDate, end: todayDate });
 
         daysInPeriod.forEach(day => {
           const dateStr = format(day, 'yyyy-MM-dd');
-          dailyHits[dateStr] = 0; // Initialize all days in the period with 0 hits
+          dailyHits[dateStr] = 0; 
         });
 
         querySnapshot.forEach((doc) => {
           const data = doc.data() as ActivitySummaryDoc;
           if (data.startTime && data.totalHits && data.startTime instanceof Timestamp) {
             const summaryStartDate = data.startTime.toDate();
-            // Check if the summary window (even partially) falls within the last 30 days until today
             if (summaryStartDate <= todayDate && summaryStartDate >= thirtyDaysAgoDate) {
                 const dateStr = format(summaryStartDate, 'yyyy-MM-dd');
-                if (dailyHits[dateStr] !== undefined) { // Check if the date exists (it should due to initialization)
+                if (dailyHits[dateStr] !== undefined) { 
                     dailyHits[dateStr] += data.totalHits;
                 }
             }
@@ -119,13 +125,16 @@ export default function TrappedCrawlersChart({ userIdOverride }: TrappedCrawlers
                 hits: dailyHits[dateStr] || 0,
             };
         });
+        console.log(`${logPrefix} Processed fresh chart data. Points: ${finalChartData.length}`);
         
         setProcessedChartData(finalChartData);
         localStorage.setItem(cacheKey, JSON.stringify(finalChartData));
-        localStorage.setItem(timestampKey, Date.now().toString());
+        localStorage.setItem(timestampKey, now.toString());
+        console.log(`${logPrefix} Updated chart cache with fresh data.`);
+
 
       } catch (error) {
-        console.error("Error fetching summary chart data:", error);
+        console.error(`${logPrefix} Error fetching summary chart data:`, error);
         toast({
           title: "Error Fetching Chart Data",
           description: "Could not fetch activity summary for the chart. Please try again later.",

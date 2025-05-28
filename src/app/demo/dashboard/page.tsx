@@ -92,22 +92,34 @@ export default function DemoDashboardPage() {
       const cachedCrawlersKey = `${cacheKeyBase}_uniqueCrawlersApprox`;
       const cachedCostKey = `${cacheKeyBase}_wastedComputeSummary`;
       const timestampKey = `${cacheKeyBase}_timestamp`;
+      const logPrefix = `DemoDashboardPage (DEMO_USER_ID: ${DEMO_USER_ID ? DEMO_USER_ID.substring(0,5) : 'N/A'}...) - Demo Summary Stats:`;
+
 
       try {
         const cachedTimestampStr = localStorage.getItem(timestampKey);
         const cachedTimestamp = cachedTimestampStr ? parseInt(cachedTimestampStr, 10) : 0;
+        const now = Date.now();
+        const cacheAge = now - cachedTimestamp;
+        
+        console.log(`${logPrefix} Cache check. Now: ${new Date(now).toISOString()}, Cached At: ${new Date(cachedTimestamp).toISOString()}, Age: ${cacheAge/1000}s, Max Age: ${CACHE_DURATION/1000}s`);
 
-        if (Date.now() - cachedTimestamp < CACHE_DURATION) {
+        if (cacheAge < CACHE_DURATION) {
           const cachedCrawlers = localStorage.getItem(cachedCrawlersKey);
           const cachedCost = localStorage.getItem(cachedCostKey);
           if (cachedCrawlers !== null && cachedCost !== null) {
+            console.log(`${logPrefix} Using cached data.`);
             setDemoUniqueCrawlersApproxCount(JSON.parse(cachedCrawlers));
             setDemoWastedComputeCost(JSON.parse(cachedCost));
             setIsLoadingDemoUniqueCrawlers(false);
             setIsLoadingDemoWastedCompute(false);
             return;
+          } else {
+             console.log(`${logPrefix} Cache valid by timestamp, but data missing. Fetching fresh.`);
           }
+        } else {
+            console.log(`${logPrefix} Cache stale or not found. Fetching fresh data.`);
         }
+
 
         const thirtyDaysAgoDate = startOfDay(subDays(new Date(), 29));
         const summariesQuery = query(
@@ -117,6 +129,7 @@ export default function DemoDashboardPage() {
           orderBy("startTime", "asc")
         );
         const querySnapshot = await getDocs(summariesQuery);
+        console.log(`${logPrefix} Fetched ${querySnapshot.size} summary documents from Firestore for demo user.`);
 
         let summedUniqueIpCount = 0;
         let totalHitsForCostCalc = 0;
@@ -132,16 +145,18 @@ export default function DemoDashboardPage() {
         });
 
         const currentWastedCost = (totalHitsForCostCalc * 0.0001).toFixed(4);
+        console.log(`${logPrefix} Processed fresh data: UniqueIPsSum=${summedUniqueIpCount}, TotalHitsForCost=${totalHitsForCostCalc}, WastedCost=${currentWastedCost}`);
 
         setDemoUniqueCrawlersApproxCount(summedUniqueIpCount);
         setDemoWastedComputeCost(currentWastedCost);
 
         localStorage.setItem(cachedCrawlersKey, JSON.stringify(summedUniqueIpCount));
         localStorage.setItem(cachedCostKey, JSON.stringify(currentWastedCost));
-        localStorage.setItem(timestampKey, Date.now().toString());
+        localStorage.setItem(timestampKey, now.toString());
+        console.log(`${logPrefix} Updated cache with fresh data.`);
 
       } catch (error) {
-        console.error("Error fetching activity summaries for demo dashboard stats:", error);
+        console.error(`${logPrefix} Error fetching activity summaries:`, error);
         toast({ 
             title: "Error Fetching Demo Stats", 
             description: `Could not fetch demo crawler statistics. Ensure Firestore rules allow public read for data where userId is '${DEMO_USER_ID}' (this ID must be the literal string in your rules for demo access) and check DEMO_USER_ID configuration. Error: ${error instanceof Error ? error.message : 'Unknown error'}`, 
@@ -227,7 +242,7 @@ export default function DemoDashboardPage() {
         <Info className="h-5 w-5 text-accent" />
         <AlertTitle className="text-accent">Data Refresh Notice</AlertTitle>
         <AlertDescription className="text-muted-foreground">
-          Aggregated statistics (Unique Crawlers, Compute Wasted, Activity Chart) are based on summaries updated approximately every 30 minutes (by the backend). Active Tarpit Instances update in real-time. The dashboard itself refreshes these summarized stats about every 30 minutes from its cache.
+          Aggregated statistics (Unique Crawlers, Compute Wasted, Activity Chart) are based on summaries updated approximately every 30 minutes (by the backend). Active Tarpit Instances update in real-time. The dashboard itself refreshes these summarized stats from its cache or fetches new data if the cache is older than 30 minutes.
         </AlertDescription>
       </Alert>
 

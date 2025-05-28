@@ -46,7 +46,7 @@ const subscriptionTiers = [
     variant: "default" as const,
     isCurrent: (currentTierId: string | null) => currentTierId === "set_and_forget",
     actionType: "switch_plan" as const,
-    stripePriceId: "price_1RSzbxQO5aNncTFjyeaANlLf",
+    stripePriceId: "price_1RTilPKPVCKvfVVwBUqudAnp",
   },
   {
     id: "analytics",
@@ -54,7 +54,7 @@ const subscriptionTiers = [
     price: "$20/mo",
     features: [
       "Up to 3 Managed URLs",
-      "Full Dashboard Analytics",
+      "Advanced Dashboard Analytics (Coming soon)",
       "Priority Email Support",
     ],
     icon: BarChartHorizontalBig,
@@ -62,7 +62,7 @@ const subscriptionTiers = [
     variant: "default" as const,
     isCurrent: (currentTierId: string | null) => currentTierId === "analytics",
     actionType: "switch_plan" as const,
-    stripePriceId: "price_REPLACE_WITH_YOUR_ANALYTICS_PRICE_ID", // <-- REPLACE THIS
+    stripePriceId: "price_1RTim1KPVCKvfVVwDkc5G0at",
   },
 ];
 

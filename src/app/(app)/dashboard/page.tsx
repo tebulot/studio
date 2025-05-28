@@ -79,24 +79,32 @@ export default function DashboardPage() {
       const cachedCrawlersKey = `${cacheKeyBase}_uniqueCrawlersApprox`;
       const cachedCostKey = `${cacheKeyBase}_wastedComputeSummary`;
       const timestampKey = `${cacheKeyBase}_timestamp`;
+      const logPrefix = `DashboardPage (User: ${user.uid.substring(0,5)}...) - Summary Stats:`;
 
       try {
         const cachedTimestampStr = localStorage.getItem(timestampKey);
         const cachedTimestamp = cachedTimestampStr ? parseInt(cachedTimestampStr, 10) : 0;
+        const now = Date.now();
+        const cacheAge = now - cachedTimestamp;
 
-        if (Date.now() - cachedTimestamp < CACHE_DURATION) {
+        console.log(`${logPrefix} Cache check. Now: ${new Date(now).toISOString()}, Cached At: ${new Date(cachedTimestamp).toISOString()}, Age: ${cacheAge/1000}s, Max Age: ${CACHE_DURATION/1000}s`);
+
+        if (cacheAge < CACHE_DURATION) {
           const cachedCrawlers = localStorage.getItem(cachedCrawlersKey);
           const cachedCost = localStorage.getItem(cachedCostKey);
           if (cachedCrawlers !== null && cachedCost !== null) {
+            console.log(`${logPrefix} Using cached data.`);
             setUniqueCrawlersApproxCount(JSON.parse(cachedCrawlers));
             setWastedComputeCost(JSON.parse(cachedCost));
             setIsLoadingUniqueCrawlers(false);
             setIsLoadingWastedCompute(false);
-            // console.log("Loaded summary stats from cache for user:", user.uid);
             return;
+          } else {
+            console.log(`${logPrefix} Cache valid by timestamp, but data missing. Fetching fresh.`);
           }
+        } else {
+          console.log(`${logPrefix} Cache stale or not found. Fetching fresh data.`);
         }
-        // console.log("Fetching fresh summary stats for user:", user.uid);
 
         const thirtyDaysAgoDate = startOfDay(subDays(new Date(), 29));
         const summariesQuery = query(
@@ -106,6 +114,7 @@ export default function DashboardPage() {
           orderBy("startTime", "asc") 
         );
         const querySnapshot = await getDocs(summariesQuery);
+        console.log(`${logPrefix} Fetched ${querySnapshot.size} summary documents from Firestore.`);
 
         let summedUniqueIpCount = 0;
         let totalHitsForCostCalc = 0;
@@ -122,15 +131,17 @@ export default function DashboardPage() {
         
         const currentWastedCost = (totalHitsForCostCalc * 0.0001).toFixed(4);
 
+        console.log(`${logPrefix} Processed fresh data: UniqueIPsSum=${summedUniqueIpCount}, TotalHitsForCost=${totalHitsForCostCalc}, WastedCost=${currentWastedCost}`);
         setUniqueCrawlersApproxCount(summedUniqueIpCount);
         setWastedComputeCost(currentWastedCost);
 
         localStorage.setItem(cachedCrawlersKey, JSON.stringify(summedUniqueIpCount));
         localStorage.setItem(cachedCostKey, JSON.stringify(currentWastedCost));
-        localStorage.setItem(timestampKey, Date.now().toString());
+        localStorage.setItem(timestampKey, now.toString());
+        console.log(`${logPrefix} Updated cache with fresh data.`);
 
       } catch (error) {
-        console.error("Error fetching activity summaries for dashboard stats:", error);
+        console.error(`${logPrefix} Error fetching activity summaries:`, error);
         toast({ title: "Error", description: "Could not fetch crawler statistics from summaries.", variant: "destructive" });
         setUniqueCrawlersApproxCount(0);
         setWastedComputeCost("0.0000");
@@ -157,7 +168,7 @@ export default function DashboardPage() {
         <Info className="h-5 w-5 text-accent" />
         <AlertTitle className="text-accent">Data Refresh Notice</AlertTitle>
         <AlertDescription className="text-muted-foreground">
-          Aggregated statistics (Unique Crawlers, Compute Wasted, Activity Chart) are based on summaries updated approximately every 30 minutes (by the backend). Active Tarpit Instances update in real-time. The dashboard itself refreshes these summarized stats about every 30 minutes from its cache.
+          Aggregated statistics (Unique Crawlers, Compute Wasted, Activity Chart) are based on summaries updated approximately every 30 minutes (by the backend). The dashboard itself refreshes these summarized stats from its cache or fetches new data if the cache is older than 30 minutes.
         </AlertDescription>
       </Alert>
 
@@ -220,6 +231,5 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-
+    
     
