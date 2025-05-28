@@ -35,9 +35,9 @@ const subscriptionTiers = [
   {
     id: "set_and_forget",
     name: "Set & Forget",
-    price: "$5/mo",
+    price: "$5/mo", // Corrected Price
     features: [
-      "1 Managed URL",
+      "1 Managed URL", // Corrected limit
       "Dashboard Stats (30-min refresh)",
       "Email Support",
     ],
@@ -46,15 +46,15 @@ const subscriptionTiers = [
     variant: "default" as const,
     isCurrent: (currentTierId: string | null) => currentTierId === "set_and_forget",
     actionType: "switch_plan" as const,
-    stripePriceId: "price_1RSzbxQO5aNncTFjyeaANlLf",
+    stripePriceId: "price_1RSzbxQO5aNncTFjyeaANlLf", // This was confirmed correct
   },
   {
     id: "analytics",
     name: "Analytics",
-    price: "$20/mo",
+    price: "$20/mo", // Corrected Price
     features: [
       "Up to 3 Managed URLs",
-      "Advanced Dashboard Analytics (Coming soon)",
+      "Advanced Dashboard Analytics (Coming soon)", // Kept as is, or can be "Full Dashboard Analytics"
       "Priority Email Support",
     ],
     icon: BarChartHorizontalBig,
@@ -62,7 +62,7 @@ const subscriptionTiers = [
     variant: "default" as const,
     isCurrent: (currentTierId: string | null) => currentTierId === "analytics",
     actionType: "switch_plan" as const,
-    stripePriceId: "price_REPLACE_WITH_YOUR_ANALYTICS_PRICE_ID", // <<< YOU STILL NEED TO REPLACE THIS
+    stripePriceId: "price_REPLACE_WITH_YOUR_ANALYTICS_PRICE_ID", // User needs to update this
   },
 ];
 
@@ -74,7 +74,7 @@ export default function AccountPage() {
   const { user, userProfile, loading: authContextLoading, updateUserEmail, updateUserDisplayName, sendPasswordReset } = useAuth();
   const { toast } = useToast();
 
-  console.log("AccountPage rendered. UserProfile:", userProfile); // Added for debugging
+  console.log("AccountPage rendered. UserProfile:", userProfile); 
 
   const [isSubmittingPlanChange, setIsSubmittingPlanChange] = useState<string | null>(null);
   const [isManagingSubscription, setIsManagingSubscription] = useState(false);
@@ -89,7 +89,7 @@ export default function AccountPage() {
 
   const [isSendingResetEmail, setIsSendingResetEmail] = useState(false);
 
-  const loading = authContextLoading; // This includes profile loading
+  const loading = authContextLoading; 
 
   useEffect(() => {
     if (user) {
@@ -140,13 +140,12 @@ export default function AccountPage() {
       return;
     }
     if (userProfile && tierId === userProfile.activeTierId && actionType === "switch_plan") {
-        return; // Already on this plan
+        return; 
     }
 
     const targetTier = subscriptionTiers.find(t => t.id === tierId);
     if (!targetTier) return;
 
-    // Handle "Switch to Window Shopping" (Cancel/Downgrade via Stripe Portal)
     if (tierId === "window_shopping") {
       if (userProfile.activeTierId === "window_shopping") {
         toast({
@@ -165,7 +164,6 @@ export default function AccountPage() {
       return;
     }
     
-    // Handle paid plan changes (Stripe Checkout)
     if (actionType === "switch_plan") {
         if (!stripePriceId || stripePriceId.startsWith("price_REPLACE_WITH_YOUR_")) {
             toast({ title: "Configuration Error", description: "Stripe Price ID not configured for this plan. Please contact support.", variant: "destructive" });
@@ -263,7 +261,6 @@ export default function AccountPage() {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${idToken}`,
             },
-            // No body is sent as per backend Gemini's confirmation if backend derives user from token
         });
 
         if (!response.ok) {
@@ -548,5 +545,7 @@ export default function AccountPage() {
     </div>
   );
 }
+
+    
 
     
