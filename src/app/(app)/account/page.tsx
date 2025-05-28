@@ -30,14 +30,14 @@ const subscriptionTiers = [
     variant: "outline" as const,
     isCurrent: (currentTierId: string | null) => currentTierId === "window_shopping",
     actionType: "switch_plan" as const,
-    stripePriceId: null,
+    stripePriceId: null, // No Stripe Price ID for a free/default tier not managed by Stripe subscriptions
   },
   {
     id: "set_and_forget",
     name: "Set & Forget",
-    price: "$5/mo", // Corrected Price
+    price: "$5/mo",
     features: [
-      "1 Managed URL", // Corrected limit
+      "1 Managed URL",
       "Dashboard Stats (30-min refresh)",
       "Email Support",
     ],
@@ -46,15 +46,15 @@ const subscriptionTiers = [
     variant: "default" as const,
     isCurrent: (currentTierId: string | null) => currentTierId === "set_and_forget",
     actionType: "switch_plan" as const,
-    stripePriceId: "price_1RSzbxQO5aNncTFjyeaANlLf", // This was confirmed correct
+    stripePriceId: "price_1RSzbxQO5aNncTFjyeaANlLf", // Confirmed correct
   },
   {
     id: "analytics",
     name: "Analytics",
-    price: "$20/mo", // Corrected Price
+    price: "$20/mo",
     features: [
       "Up to 3 Managed URLs",
-      "Advanced Dashboard Analytics (Coming soon)", // Kept as is, or can be "Full Dashboard Analytics"
+      "Advanced Dashboard Analytics (Coming soon)",
       "Priority Email Support",
     ],
     icon: BarChartHorizontalBig,
@@ -139,7 +139,7 @@ export default function AccountPage() {
       toast({ title: "Authentication Error", description: "Please log in to change your plan.", variant: "destructive" });
       return;
     }
-    if (userProfile && tierId === userProfile.activeTierId && actionType === "switch_plan") {
+    if (tierId === userProfile.activeTierId && actionType === "switch_plan") {
         return; 
     }
 
@@ -155,6 +155,7 @@ export default function AccountPage() {
         });
         return;
       }
+      // User is on a paid plan and wants to switch to "Window Shopping" (cancel)
       toast({
         title: "Manage Subscription",
         description: "To switch to the Window Shopping plan (which typically involves canceling your current paid subscription), please manage your subscription via the Stripe Customer Portal.",
@@ -164,6 +165,7 @@ export default function AccountPage() {
       return;
     }
     
+    // Handle switching to a paid tier
     if (actionType === "switch_plan") {
         if (!stripePriceId || stripePriceId.startsWith("price_REPLACE_WITH_YOUR_")) {
             toast({ title: "Configuration Error", description: "Stripe Price ID not configured for this plan. Please contact support.", variant: "destructive" });
@@ -546,6 +548,3 @@ export default function AccountPage() {
   );
 }
 
-    
-
-    
