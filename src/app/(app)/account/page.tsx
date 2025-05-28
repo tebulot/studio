@@ -46,7 +46,7 @@ const subscriptionTiers = [
     variant: "default" as const,
     isCurrent: (currentTierId: string | null) => currentTierId === "set_and_forget",
     actionType: "switch_plan" as const,
-    stripePriceId: "price_1RTilPKPVCKvfVVwBUqudAnp",
+    stripePriceId: "price_1RSzbxQO5aNncTFjyeaANlLf",
   },
   {
     id: "analytics",
@@ -62,7 +62,7 @@ const subscriptionTiers = [
     variant: "default" as const,
     isCurrent: (currentTierId: string | null) => currentTierId === "analytics",
     actionType: "switch_plan" as const,
-    stripePriceId: "price_1RTim1KPVCKvfVVwDkc5G0at",
+    stripePriceId: "price_REPLACE_WITH_YOUR_ANALYTICS_PRICE_ID", // <<< YOU STILL NEED TO REPLACE THIS
   },
 ];
 
@@ -73,6 +73,8 @@ const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 export default function AccountPage() {
   const { user, userProfile, loading: authContextLoading, updateUserEmail, updateUserDisplayName, sendPasswordReset } = useAuth();
   const { toast } = useToast();
+
+  console.log("AccountPage rendered. UserProfile:", userProfile); // Added for debugging
 
   const [isSubmittingPlanChange, setIsSubmittingPlanChange] = useState<string | null>(null);
   const [isManagingSubscription, setIsManagingSubscription] = useState(false);
@@ -87,7 +89,7 @@ export default function AccountPage() {
 
   const [isSendingResetEmail, setIsSendingResetEmail] = useState(false);
 
-  const loading = authContextLoading;
+  const loading = authContextLoading; // This includes profile loading
 
   useEffect(() => {
     if (user) {
@@ -138,12 +140,13 @@ export default function AccountPage() {
       return;
     }
     if (userProfile && tierId === userProfile.activeTierId && actionType === "switch_plan") {
-        return;
+        return; // Already on this plan
     }
 
     const targetTier = subscriptionTiers.find(t => t.id === tierId);
     if (!targetTier) return;
 
+    // Handle "Switch to Window Shopping" (Cancel/Downgrade via Stripe Portal)
     if (tierId === "window_shopping") {
       if (userProfile.activeTierId === "window_shopping") {
         toast({
@@ -162,6 +165,7 @@ export default function AccountPage() {
       return;
     }
     
+    // Handle paid plan changes (Stripe Checkout)
     if (actionType === "switch_plan") {
         if (!stripePriceId || stripePriceId.startsWith("price_REPLACE_WITH_YOUR_")) {
             toast({ title: "Configuration Error", description: "Stripe Price ID not configured for this plan. Please contact support.", variant: "destructive" });
@@ -236,7 +240,7 @@ export default function AccountPage() {
       toast({ title: "Authentication Error", description: "Please log in to manage your subscription.", variant: "destructive" });
       return;
     }
-     if (!stripePromise) { // Though stripePromise itself doesn't call the backend, Stripe.js might be needed later.
+     if (!stripePromise) {
         toast({ title: "Stripe Error", description: "Stripe is not configured correctly. Please contact support.", variant: "destructive" });
         console.error("Stripe Publishable Key (NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) not found in environment variables.");
         return;
@@ -256,7 +260,7 @@ export default function AccountPage() {
         const response = await fetch(`${apiBaseUrl}/v1/stripe/create-customer-portal-session`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json', // Though body might be empty, content-type can still be set
+                'Content-Type': 'application/json',
                 'Authorization': `Bearer ${idToken}`,
             },
             // No body is sent as per backend Gemini's confirmation if backend derives user from token
@@ -280,7 +284,6 @@ export default function AccountPage() {
             if (error.message.includes("Failed to fetch")) {
                 errorMessage = "Could not connect to the server to manage subscription. Please check your internet connection and try again. If the issue persists, the service may be temporarily unavailable.";
             } else {
-                // This will now include the message thrown from the !response.ok block.
                 errorMessage = error.message;
             }
         }
@@ -467,13 +470,13 @@ export default function AccountPage() {
                         disabled={
                             loading || 
                             isSubmittingPlanChange === tier.id ||
-                            tier.id === currentActiveTierId || 
+                            (tier.id === currentActiveTierId && tier.actionType === "switch_plan") ||
                             (tier.id !== 'window_shopping' && userProfile && 
                                 !['active', 'trialing', 'window_shopping', 'active_until_period_end', 'pending_downgrade'].includes(userProfile.subscriptionStatus || ''))
                         }
                       >
                         {isSubmittingPlanChange === tier.id ? <Loader2 className="h-5 w-5 animate-spin" /> :
-                        tier.id === currentActiveTierId ? "Current Plan" : tier.cta}
+                         tier.id === currentActiveTierId && tier.actionType === "switch_plan" ? "Current Plan" : tier.cta}
                       </Button>
                     </CardFooter>
                   </Card>
@@ -488,12 +491,23 @@ export default function AccountPage() {
                   variant="outline"
                   className="border-accent text-accent hover:bg-accent/10"
                   onClick={handleManageSubscription}
-                  disabled={isManagingSubscription || loading || currentActiveTierId === "window_shopping" || !userProfile || (userProfile.subscriptionStatus !== "active" && userProfile.subscriptionStatus !== "trialing" && userProfile.subscriptionStatus !== "active_until_period_end" && userProfile.subscriptionStatus !== "pending_downgrade")}
+                  disabled={
+                    isManagingSubscription ||
+                    loading ||
+                    !userProfile ||
+                    userProfile.activeTierId === "window_shopping" ||
+                    !(
+                      userProfile.subscriptionStatus === "active" ||
+                      userProfile.subscriptionStatus === "trialing" ||
+                      userProfile.subscriptionStatus === "active_until_period_end" ||
+                      userProfile.subscriptionStatus === "pending_downgrade"
+                    )
+                  }
                 >
                     {isManagingSubscription ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ExternalLink className="mr-2 h-4 w-4" /> }
                     Manage Subscription (Stripe)
                 </Button>
-                 {currentActiveTierId === "window_shopping" && !loading &&(
+                 {userProfile && userProfile.activeTierId === "window_shopping" && !loading &&(
                     <p className="text-xs text-muted-foreground mt-1">Select a paid plan to manage your subscription.</p>
                 )}
             </div>
@@ -534,3 +548,5 @@ export default function AccountPage() {
     </div>
   );
 }
+
+    
