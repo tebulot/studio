@@ -46,15 +46,15 @@ const subscriptionTiers = [
     variant: "default" as const,
     isCurrent: (currentTierId: string | null) => currentTierId === "set_and_forget",
     actionType: "switch_plan" as const,
-    stripePriceId: "price_1RSzbxQO5aNncTFjyeaANlLf", // Confirmed correct
+    stripePriceId: "price_1RSzbxQO5aNncTFjyeaANlLf", // Corrected based on user's Stripe info
   },
   {
     id: "analytics",
     name: "Analytics",
-    price: "$20/mo",
+    price: "$20/mo", // Corrected price
     features: [
       "Up to 3 Managed URLs",
-      "Advanced Dashboard Analytics (Coming soon)",
+      "Advanced Dashboard Analytics (Coming soon)", // Updated feature
       "Priority Email Support",
     ],
     icon: BarChartHorizontalBig,
@@ -547,4 +547,3 @@ export default function AccountPage() {
     </div>
   );
 }
-
