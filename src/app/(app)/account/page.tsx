@@ -28,9 +28,8 @@ const subscriptionTiers = [
     icon: Eye,
     cta: "Switch to Window Shopping",
     variant: "outline" as const,
-    isCurrent: (currentTierId: string | null) => currentTierId === "window_shopping",
     actionType: "switch_plan" as const,
-    stripePriceId: null, // No Stripe Price ID for a free/default tier not managed by Stripe subscriptions
+    stripePriceId: null, 
   },
   {
     id: "set_and_forget",
@@ -44,25 +43,23 @@ const subscriptionTiers = [
     icon: Zap,
     cta: "Switch to Set & Forget",
     variant: "default" as const,
-    isCurrent: (currentTierId: string | null) => currentTierId === "set_and_forget",
     actionType: "switch_plan" as const,
-    stripePriceId: "price_1RTilPKPVCKvfVVwBUqudAnp", // Corrected based on user's Stripe info
+    stripePriceId: "price_1RSzbxQO5aNncTFjyeaANlLf", 
   },
   {
     id: "analytics",
     name: "Analytics",
-    price: "$20/mo", // Corrected price
+    price: "$20/mo", 
     features: [
       "Up to 3 Managed URLs",
-      "Advanced Dashboard Analytics (Coming soon)", // Updated feature
+      "Advanced Dashboard Analytics (Coming soon)", 
       "Priority Email Support",
     ],
     icon: BarChartHorizontalBig,
     cta: "Switch to Analytics",
     variant: "default" as const,
-    isCurrent: (currentTierId: string | null) => currentTierId === "analytics",
     actionType: "switch_plan" as const,
-    stripePriceId: "price_1RTim1KPVCKvfVVwDkc5G0at", // User needs to update this
+    stripePriceId: "price_REPLACE_WITH_YOUR_ANALYTICS_PRICE_ID", // User needs to update this
   },
 ];
 
@@ -139,7 +136,9 @@ export default function AccountPage() {
       toast({ title: "Authentication Error", description: "Please log in to change your plan.", variant: "destructive" });
       return;
     }
-    if (tierId === userProfile.activeTierId && actionType === "switch_plan") {
+    
+    const isCurrentPlan = userProfile.activeTierId === tierId || userProfile.activeTierId === stripePriceId;
+    if (isCurrentPlan && actionType === "switch_plan") {
         return; 
     }
 
@@ -292,11 +291,23 @@ export default function AccountPage() {
     }
   }
 
-  const currentActiveTierId = userProfile?.activeTierId || "window_shopping";
+  const profileActiveTierId = userProfile?.activeTierId || "window_shopping";
+  
+  const currentPlanObject = 
+    subscriptionTiers.find(t => t.stripePriceId && t.stripePriceId === profileActiveTierId) ||
+    subscriptionTiers.find(t => t.id === profileActiveTierId);
+  
+  const currentPlanName = currentPlanObject?.name || profileActiveTierId;
+
   const currentSubscriptionStatus = userProfile?.subscriptionStatus;
   const currentPeriodEnd = userProfile?.currentPeriodEnd;
   const downgradeToTierId = userProfile?.downgradeToTierId;
-  const downgradeToTierName = downgradeToTierId ? subscriptionTiers.find(t => t.id === downgradeToTierId)?.name : null;
+  
+  const downgradeToTierObject = 
+    subscriptionTiers.find(t => t.stripePriceId && t.stripePriceId === downgradeToTierId) ||
+    subscriptionTiers.find(t => t.id === downgradeToTierId);
+  const downgradeToTierName = downgradeToTierObject?.name;
+
 
   return (
     <div className="space-y-8">
@@ -422,9 +433,9 @@ export default function AccountPage() {
                 <Skeleton className="h-5 w-3/4 mt-1" />
             ) : userProfile ? (
               <CardDescription>
-                Your current plan: <span className="font-semibold text-primary">{subscriptionTiers.find(t => t.id === currentActiveTierId)?.name || currentActiveTierId}</span>.
+                Your current plan: <span className="font-semibold text-primary">{currentPlanName}</span>.
                 Status: <span className="font-semibold text-primary">{userProfile.subscriptionStatus || "unknown"}</span>.
-                {userProfile.currentPeriodEnd && (userProfile.subscriptionStatus === "active" || userProfile.subscriptionStatus === "trialing" || userProfile.subscriptionStatus === "active_until_period_end" || userProfile.subscriptionStatus === "pending_downgrade" ) && (
+                {(userProfile.subscriptionStatus === "active" || userProfile.subscriptionStatus === "trialing" || userProfile.subscriptionStatus === "active_until_period_end" || userProfile.subscriptionStatus === "pending_downgrade" ) && userProfile.currentPeriodEnd && (
                   <> Renews/Ends: <span className="font-semibold text-primary">{format(userProfile.currentPeriodEnd.toDate(), 'PPP')}</span>.</>
                 )}
                 { (userProfile.subscriptionStatus === "active_until_period_end" || userProfile.subscriptionStatus === "pending_downgrade") && downgradeToTierName && (
@@ -442,44 +453,47 @@ export default function AccountPage() {
                 </div>
             ) : (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {subscriptionTiers.map((tier) => (
-                  <Card key={tier.id} className={`flex flex-col ${tier.isCurrent(currentActiveTierId) ? 'border-primary shadow-primary/20' : 'border-border'}`}>
-                    <CardHeader>
-                      <div className="flex items-center gap-2 mb-2">
-                        <tier.icon className={`h-7 w-7 ${tier.isCurrent(currentActiveTierId) ? 'text-primary' : 'text-accent'}`} />
-                        <CardTitle className={`text-lg ${tier.isCurrent(currentActiveTierId) ? 'text-primary' : 'text-accent'}`}>{tier.name}</CardTitle>
-                      </div>
-                      <CardDescription className="text-2xl font-semibold text-foreground">{tier.price}</CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex-grow space-y-2">
-                      <ul className="space-y-1 text-sm text-muted-foreground">
-                        {tier.features.map((feature, index) => (
-                          <li key={index} className="flex items-center">
-                            <CheckCircle className="h-4 w-4 mr-2 text-accent/70 flex-shrink-0" />
-                            {feature}
-                          </li>
-                        ))}
-                      </ul>
-                    </CardContent>
-                    <CardFooter>
-                      <Button
-                        className={`w-full ${tier.isCurrent(currentActiveTierId) && tier.actionType === "switch_plan" ? 'bg-muted text-muted-foreground cursor-not-allowed' : 'bg-primary text-primary-foreground hover:bg-primary/90' }`}
-                        variant={tier.variant}
-                        onClick={() => handlePlanChangeClick(tier.id, tier.actionType, tier.stripePriceId)}
-                        disabled={
-                            loading || 
-                            isSubmittingPlanChange === tier.id ||
-                            (tier.id === currentActiveTierId && tier.actionType === "switch_plan") ||
-                            (tier.id !== 'window_shopping' && userProfile && 
-                                !['active', 'trialing', 'window_shopping', 'active_until_period_end', 'pending_downgrade'].includes(userProfile.subscriptionStatus || ''))
-                        }
-                      >
-                        {isSubmittingPlanChange === tier.id ? <Loader2 className="h-5 w-5 animate-spin" /> :
-                         tier.id === currentActiveTierId && tier.actionType === "switch_plan" ? "Current Plan" : tier.cta}
-                      </Button>
-                    </CardFooter>
-                  </Card>
-                ))}
+                {subscriptionTiers.map((tier) => {
+                  const isThisTierCurrent = userProfile?.activeTierId === tier.id || (tier.stripePriceId && userProfile?.activeTierId === tier.stripePriceId);
+                  return (
+                    <Card key={tier.id} className={`flex flex-col ${isThisTierCurrent ? 'border-primary shadow-primary/20' : 'border-border'}`}>
+                      <CardHeader>
+                        <div className="flex items-center gap-2 mb-2">
+                          <tier.icon className={`h-7 w-7 ${isThisTierCurrent ? 'text-primary' : 'text-accent'}`} />
+                          <CardTitle className={`text-lg ${isThisTierCurrent ? 'text-primary' : 'text-accent'}`}>{tier.name}</CardTitle>
+                        </div>
+                        <CardDescription className="text-2xl font-semibold text-foreground">{tier.price}</CardDescription>
+                      </CardHeader>
+                      <CardContent className="flex-grow space-y-2">
+                        <ul className="space-y-1 text-sm text-muted-foreground">
+                          {tier.features.map((feature, index) => (
+                            <li key={index} className="flex items-center">
+                              <CheckCircle className="h-4 w-4 mr-2 text-accent/70 flex-shrink-0" />
+                              {feature}
+                            </li>
+                          ))}
+                        </ul>
+                      </CardContent>
+                      <CardFooter>
+                        <Button
+                          className={`w-full ${isThisTierCurrent && tier.actionType === "switch_plan" ? 'bg-muted text-muted-foreground cursor-not-allowed' : 'bg-primary text-primary-foreground hover:bg-primary/90' }`}
+                          variant={tier.variant}
+                          onClick={() => handlePlanChangeClick(tier.id, tier.actionType, tier.stripePriceId)}
+                          disabled={
+                              loading || 
+                              isSubmittingPlanChange === tier.id ||
+                              (isThisTierCurrent && tier.actionType === "switch_plan") ||
+                              (tier.id !== 'window_shopping' && userProfile && 
+                                  !['active', 'trialing', 'window_shopping', 'active_until_period_end', 'pending_downgrade'].includes(userProfile.subscriptionStatus || ''))
+                          }
+                        >
+                          {isSubmittingPlanChange === tier.id ? <Loader2 className="h-5 w-5 animate-spin" /> :
+                           (isThisTierCurrent && tier.actionType === "switch_plan") ? "Current Plan" : tier.cta}
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                  );
+                })}
               </div>
             )}
             <Separator />
@@ -494,7 +508,7 @@ export default function AccountPage() {
                     isManagingSubscription ||
                     loading ||
                     !userProfile ||
-                    userProfile.activeTierId === "window_shopping" ||
+                    profileActiveTierId === "window_shopping" || // Use profileActiveTierId
                     !(
                       userProfile.subscriptionStatus === "active" ||
                       userProfile.subscriptionStatus === "trialing" ||
@@ -506,7 +520,7 @@ export default function AccountPage() {
                     {isManagingSubscription ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ExternalLink className="mr-2 h-4 w-4" /> }
                     Manage Subscription (Stripe)
                 </Button>
-                 {userProfile && userProfile.activeTierId === "window_shopping" && !loading &&(
+                 {userProfile && profileActiveTierId === "window_shopping" && !loading &&(
                     <p className="text-xs text-muted-foreground mt-1">Select a paid plan to manage your subscription.</p>
                 )}
             </div>
@@ -547,3 +561,5 @@ export default function AccountPage() {
     </div>
   );
 }
+
+    
