@@ -9,14 +9,11 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { useEffect, useState } from 'react';
 
 export default function HomePage() {
-  // State for the single large background icon
   const [backgroundIconStyle, setBackgroundIconStyle] = useState<React.CSSProperties | null>(null);
 
   useEffect(() => {
-    // Generate style for the single large background icon once on mount
-    
     setBackgroundIconStyle({
-      animationDuration: `${Math.random() * 10 + 10}s`, // Random duration between 10s and 20s
+      animationDuration: `${Math.random() * 10 + 10}s`, 
     });
   }, []);
 
@@ -120,7 +117,7 @@ export default function HomePage() {
         )}
       </div>
 
-      <div className="relative z-10 text-center flex flex-col items-center w-full">
+      <div className="relative z-10 text-center flex flex-col items-center w-full flex-grow">
         <div className="mb-4 transform transition-transform hover:scale-110 active:scale-95">
           <BrandLogoIcon className="w-56 h-56 md:w-72 md:h-72" isPriority={true} />
         </div>
@@ -211,15 +208,18 @@ export default function HomePage() {
       {/* Demo Tracking Pixel */}
       <img src="https://api.spitespiral.com/trap/8d9b6dd6-1db1-4710-b217-f302e8e8f594" width="1" height="1" alt="" style={{border:0, position:"absolute", left:"-9999px"}} aria-hidden="true" loading="eager" />
 
-
-      <footer className="relative bottom-8 text-sm text-muted-foreground/70 z-10 flex flex-col items-center space-y-1">
-        <span>© {new Date().getFullYear()} SpiteSpiral. All rights reserved.</span>
-        <NextLink href="/legal/licenses" className="hover:text-accent hover:underline animate-link-glow">
-          Licenses & Acknowledgements
-        </NextLink>
+      <footer className="py-6 md:px-8 md:py-0 border-t border-primary/10 bg-card/50">
+        <div className="container flex flex-col items-center justify-center gap-2 md:h-20 text-center">
+          <NextLink href="/" className="flex items-center gap-2 group mb-2">
+            <BrandLogoIcon className="h-8 w-8 text-primary" />
+            <span className="text-sm font-semibold text-primary">SpiteSpiral</span>
+          </NextLink>
+          <p className="text-xs text-muted-foreground/70">
+            © {new Date().getFullYear()} SpiteSpiral. Trap with malice.
+          </p>
+        </div>
       </footer>
     </div>
   );
 }
-
     

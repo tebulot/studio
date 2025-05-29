@@ -9,8 +9,8 @@ import { Label } from '@/components/ui/label';
 import BrandLogoIcon from '@/components/icons/BrandLogoIcon';
 import { useState, type FormEvent, useEffect } from 'react'; 
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2, Mail, Home } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton'; // Added Skeleton import
+import { Loader2, Mail } from 'lucide-react'; // Home icon removed
+import { Skeleton } from '@/components/ui/skeleton'; 
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -22,10 +22,10 @@ export default function LoginPage() {
   const { signIn, signUp, loading: authContextLoading, sendPasswordReset } = useAuth();
   const [resetLoading, setResetLoading] = useState(false);
   const [backgroundIconStyle, setBackgroundIconStyle] = useState<React.CSSProperties | null>(null);
-  const [isMounted, setIsMounted] = useState(false); // State for client-side mount
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
-    setIsMounted(true); // Set to true after component mounts on client
+    setIsMounted(true); 
     setBackgroundIconStyle({
       animationDuration: `${Math.random() * 10 + 10}s`, 
     });
@@ -171,18 +171,16 @@ export default function LoginPage() {
           )}
         </CardContent>
       </Card>
-       <footer className="absolute bottom-8 text-sm text-muted-foreground/70 z-10 flex flex-col items-center space-y-2">
-          <div className="flex items-center space-x-4">
-            <NextLink href="/" className="hover:text-accent hover:underline animate-link-glow flex items-center">
-              <Home className="mr-1 h-3 w-3" />
-              Back to Home
-            </NextLink>
-            <span className="text-muted-foreground/50">|</span>
-            <NextLink href="/legal/licenses" className="hover:text-accent hover:underline animate-link-glow">
-              Licenses & Acknowledgements
-            </NextLink>
-          </div>
-          <span>© {new Date().getFullYear()} SpiteSpiral. All rights reserved.</span>
+       <footer className="py-6 md:px-8 md:py-0 border-t border-primary/10 bg-card/50 mt-auto">
+        <div className="container flex flex-col items-center justify-center gap-2 md:h-20 text-center">
+          <NextLink href="/" className="flex items-center gap-2 group mb-2">
+            <BrandLogoIcon className="h-8 w-8 text-primary" />
+            <span className="text-sm font-semibold text-primary">SpiteSpiral</span>
+          </NextLink>
+          <p className="text-xs text-muted-foreground/70">
+            © {new Date().getFullYear()} SpiteSpiral. Trap with malice.
+          </p>
+        </div>
       </footer>
     </div>
   );

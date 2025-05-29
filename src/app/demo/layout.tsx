@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import NextLink from 'next/link';
 import { Button } from '@/components/ui/button';
 import BrandLogoIcon from '@/components/icons/BrandLogoIcon';
-import { Home } from 'lucide-react';
+import { Home } from 'lucide-react'; // Keep Home for now, will be removed if not used by new footer.
 
 // Note: This demo layout does NOT use AuthProvider to avoid auth-based redirects.
 
@@ -48,12 +48,13 @@ export default function DemoLayout({
         {children}
       </main>
       <footer className="py-6 md:px-8 md:py-0 border-t border-primary/10 bg-card/50">
-        <div className="container flex flex-col items-center justify-between gap-4 md:h-20 md:flex-row">
-          <p className="text-balance text-center text-sm leading-loose text-muted-foreground md:text-left">
-            Built by SpiteSpiral. This is a public demo.
-          </p>
-           <p className="text-xs text-muted-foreground/70">
-            © {new Date().getFullYear()} SpiteSpiral. Not for commercial use without permission.
+        <div className="container flex flex-col items-center justify-center gap-2 md:h-20 text-center">
+          <NextLink href="/" className="flex items-center gap-2 group mb-2">
+            <BrandLogoIcon className="h-8 w-8 text-primary" />
+            <span className="text-sm font-semibold text-primary">SpiteSpiral</span>
+          </NextLink>
+          <p className="text-xs text-muted-foreground/70">
+            © {new Date().getFullYear()} SpiteSpiral. Trap with malice.
           </p>
         </div>
       </footer>

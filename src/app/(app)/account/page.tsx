@@ -46,7 +46,7 @@ const subscriptionTiers = [
     variant: "default" as const,
     isCurrent: (currentTierId: string | null) => currentTierId === "set_and_forget",
     actionType: "switch_plan" as const,
-    stripePriceId: "price_1RSzbxQO5aNncTFjyeaANlLf", // Corrected based on user's Stripe info
+    stripePriceId: "price_1RTilPKPVCKvfVVwBUqudAnp", // Corrected based on user's Stripe info
   },
   {
     id: "analytics",
@@ -62,7 +62,7 @@ const subscriptionTiers = [
     variant: "default" as const,
     isCurrent: (currentTierId: string | null) => currentTierId === "analytics",
     actionType: "switch_plan" as const,
-    stripePriceId: "price_REPLACE_WITH_YOUR_ANALYTICS_PRICE_ID", // User needs to update this
+    stripePriceId: "price_1RTim1KPVCKvfVVwDkc5G0at", // User needs to update this
   },
 ];
 
