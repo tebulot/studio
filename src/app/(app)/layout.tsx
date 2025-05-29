@@ -65,7 +65,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </SidebarMenuButton>
               </SidebarMenuItem>
               {/* Green spacer div to raise the sign out button */}
-              <div className="h-2 bg-sidebar-primary rounded-md mx-[-0.5rem] mb-[-0.5rem]"></div>
+              <div className="h-10 bg-sidebar-primary rounded-md mx-[-0.5rem] mb-[-0.5rem]"></div>
           </SidebarFooter>
         </Sidebar>
         <SidebarInset>
