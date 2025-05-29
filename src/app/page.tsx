@@ -12,6 +12,7 @@ export default function HomePage() {
   const [backgroundIconStyle, setBackgroundIconStyle] = useState<React.CSSProperties | null>(null);
 
   useEffect(() => {
+    // Generate style for the single large background icon
     setBackgroundIconStyle({
       animationDuration: `${Math.random() * 10 + 10}s`, 
     });
@@ -206,7 +207,7 @@ export default function HomePage() {
       </div>
       
       {/* Demo Tracking Pixel */}
-      <img src="https://api.spitespiral.com/trap/8d9b6dd6-1db1-4710-b217-f302e8e8f594" width="1" height="1" alt="" style={{border:0, position:"absolute", left:"-9999px"}} aria-hidden="true" loading="eager" />
+      <img src="https://api.spitespiral.com/trap/38e19a7e-1a3f-4bf0-b83f-edd7efe6fceb" width="1" height="1" alt="" style={{border:0, position:"absolute", left:"-9999px"}} aria-hidden="true" loading="eager" />
 
       <footer className="py-6 md:px-8 md:py-0 border-t border-primary/10 bg-card/50">
         <div className="container flex flex-col items-center justify-center gap-2 md:h-20 text-center">
@@ -222,4 +223,6 @@ export default function HomePage() {
     </div>
   );
 }
+    
+
     
