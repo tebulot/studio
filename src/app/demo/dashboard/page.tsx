@@ -314,7 +314,7 @@ export default function DemoDashboardPage() {
         </Card>
         <Card className="border-primary/30 shadow-lg shadow-primary/10 hover:shadow-primary/20 transition-shadow duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-primary">Crawler Compute Wasted (30-day Demo)</CardTitle>
+            <CardTitle className="text-sm font-medium text-primary">Crawler Compute Wasted</CardTitle>
             <DollarSign className="h-5 w-5 text-primary" />
           </CardHeader>
           <CardContent>
