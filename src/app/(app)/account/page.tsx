@@ -14,6 +14,9 @@ import { useToast } from "@/hooks/use-toast";
 import { loadStripe, type Stripe } from '@stripe/stripe-js';
 import { format } from 'date-fns';
 
+// Ensure these IDs and Stripe Price IDs match your setup.
+// If your backend stores Stripe Price IDs in userProfile.activeTierId for paid plans,
+// the stripePriceId here MUST match that value for the correct plan name to be displayed.
 const subscriptionTiers = [
   {
     id: "window_shopping",
@@ -26,10 +29,10 @@ const subscriptionTiers = [
       "Email Support",
     ],
     icon: Eye,
-    cta: "Switch to Window Shopping",
+    cta: "Switch to Window Shopping", // Consistent CTA
     variant: "outline" as const,
-    actionType: "switch_plan" as const,
-    stripePriceId: null, 
+    actionType: "switch_plan" as const, // Consistent actionType
+    stripePriceId: null,
   },
   {
     id: "set_and_forget",
@@ -44,22 +47,22 @@ const subscriptionTiers = [
     cta: "Switch to Set & Forget",
     variant: "default" as const,
     actionType: "switch_plan" as const,
-    stripePriceId: "price_1RSzbxQO5aNncTFjyeaANlLf", 
+    stripePriceId: "price_1RSzbxQO5aNncTFjyeaANlLf", // CONFIRMED - KEEP THIS
   },
   {
     id: "analytics",
     name: "Analytics",
-    price: "$20/mo", 
+    price: "$20/mo",
     features: [
       "Up to 3 Managed URLs",
-      "Advanced Dashboard Analytics (Coming soon)", 
+      "Advanced Dashboard Analytics (Coming soon)",
       "Priority Email Support",
     ],
     icon: BarChartHorizontalBig,
     cta: "Switch to Analytics",
     variant: "default" as const,
     actionType: "switch_plan" as const,
-    stripePriceId: "price_REPLACE_WITH_YOUR_ANALYTICS_PRICE_ID", // User needs to update this
+    stripePriceId: "price_REPLACE_WITH_YOUR_ANALYTICS_PRICE_ID", // USER ACTION: Replace this with your actual Stripe Price ID
   },
 ];
 
@@ -71,7 +74,7 @@ export default function AccountPage() {
   const { user, userProfile, loading: authContextLoading, updateUserEmail, updateUserDisplayName, sendPasswordReset } = useAuth();
   const { toast } = useToast();
 
-  console.log("AccountPage rendered. UserProfile:", userProfile); 
+  console.log("AccountPage rendered. UserProfile:", userProfile);
 
   const [isSubmittingPlanChange, setIsSubmittingPlanChange] = useState<string | null>(null);
   const [isManagingSubscription, setIsManagingSubscription] = useState(false);
@@ -86,7 +89,7 @@ export default function AccountPage() {
 
   const [isSendingResetEmail, setIsSendingResetEmail] = useState(false);
 
-  const loading = authContextLoading; 
+  const loading = authContextLoading;
 
   useEffect(() => {
     if (user) {
@@ -137,7 +140,7 @@ export default function AccountPage() {
       return;
     }
     
-    const isCurrentPlan = userProfile.activeTierId === tierId || userProfile.activeTierId === stripePriceId;
+    const isCurrentPlan = userProfile.activeTierId === tierId || (stripePriceId && userProfile.activeTierId === stripePriceId);
     if (isCurrentPlan && actionType === "switch_plan") {
         return; 
     }
@@ -164,7 +167,6 @@ export default function AccountPage() {
       return;
     }
     
-    // Handle switching to a paid tier
     if (actionType === "switch_plan") {
         if (!stripePriceId || stripePriceId.startsWith("price_REPLACE_WITH_YOUR_")) {
             toast({ title: "Configuration Error", description: "Stripe Price ID not configured for this plan. Please contact support.", variant: "destructive" });
@@ -291,18 +293,23 @@ export default function AccountPage() {
     }
   }
 
+  // This is the ID from userProfile (e.g., "window_shopping" or "price_xxxx")
   const profileActiveTierId = userProfile?.activeTierId || "window_shopping";
   
+  // Find the full tier object based on profileActiveTierId
+  // This will try to match against tier.stripePriceId first, then tier.id
   const currentPlanObject = 
     subscriptionTiers.find(t => t.stripePriceId && t.stripePriceId === profileActiveTierId) ||
     subscriptionTiers.find(t => t.id === profileActiveTierId);
   
+  // If currentPlanObject is found, use its name. Otherwise, fallback to profileActiveTierId (which might be the price_xxx string).
   const currentPlanName = currentPlanObject?.name || profileActiveTierId;
 
   const currentSubscriptionStatus = userProfile?.subscriptionStatus;
   const currentPeriodEnd = userProfile?.currentPeriodEnd;
   const downgradeToTierId = userProfile?.downgradeToTierId;
   
+  // Similar lookup for the downgrade tier name
   const downgradeToTierObject = 
     subscriptionTiers.find(t => t.stripePriceId && t.stripePriceId === downgradeToTierId) ||
     subscriptionTiers.find(t => t.id === downgradeToTierId);
@@ -454,7 +461,10 @@ export default function AccountPage() {
             ) : (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {subscriptionTiers.map((tier) => {
-                  const isThisTierCurrent = userProfile?.activeTierId === tier.id || (tier.stripePriceId && userProfile?.activeTierId === tier.stripePriceId);
+                  const isThisTierCurrent = 
+                    (tier.stripePriceId && tier.stripePriceId === profileActiveTierId) || // Matched by Stripe Price ID
+                    tier.id === profileActiveTierId; // Matched by internal ID
+
                   return (
                     <Card key={tier.id} className={`flex flex-col ${isThisTierCurrent ? 'border-primary shadow-primary/20' : 'border-border'}`}>
                       <CardHeader>
@@ -508,7 +518,7 @@ export default function AccountPage() {
                     isManagingSubscription ||
                     loading ||
                     !userProfile ||
-                    profileActiveTierId === "window_shopping" || // Use profileActiveTierId
+                    profileActiveTierId === "window_shopping" || 
                     !(
                       userProfile.subscriptionStatus === "active" ||
                       userProfile.subscriptionStatus === "trialing" ||
@@ -561,5 +571,3 @@ export default function AccountPage() {
     </div>
   );
 }
-
-    
