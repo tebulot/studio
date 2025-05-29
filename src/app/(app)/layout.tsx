@@ -3,7 +3,7 @@
 
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset, SidebarTrigger, SidebarFooter } from "@/components/ui/sidebar";
 import AppHeaderContent from '@/components/layout/AppHeaderContent';
-import { LayoutDashboard, Link2, Menu, LogOut, UserCog } from 'lucide-react'; // FileText icon removed
+import { LayoutDashboard, Link2, Menu, LogOut, UserCog } from 'lucide-react';
 import NextLink from 'next/link'; 
 import { Button } from '@/components/ui/button';
 import BrandLogoIcon from '@/components/icons/BrandLogoIcon';
@@ -42,7 +42,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   </NextLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-              {/* Logs menu item removed */}
               <SidebarMenuItem>
                 <SidebarMenuButton asChild tooltip={{content:"Account", side:"right", className:"bg-popover text-popover-foreground border-primary/50"}} className="justify-start">
                   <NextLink href="/account" className="flex items-center">
@@ -65,6 +64,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   <span className="text-base text-destructive">Sign Out</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              {/* Green spacer div to raise the sign out button */}
+              <div className="h-2 bg-sidebar-primary rounded-md mx-[-0.5rem] mb-[-0.5rem]"></div>
           </SidebarFooter>
         </Sidebar>
         <SidebarInset>
@@ -88,6 +89,3 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     </SidebarProvider>
   );
 }
-
-
-    
