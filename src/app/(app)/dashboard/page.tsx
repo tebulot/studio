@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import TrappedCrawlersChart from "@/components/dashboard/TrappedCrawlersChart";
-import { ShieldCheck, Users, DollarSign, Info } from "lucide-react";
+import { ShieldCheck, Users, DollarSign, Info, Fingerprint } from "lucide-react"; // Added Fingerprint
 import { useAuth } from "@/contexts/AuthContext";
 import { db } from "@/lib/firebase/clientApp";
 import { collection, query, where, getDocs, type DocumentData, type QuerySnapshot, onSnapshot, Timestamp, orderBy } from "firebase/firestore";
@@ -20,6 +20,10 @@ interface ActivitySummaryDocForDashboard {
   uniqueIpCount: number;
   totalHits: number;
   userId: string;
+  uniqueUserAgentCount?: number;
+  topUserAgents?: Array<{ userAgent: string; hits: number }>;
+  topPathsHit?: Array<{ path: string; hits: number }>;
+  topIPs?: Array<{ ip: string; hits: number }>;
 }
 
 export default function DashboardPage() {
@@ -33,6 +37,11 @@ export default function DashboardPage() {
 
   const [wastedComputeCost, setWastedComputeCost] = useState<string | null>(null);
   const [isLoadingWastedCompute, setIsLoadingWastedCompute] = useState(true);
+
+  const [summedUniqueUserAgentCount, setSummedUniqueUserAgentCount] = useState<number | null>(null);
+  const [latestTopUserAgents, setLatestTopUserAgents] = useState<Array<{ userAgent: string; hits: number }> | null>(null);
+  const [isLoadingUserAgentStats, setIsLoadingUserAgentStats] = useState(true);
+
 
   // Listener for active instances count (reads from tarpit_configs)
   useEffect(() => {
@@ -59,14 +68,17 @@ export default function DashboardPage() {
     }
   }, [user, authLoading, toast]);
 
-  // Fetch for unique crawlers approx. count & wasted compute cost from activity summaries with caching
+  // Fetch for unique crawlers approx. count, wasted compute cost & user agent stats from activity summaries with caching
   useEffect(() => {
     if (authLoading || !user) {
       setIsLoadingUniqueCrawlers(true);
       setIsLoadingWastedCompute(true);
+      setIsLoadingUserAgentStats(true);
       if (!user && !authLoading) {
         setUniqueCrawlersApproxCount(0);
         setWastedComputeCost("0.0000");
+        setSummedUniqueUserAgentCount(0);
+        setLatestTopUserAgents([]);
       }
       return;
     }
@@ -74,10 +86,13 @@ export default function DashboardPage() {
     const fetchSummaryStats = async () => {
       setIsLoadingUniqueCrawlers(true);
       setIsLoadingWastedCompute(true);
+      setIsLoadingUserAgentStats(true);
 
       const cacheKeyBase = `spiteSpiral_summaryStats_${user.uid}`;
       const cachedCrawlersKey = `${cacheKeyBase}_uniqueCrawlersApprox`;
       const cachedCostKey = `${cacheKeyBase}_wastedComputeSummary`;
+      const cachedUACountKey = `${cacheKeyBase}_summedUACount`;
+      const cachedTopUAKey = `${cacheKeyBase}_latestTopUA`;
       const timestampKey = `${cacheKeyBase}_timestamp`;
       const logPrefix = `DashboardPage (User: ${user.uid.substring(0,5)}...) - Summary Stats:`;
 
@@ -92,15 +107,21 @@ export default function DashboardPage() {
         if (cacheAge < CACHE_DURATION) {
           const cachedCrawlers = localStorage.getItem(cachedCrawlersKey);
           const cachedCost = localStorage.getItem(cachedCostKey);
-          if (cachedCrawlers !== null && cachedCost !== null) {
-            console.log(`${logPrefix} Using cached data.`);
+          const cachedUACount = localStorage.getItem(cachedUACountKey);
+          const cachedTopUA = localStorage.getItem(cachedTopUAKey);
+
+          if (cachedCrawlers !== null && cachedCost !== null && cachedUACount !== null && cachedTopUA !== null) {
+            console.log(`${logPrefix} Using cached data for all summary stats.`);
             setUniqueCrawlersApproxCount(JSON.parse(cachedCrawlers));
             setWastedComputeCost(JSON.parse(cachedCost));
+            setSummedUniqueUserAgentCount(JSON.parse(cachedUACount));
+            setLatestTopUserAgents(JSON.parse(cachedTopUA));
             setIsLoadingUniqueCrawlers(false);
             setIsLoadingWastedCompute(false);
+            setIsLoadingUserAgentStats(false);
             return;
           } else {
-            console.log(`${logPrefix} Cache valid by timestamp, but data missing. Fetching fresh.`);
+            console.log(`${logPrefix} Cache valid by timestamp, but some data missing. Fetching fresh.`);
           }
         } else {
           console.log(`${logPrefix} Cache stale or not found. Fetching fresh data.`);
@@ -108,16 +129,19 @@ export default function DashboardPage() {
 
         const thirtyDaysAgoDate = startOfDay(subDays(new Date(), 29));
         const summariesQuery = query(
-          collection(db, "tarpit_activity_summaries"), 
+          collection(db, "tarpit_activity_summaries"),
           where("userId", "==", user.uid),
           where("startTime", ">=", Timestamp.fromDate(thirtyDaysAgoDate)),
-          orderBy("startTime", "asc") 
+          orderBy("startTime", "asc")
         );
         const querySnapshot = await getDocs(summariesQuery);
         console.log(`${logPrefix} Fetched ${querySnapshot.size} summary documents from Firestore.`);
 
         let summedUniqueIpCount = 0;
         let totalHitsForCostCalc = 0;
+        let currentSummedUACount = 0;
+        let mostRecentSummaryTime = new Timestamp(0,0);
+        let tempLatestTopUserAgents: Array<{ userAgent: string; hits: number }> | null = null;
 
         querySnapshot.forEach((doc) => {
           const data = doc.data() as ActivitySummaryDocForDashboard;
@@ -127,16 +151,28 @@ export default function DashboardPage() {
           if (data.totalHits) {
             totalHitsForCostCalc += data.totalHits;
           }
+          if (data.uniqueUserAgentCount) {
+            currentSummedUACount += data.uniqueUserAgentCount;
+          }
+          if (data.startTime && data.startTime.toMillis() > mostRecentSummaryTime.toMillis()) {
+            mostRecentSummaryTime = data.startTime;
+            tempLatestTopUserAgents = data.topUserAgents || [];
+          }
         });
-        
+
         const currentWastedCost = (totalHitsForCostCalc * 0.0001).toFixed(4);
 
-        console.log(`${logPrefix} Processed fresh data: UniqueIPsSum=${summedUniqueIpCount}, TotalHitsForCost=${totalHitsForCostCalc}, WastedCost=${currentWastedCost}`);
+        console.log(`${logPrefix} Processed fresh data: UniqueIPsSum=${summedUniqueIpCount}, TotalHitsForCost=${totalHitsForCostCalc}, WastedCost=${currentWastedCost}, SummedUACount=${currentSummedUACount}`);
         setUniqueCrawlersApproxCount(summedUniqueIpCount);
         setWastedComputeCost(currentWastedCost);
+        setSummedUniqueUserAgentCount(currentSummedUACount);
+        setLatestTopUserAgents(tempLatestTopUserAgents || []);
+
 
         localStorage.setItem(cachedCrawlersKey, JSON.stringify(summedUniqueIpCount));
         localStorage.setItem(cachedCostKey, JSON.stringify(currentWastedCost));
+        localStorage.setItem(cachedUACountKey, JSON.stringify(currentSummedUACount));
+        localStorage.setItem(cachedTopUAKey, JSON.stringify(tempLatestTopUserAgents || []));
         localStorage.setItem(timestampKey, now.toString());
         console.log(`${logPrefix} Updated cache with fresh data.`);
 
@@ -145,9 +181,12 @@ export default function DashboardPage() {
         toast({ title: "Error", description: "Could not fetch crawler statistics from summaries.", variant: "destructive" });
         setUniqueCrawlersApproxCount(0);
         setWastedComputeCost("0.0000");
+        setSummedUniqueUserAgentCount(0);
+        setLatestTopUserAgents([]);
       } finally {
         setIsLoadingUniqueCrawlers(false);
         setIsLoadingWastedCompute(false);
+        setIsLoadingUserAgentStats(false);
       }
     };
 
@@ -168,11 +207,11 @@ export default function DashboardPage() {
         <Info className="h-5 w-5 text-accent" />
         <AlertTitle className="text-accent">Data Refresh Notice</AlertTitle>
         <AlertDescription className="text-muted-foreground">
-          Aggregated statistics (Unique Crawlers, Compute Wasted, Activity Chart) are based on summaries updated approximately every 30 minutes (by the backend). The dashboard itself refreshes these summarized stats from its cache or fetches new data if the cache is older than 30 minutes.
+          Aggregated statistics (Unique Crawlers, Compute Wasted, Activity Chart, User Agents) are based on summaries updated approximately every 30 minutes (by the backend). The dashboard itself refreshes these summarized stats from its cache or fetches new data if the cache is older than 30 minutes.
         </AlertDescription>
       </Alert>
 
-      <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4">
         <Card className="border-primary/30 shadow-lg shadow-primary/10 hover:shadow-primary/20 transition-shadow duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-primary">Total Unique Crawlers (30-day approx.)</CardTitle>
@@ -184,7 +223,7 @@ export default function DashboardPage() {
             ) : (
               <div className="text-3xl font-bold text-foreground">{uniqueCrawlersApproxCount ?? 0}</div>
             )}
-            <p className="text-xs text-muted-foreground mt-1">Sum of unique IPs from 30-day summaries.</p> 
+            <p className="text-xs text-muted-foreground mt-1">Sum of unique IPs from 30-day summaries.</p>
           </CardContent>
         </Card>
         <Card className="border-accent/30 shadow-lg shadow-accent/10 hover:shadow-accent/20 transition-shadow duration-300">
@@ -215,6 +254,41 @@ export default function DashboardPage() {
             <p className="text-xs text-muted-foreground mt-1">Illustrative cost based on total hits from 30-day summaries.</p>
           </CardContent>
         </Card>
+        <Card className="border-accent/30 shadow-lg shadow-accent/10 hover:shadow-accent/20 transition-shadow duration-300">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-accent">User Agent Activity (30-day)</CardTitle>
+            <Fingerprint className="h-5 w-5 text-primary" />
+          </CardHeader>
+          <CardContent>
+            {isLoadingUserAgentStats ? (
+              <>
+                <Skeleton className="h-6 w-3/4 mb-1" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-5/6 mt-1" />
+              </>
+            ) : (
+              <>
+                <div className="text-md font-semibold text-foreground">
+                  Approx. Unique Agents: {summedUniqueUserAgentCount ?? 0}
+                </div>
+                {latestTopUserAgents && latestTopUserAgents.length > 0 ? (
+                  <>
+                    <p className="text-xs text-muted-foreground mt-1 mb-0.5">Top Agents (from latest summary):</p>
+                    <ul className="text-xs text-muted-foreground space-y-0.5 max-h-20 overflow-y-auto">
+                      {latestTopUserAgents.slice(0, 3).map((ua, index) => ( // Show top 3 for brevity
+                        <li key={index} className="truncate">
+                          <span title={ua.userAgent}>{ua.userAgent}</span> ({ua.hits} hits)
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                ) : (
+                  <p className="text-xs text-muted-foreground mt-1">No user agent data available in latest summary.</p>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
       </section>
 
       <section>
@@ -231,5 +305,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-    
-    

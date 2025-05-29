@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import TrappedCrawlersChart from "@/components/dashboard/TrappedCrawlersChart";
-import { ShieldCheck, Users, DollarSign, Info, Eye } from "lucide-react"; // Added Eye
+import { ShieldCheck, Users, DollarSign, Info, Eye, Fingerprint } from "lucide-react"; // Added Fingerprint
 import { db } from "@/lib/firebase/clientApp";
 import { collection, query, where, onSnapshot, getDocs, type DocumentData, type QuerySnapshot, Timestamp, orderBy } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -22,18 +22,26 @@ interface ActivitySummaryDocForDemo {
   uniqueIpCount: number;
   totalHits: number;
   userId: string;
+  uniqueUserAgentCount?: number;
+  topUserAgents?: Array<{ userAgent: string; hits: number }>;
+  topPathsHit?: Array<{ path: string; hits: number }>;
+  topIPs?: Array<{ ip: string; hits: number }>;
 }
 
 export default function DemoDashboardPage() {
   const { toast } = useToast();
   const [activeInstancesCount, setActiveInstancesCount] = useState<number | null>(null);
   const [isLoadingInstancesCount, setIsLoadingInstancesCount] = useState(true);
-  
+
   const [demoUniqueCrawlersApproxCount, setDemoUniqueCrawlersApproxCount] = useState<number | null>(null);
   const [isLoadingDemoUniqueCrawlers, setIsLoadingDemoUniqueCrawlers] = useState(true);
 
   const [demoWastedComputeCost, setDemoWastedComputeCost] = useState<string | null>(null);
   const [isLoadingDemoWastedCompute, setIsLoadingDemoWastedCompute] = useState(true);
+
+  const [demoSummedUniqueUserAgentCount, setDemoSummedUniqueUserAgentCount] = useState<number | null>(null);
+  const [demoLatestTopUserAgents, setDemoLatestTopUserAgents] = useState<Array<{ userAgent: string; hits: number }> | null>(null);
+  const [isLoadingDemoUserAgentStats, setIsLoadingDemoUserAgentStats] = useState(true);
 
   const [isDemoIdProperlyConfigured, setIsDemoIdProperlyConfigured] = useState(false);
 
@@ -47,9 +55,12 @@ export default function DemoDashboardPage() {
       setIsLoadingInstancesCount(false);
       setIsLoadingDemoUniqueCrawlers(false);
       setIsLoadingDemoWastedCompute(false);
+      setIsLoadingDemoUserAgentStats(false);
       setActiveInstancesCount(0);
       setDemoUniqueCrawlersApproxCount(0);
       setDemoWastedComputeCost("0.0000");
+      setDemoSummedUniqueUserAgentCount(0);
+      setDemoLatestTopUserAgents([]);
     }
   }, []); // Run once on mount to check config
 
@@ -66,11 +77,11 @@ export default function DemoDashboardPage() {
       setIsLoadingInstancesCount(false);
     }, (error) => {
       console.error("Error fetching demo active instances count:", error);
-      toast({ 
-        title: "Error Fetching Demo Instances", 
-        description: `Could not fetch demo active tarpit instances. Ensure Firestore rules allow public read for data where userId is '${DEMO_USER_ID}' (this ID must be the literal string in your rules for demo access) and check DEMO_USER_ID configuration.`, 
-        variant: "destructive", 
-        duration: 10000 
+      toast({
+        title: "Error Fetching Demo Instances",
+        description: `Could not fetch demo active tarpit instances. Ensure Firestore rules allow public read for data where userId is '${DEMO_USER_ID}' (this ID must be the literal string in your rules for demo access) and check DEMO_USER_ID configuration.`,
+        variant: "destructive",
+        duration: 10000
       });
       setActiveInstancesCount(0);
       setIsLoadingInstancesCount(false);
@@ -78,19 +89,22 @@ export default function DemoDashboardPage() {
     return () => unsubscribeInstances();
   }, [isDemoIdProperlyConfigured, toast]);
 
-  // Fetch for demo unique crawlers approx. count & wasted compute cost from activity summaries with caching
+  // Fetch for demo unique crawlers approx. count, wasted compute cost & user agent stats from activity summaries with caching
   useEffect(() => {
     if (!isDemoIdProperlyConfigured) {
       return;
     }
-    
+
     const fetchDemoSummaryStats = async () => {
       setIsLoadingDemoUniqueCrawlers(true);
       setIsLoadingDemoWastedCompute(true);
+      setIsLoadingDemoUserAgentStats(true);
 
       const cacheKeyBase = `spiteSpiral_summaryStats_${DEMO_USER_ID}`;
       const cachedCrawlersKey = `${cacheKeyBase}_uniqueCrawlersApprox`;
       const cachedCostKey = `${cacheKeyBase}_wastedComputeSummary`;
+      const cachedUACountKey = `${cacheKeyBase}_summedUACount`;
+      const cachedTopUAKey = `${cacheKeyBase}_latestTopUA`;
       const timestampKey = `${cacheKeyBase}_timestamp`;
       const logPrefix = `DemoDashboardPage (DEMO_USER_ID: ${DEMO_USER_ID ? DEMO_USER_ID.substring(0,5) : 'N/A'}...) - Demo Summary Stats:`;
 
@@ -100,30 +114,35 @@ export default function DemoDashboardPage() {
         const cachedTimestamp = cachedTimestampStr ? parseInt(cachedTimestampStr, 10) : 0;
         const now = Date.now();
         const cacheAge = now - cachedTimestamp;
-        
+
         console.log(`${logPrefix} Cache check. Now: ${new Date(now).toISOString()}, Cached At: ${new Date(cachedTimestamp).toISOString()}, Age: ${cacheAge/1000}s, Max Age: ${CACHE_DURATION/1000}s`);
 
         if (cacheAge < CACHE_DURATION) {
           const cachedCrawlers = localStorage.getItem(cachedCrawlersKey);
           const cachedCost = localStorage.getItem(cachedCostKey);
-          if (cachedCrawlers !== null && cachedCost !== null) {
-            console.log(`${logPrefix} Using cached data.`);
+          const cachedUACount = localStorage.getItem(cachedUACountKey);
+          const cachedTopUA = localStorage.getItem(cachedTopUAKey);
+          if (cachedCrawlers !== null && cachedCost !== null && cachedUACount !== null && cachedTopUA !== null) {
+            console.log(`${logPrefix} Using cached data for all demo summary stats.`);
             setDemoUniqueCrawlersApproxCount(JSON.parse(cachedCrawlers));
             setDemoWastedComputeCost(JSON.parse(cachedCost));
+            setDemoSummedUniqueUserAgentCount(JSON.parse(cachedUACount));
+            setDemoLatestTopUserAgents(JSON.parse(cachedTopUA));
             setIsLoadingDemoUniqueCrawlers(false);
             setIsLoadingDemoWastedCompute(false);
+            setIsLoadingDemoUserAgentStats(false);
             return;
           } else {
-             console.log(`${logPrefix} Cache valid by timestamp, but data missing. Fetching fresh.`);
+             console.log(`${logPrefix} Demo cache valid by timestamp, but some data missing. Fetching fresh.`);
           }
         } else {
-            console.log(`${logPrefix} Cache stale or not found. Fetching fresh data.`);
+            console.log(`${logPrefix} Demo cache stale or not found. Fetching fresh data.`);
         }
 
 
         const thirtyDaysAgoDate = startOfDay(subDays(new Date(), 29));
         const summariesQuery = query(
-          collection(db, "tarpit_activity_summaries"), 
+          collection(db, "tarpit_activity_summaries"),
           where("userId", "==", DEMO_USER_ID),
           where("startTime", ">=", Timestamp.fromDate(thirtyDaysAgoDate)),
           orderBy("startTime", "asc")
@@ -133,6 +152,10 @@ export default function DemoDashboardPage() {
 
         let summedUniqueIpCount = 0;
         let totalHitsForCostCalc = 0;
+        let currentSummedUACount = 0;
+        let mostRecentSummaryTime = new Timestamp(0,0);
+        let tempLatestTopUserAgents: Array<{ userAgent: string; hits: number }> | null = null;
+
 
         querySnapshot.forEach((doc) => {
           const data = doc.data() as ActivitySummaryDocForDemo;
@@ -142,39 +165,53 @@ export default function DemoDashboardPage() {
           if (data.totalHits) {
             totalHitsForCostCalc += data.totalHits;
           }
+          if (data.uniqueUserAgentCount) {
+            currentSummedUACount += data.uniqueUserAgentCount;
+          }
+          if (data.startTime && data.startTime.toMillis() > mostRecentSummaryTime.toMillis()) {
+            mostRecentSummaryTime = data.startTime;
+            tempLatestTopUserAgents = data.topUserAgents || [];
+          }
         });
 
         const currentWastedCost = (totalHitsForCostCalc * 0.0001).toFixed(4);
-        console.log(`${logPrefix} Processed fresh data: UniqueIPsSum=${summedUniqueIpCount}, TotalHitsForCost=${totalHitsForCostCalc}, WastedCost=${currentWastedCost}`);
+        console.log(`${logPrefix} Processed fresh data: UniqueIPsSum=${summedUniqueIpCount}, TotalHitsForCost=${totalHitsForCostCalc}, WastedCost=${currentWastedCost}, SummedUACount=${currentSummedUACount}`);
 
         setDemoUniqueCrawlersApproxCount(summedUniqueIpCount);
         setDemoWastedComputeCost(currentWastedCost);
+        setDemoSummedUniqueUserAgentCount(currentSummedUACount);
+        setDemoLatestTopUserAgents(tempLatestTopUserAgents || []);
 
         localStorage.setItem(cachedCrawlersKey, JSON.stringify(summedUniqueIpCount));
         localStorage.setItem(cachedCostKey, JSON.stringify(currentWastedCost));
+        localStorage.setItem(cachedUACountKey, JSON.stringify(currentSummedUACount));
+        localStorage.setItem(cachedTopUAKey, JSON.stringify(tempLatestTopUserAgents || []));
         localStorage.setItem(timestampKey, now.toString());
-        console.log(`${logPrefix} Updated cache with fresh data.`);
+        console.log(`${logPrefix} Updated demo cache with fresh data.`);
 
       } catch (error) {
         console.error(`${logPrefix} Error fetching activity summaries:`, error);
-        toast({ 
-            title: "Error Fetching Demo Stats", 
-            description: `Could not fetch demo crawler statistics. Ensure Firestore rules allow public read for data where userId is '${DEMO_USER_ID}' (this ID must be the literal string in your rules for demo access) and check DEMO_USER_ID configuration. Error: ${error instanceof Error ? error.message : 'Unknown error'}`, 
-            variant: "destructive", 
-            duration: 10000 
+        toast({
+            title: "Error Fetching Demo Stats",
+            description: `Could not fetch demo crawler statistics. Ensure Firestore rules allow public read for data where userId is '${DEMO_USER_ID}' (this ID must be the literal string in your rules for demo access) and check DEMO_USER_ID configuration. Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            variant: "destructive",
+            duration: 10000
         });
         setDemoUniqueCrawlersApproxCount(0);
         setDemoWastedComputeCost("0.0000");
+        setDemoSummedUniqueUserAgentCount(0);
+        setDemoLatestTopUserAgents([]);
       } finally {
         setIsLoadingDemoUniqueCrawlers(false);
         setIsLoadingDemoWastedCompute(false);
+        setIsLoadingDemoUserAgentStats(false);
       }
     };
     fetchDemoSummaryStats();
   }, [isDemoIdProperlyConfigured, toast]);
 
 
-  if (!isDemoIdProperlyConfigured && (isLoadingInstancesCount || isLoadingDemoUniqueCrawlers || isLoadingDemoWastedCompute )) {
+  if (!isDemoIdProperlyConfigured && (isLoadingInstancesCount || isLoadingDemoUniqueCrawlers || isLoadingDemoWastedCompute || isLoadingDemoUserAgentStats )) {
     // Still determining configuration or initial loading
     return (
         <div className="flex flex-col items-center justify-center text-center space-y-4 p-8 rounded-lg bg-card border border-border shadow-lg">
@@ -186,7 +223,7 @@ export default function DemoDashboardPage() {
         </div>
     );
   }
-  
+
   if (!isDemoIdProperlyConfigured) {
       return (
           <div className="flex flex-col items-center justify-center text-center space-y-4 p-8 rounded-lg bg-card border border-destructive shadow-lg">
@@ -242,11 +279,11 @@ export default function DemoDashboardPage() {
         <Info className="h-5 w-5 text-accent" />
         <AlertTitle className="text-accent">Data Refresh Notice</AlertTitle>
         <AlertDescription className="text-muted-foreground">
-          Aggregated statistics (Unique Crawlers, Compute Wasted, Activity Chart) are based on summaries updated approximately every 30 minutes (by the backend). Active Tarpit Instances update in real-time. The dashboard itself refreshes these summarized stats from its cache or fetches new data if the cache is older than 30 minutes.
+          Aggregated statistics (Unique Crawlers, Compute Wasted, Activity Chart, User Agents) are based on summaries updated approximately every 30 minutes (by the backend). Active Tarpit Instances update in real-time. The dashboard itself refreshes these summarized stats from its cache or fetches new data if the cache is older than 30 minutes.
         </AlertDescription>
       </Alert>
 
-      <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4">
         <Card className="border-primary/30 shadow-lg shadow-primary/10 hover:shadow-primary/20 transition-shadow duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-primary">Total Unique Crawlers (30-day approx. Demo)</CardTitle>
@@ -289,6 +326,41 @@ export default function DemoDashboardPage() {
             <p className="text-xs text-muted-foreground mt-1">Illustrative cost based on total hits from 30-day demo summaries.</p>
           </CardContent>
         </Card>
+        <Card className="border-accent/30 shadow-lg shadow-accent/10 hover:shadow-accent/20 transition-shadow duration-300">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-accent">Demo User Agent Activity (30-day)</CardTitle>
+            <Fingerprint className="h-5 w-5 text-primary" />
+          </CardHeader>
+          <CardContent>
+            {isLoadingDemoUserAgentStats ? (
+              <>
+                <Skeleton className="h-6 w-3/4 mb-1" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-5/6 mt-1" />
+              </>
+            ) : (
+              <>
+                <div className="text-md font-semibold text-foreground">
+                  Approx. Unique Agents: {demoSummedUniqueUserAgentCount ?? 0}
+                </div>
+                {demoLatestTopUserAgents && demoLatestTopUserAgents.length > 0 ? (
+                  <>
+                    <p className="text-xs text-muted-foreground mt-1 mb-0.5">Top Agents (from latest summary):</p>
+                    <ul className="text-xs text-muted-foreground space-y-0.5 max-h-20 overflow-y-auto">
+                      {demoLatestTopUserAgents.slice(0, 3).map((ua, index) => (
+                        <li key={index} className="truncate">
+                          <span title={ua.userAgent}>{ua.userAgent}</span> ({ua.hits} hits)
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                ) : (
+                  <p className="text-xs text-muted-foreground mt-1">No user agent data available in latest summary.</p>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
       </section>
 
       <section>
@@ -305,4 +377,3 @@ export default function DemoDashboardPage() {
     </div>
   );
 }
-    
