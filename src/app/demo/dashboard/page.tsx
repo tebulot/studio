@@ -154,11 +154,13 @@ export default function DemoDashboardPage() {
         let totalHitsForCostCalc = 0;
         let currentSummedUACount = 0;
         let mostRecentSummaryTime = new Timestamp(0,0);
-        let tempLatestTopUserAgents: Array<{ userAgent: string; hits: number }> | null = null;
+        let tempLatestTopUserAgents: Array<{ userAgent: string; hits: number }> | null = [];
+        let allFetchedSummaries: ActivitySummaryDocForDemo[] = [];
 
 
         querySnapshot.forEach((doc) => {
           const data = doc.data() as ActivitySummaryDocForDemo;
+           allFetchedSummaries.push(data);
           if (data.uniqueIpCount) {
             summedUniqueIpCount += data.uniqueIpCount;
           }
@@ -168,14 +170,17 @@ export default function DemoDashboardPage() {
           if (data.uniqueUserAgentCount) {
             currentSummedUACount += data.uniqueUserAgentCount;
           }
-          if (data.startTime && data.startTime.toMillis() > mostRecentSummaryTime.toMillis()) {
-            mostRecentSummaryTime = data.startTime;
-            tempLatestTopUserAgents = data.topUserAgents || [];
-          }
         });
+        
+        if(allFetchedSummaries.length > 0) {
+            const sortedSummaries = [...allFetchedSummaries].sort((a, b) => b.startTime.toMillis() - a.startTime.toMillis());
+            if (sortedSummaries[0] && sortedSummaries[0].topUserAgents) {
+                tempLatestTopUserAgents = sortedSummaries[0].topUserAgents;
+            }
+        }
 
         const currentWastedCost = (totalHitsForCostCalc * 0.0001).toFixed(4);
-        console.log(`${logPrefix} Processed fresh data: UniqueIPsSum=${summedUniqueIpCount}, TotalHitsForCost=${totalHitsForCostCalc}, WastedCost=${currentWastedCost}, SummedUACount=${currentSummedUACount}`);
+        console.log(`${logPrefix} Processed fresh data: UniqueIPsSum=${summedUniqueIpCount}, TotalHitsForCost=${totalHitsForCostCalc}, WastedCost=${currentWastedCost}, SummedUACount=${currentSummedUACount}, LatestTopUAs Count: ${tempLatestTopUserAgents?.length}`);
 
         setDemoUniqueCrawlersApproxCount(summedUniqueIpCount);
         setDemoWastedComputeCost(currentWastedCost);
@@ -283,7 +288,7 @@ export default function DemoDashboardPage() {
         </AlertDescription>
       </Alert>
 
-      <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
         <Card className="border-primary/30 shadow-lg shadow-primary/10 hover:shadow-primary/20 transition-shadow duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-primary">Total Unique Crawlers (30-day approx. Demo)</CardTitle>
