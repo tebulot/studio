@@ -29,7 +29,7 @@ body {
     --accent: 79 100% 50%; /* Electric Lime #B0FF00 */
     --accent-foreground: 0 0% 5%; /* Darker text for contrast on accent */
 
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 84.2% 60.2%; /* Brighter Red */
     --destructive-foreground: 0 0% 98%;
 
     --border: 0 0% 15%;
@@ -78,7 +78,7 @@ body {
     --accent: 79 100% 50%;
     --accent-foreground: 0 0% 5%;
 
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 84.2% 60.2%; /* Updated to brighter red for dark theme */
     --destructive-foreground: 0 0% 98%;
 
     --border: 0 0% 15%;
