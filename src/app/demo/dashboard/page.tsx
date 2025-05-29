@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import TrappedCrawlersChart from "@/components/dashboard/TrappedCrawlersChart";
-import { ShieldCheck, Users, DollarSign, Info, Eye, Fingerprint } from "lucide-react"; // Added Fingerprint
+import { ShieldCheck, Users, DollarSign, Info, Eye, Fingerprint } from "lucide-react";
 import { db } from "@/lib/firebase/clientApp";
 import { collection, query, where, onSnapshot, getDocs, type DocumentData, type QuerySnapshot, Timestamp, orderBy } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { subDays, startOfDay } from "date-fns";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const DEMO_USER_ID = process.env.NEXT_PUBLIC_DEMO_USER_ID;
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes in milliseconds
@@ -51,7 +52,6 @@ export default function DemoDashboardPage() {
       setIsDemoIdProperlyConfigured(true);
     } else {
       setIsDemoIdProperlyConfigured(false);
-      // Set loading states to false if not configured, to prevent infinite loaders
       setIsLoadingInstancesCount(false);
       setIsLoadingDemoUniqueCrawlers(false);
       setIsLoadingDemoWastedCompute(false);
@@ -62,10 +62,9 @@ export default function DemoDashboardPage() {
       setDemoSummedUniqueUserAgentCount(0);
       setDemoLatestTopUserAgents([]);
     }
-  }, []); // Run once on mount to check config
+  }, []); 
 
 
-  // Listener for active demo instances count (reads from tarpit_configs)
   useEffect(() => {
     if (!isDemoIdProperlyConfigured) {
       return;
@@ -89,7 +88,6 @@ export default function DemoDashboardPage() {
     return () => unsubscribeInstances();
   }, [isDemoIdProperlyConfigured, toast]);
 
-  // Fetch for demo unique crawlers approx. count, wasted compute cost & user agent stats from activity summaries with caching
   useEffect(() => {
     if (!isDemoIdProperlyConfigured) {
       return;
@@ -107,7 +105,6 @@ export default function DemoDashboardPage() {
       const cachedTopUAKey = `${cacheKeyBase}_latestTopUA`;
       const timestampKey = `${cacheKeyBase}_timestamp`;
       const logPrefix = `DemoDashboardPage (DEMO_USER_ID: ${DEMO_USER_ID ? DEMO_USER_ID.substring(0,5) : 'N/A'}...) - Demo Summary Stats:`;
-
 
       try {
         const cachedTimestampStr = localStorage.getItem(timestampKey);
@@ -139,7 +136,6 @@ export default function DemoDashboardPage() {
             console.log(`${logPrefix} Demo cache stale or not found. Fetching fresh data.`);
         }
 
-
         const thirtyDaysAgoDate = startOfDay(subDays(new Date(), 29));
         const summariesQuery = query(
           collection(db, "tarpit_activity_summaries"),
@@ -153,10 +149,8 @@ export default function DemoDashboardPage() {
         let summedUniqueIpCount = 0;
         let totalHitsForCostCalc = 0;
         let currentSummedUACount = 0;
-        let mostRecentSummaryTime = new Timestamp(0,0);
         let tempLatestTopUserAgents: Array<{ userAgent: string; hits: number }> | null = [];
         let allFetchedSummaries: ActivitySummaryDocForDemo[] = [];
-
 
         querySnapshot.forEach((doc) => {
           const data = doc.data() as ActivitySummaryDocForDemo;
@@ -217,7 +211,6 @@ export default function DemoDashboardPage() {
 
 
   if (!isDemoIdProperlyConfigured && (isLoadingInstancesCount || isLoadingDemoUniqueCrawlers || isLoadingDemoWastedCompute || isLoadingDemoUserAgentStats )) {
-    // Still determining configuration or initial loading
     return (
         <div className="flex flex-col items-center justify-center text-center space-y-4 p-8 rounded-lg bg-card border border-border shadow-lg">
             <ShieldCheck className="h-16 w-16 text-primary animate-pulse" />
@@ -292,7 +285,7 @@ export default function DemoDashboardPage() {
         <Card className="border-primary/30 shadow-lg shadow-primary/10 hover:shadow-primary/20 transition-shadow duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-primary">Total Unique Crawlers (30-day approx. Demo)</CardTitle>
-            <Users className="h-5 w-5 text-accent" />
+            <Users className="h-6 w-6 text-accent" /> {/* Icon size updated */}
           </CardHeader>
           <CardContent>
             {isLoadingDemoUniqueCrawlers ? (
@@ -306,7 +299,7 @@ export default function DemoDashboardPage() {
         <Card className="border-accent/30 shadow-lg shadow-accent/10 hover:shadow-accent/20 transition-shadow duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-accent">Active Demo Tarpit Instances</CardTitle>
-            <ShieldCheck className="h-5 w-5 text-primary" />
+            <ShieldCheck className="h-6 w-6 text-primary" /> {/* Icon size updated */}
           </CardHeader>
           <CardContent>
             {isLoadingInstancesCount ? (
@@ -319,8 +312,22 @@ export default function DemoDashboardPage() {
         </Card>
         <Card className="border-primary/30 shadow-lg shadow-primary/10 hover:shadow-primary/20 transition-shadow duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-primary">Crawler Compute Wasted</CardTitle>
-            <DollarSign className="h-5 w-5 text-primary" />
+            <div className="flex items-center gap-1.5">
+                <CardTitle className="text-sm font-medium text-primary">Crawler Compute Wasted</CardTitle>
+                <TooltipProvider>
+                    <Tooltip delayDuration={100}>
+                    <TooltipTrigger asChild>
+                        <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent className="bg-popover text-popover-foreground border-primary/50 max-w-xs">
+                        <p className="text-xs">
+                        Each hit from 30-day activity summaries contributes $0.0001 to this illustrative total.
+                        </p>
+                    </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
+            </div>
+            <DollarSign className="h-6 w-6 text-primary" /> {/* Icon size updated */}
           </CardHeader>
           <CardContent>
             {isLoadingDemoWastedCompute ? (
@@ -334,7 +341,7 @@ export default function DemoDashboardPage() {
         <Card className="border-accent/30 shadow-lg shadow-accent/10 hover:shadow-accent/20 transition-shadow duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-accent">Demo User Agent Activity (30-day)</CardTitle>
-            <Fingerprint className="h-5 w-5 text-primary" />
+            <Fingerprint className="h-6 w-6 text-primary" /> {/* Icon size updated */}
           </CardHeader>
           <CardContent>
             {isLoadingDemoUserAgentStats ? (

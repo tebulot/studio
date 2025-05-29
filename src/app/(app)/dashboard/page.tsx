@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import TrappedCrawlersChart from "@/components/dashboard/TrappedCrawlersChart";
-import { ShieldCheck, Users, DollarSign, Info, Fingerprint } from "lucide-react"; // Added Fingerprint
+import { ShieldCheck, Users, DollarSign, Info, Fingerprint } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { db } from "@/lib/firebase/clientApp";
 import { collection, query, where, getDocs, type DocumentData, type QuerySnapshot, onSnapshot, Timestamp, orderBy } from "firebase/firestore";
@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { subDays, startOfDay } from "date-fns";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes in milliseconds
 
@@ -140,33 +141,30 @@ export default function DashboardPage() {
         let summedUniqueIpCount = 0;
         let totalHitsForCostCalc = 0;
         let currentSummedUACount = 0;
-        let mostRecentSummaryTime = new Timestamp(0,0);
         let tempLatestTopUserAgents: Array<{ userAgent: string; hits: number }> | null = [];
         let allFetchedSummaries: ActivitySummaryDocForDashboard[] = [];
 
 
         querySnapshot.forEach((doc) => {
           const data = doc.data() as ActivitySummaryDocForDashboard;
-          allFetchedSummaries.push(data); // Store for processing
+          allFetchedSummaries.push(data); 
           if (data.uniqueIpCount) {
-            summedUniqueIpCount += data.uniqueIpCount; // This is an approximation
+            summedUniqueIpCount += data.uniqueIpCount; 
           }
           if (data.totalHits) {
             totalHitsForCostCalc += data.totalHits;
           }
           if (data.uniqueUserAgentCount) {
-            currentSummedUACount += data.uniqueUserAgentCount; // Approximation
+            currentSummedUACount += data.uniqueUserAgentCount; 
           }
         });
         
-        // Find the topUserAgents from the most recent summary document
         if(allFetchedSummaries.length > 0) {
             const sortedSummaries = [...allFetchedSummaries].sort((a, b) => b.startTime.toMillis() - a.startTime.toMillis());
             if (sortedSummaries[0] && sortedSummaries[0].topUserAgents) {
                 tempLatestTopUserAgents = sortedSummaries[0].topUserAgents;
             }
         }
-
 
         const currentWastedCost = (totalHitsForCostCalc * 0.0001).toFixed(4);
 
@@ -175,7 +173,6 @@ export default function DashboardPage() {
         setWastedComputeCost(currentWastedCost);
         setSummedUniqueUserAgentCount(currentSummedUACount);
         setLatestTopUserAgents(tempLatestTopUserAgents || []);
-
 
         localStorage.setItem(cachedCrawlersKey, JSON.stringify(summedUniqueIpCount));
         localStorage.setItem(cachedCostKey, JSON.stringify(currentWastedCost));
@@ -223,7 +220,7 @@ export default function DashboardPage() {
         <Card className="border-primary/30 shadow-lg shadow-primary/10 hover:shadow-primary/20 transition-shadow duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-primary">Total Unique Crawlers (30-day approx.)</CardTitle>
-            <Users className="h-5 w-5 text-accent" />
+            <Users className="h-6 w-6 text-accent" /> {/* Icon size updated */}
           </CardHeader>
           <CardContent>
             {isLoadingUniqueCrawlers ? (
@@ -237,7 +234,7 @@ export default function DashboardPage() {
         <Card className="border-accent/30 shadow-lg shadow-accent/10 hover:shadow-accent/20 transition-shadow duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-accent">Active Tarpit Instances</CardTitle>
-            <ShieldCheck className="h-5 w-5 text-primary" />
+            <ShieldCheck className="h-6 w-6 text-primary" /> {/* Icon size updated */}
           </CardHeader>
           <CardContent>
             {isLoadingInstancesCount ? (
@@ -250,8 +247,22 @@ export default function DashboardPage() {
         </Card>
         <Card className="border-primary/30 shadow-lg shadow-primary/10 hover:shadow-primary/20 transition-shadow duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-primary">Crawler Compute Wasted (30-day)</CardTitle>
-            <DollarSign className="h-5 w-5 text-primary" />
+            <div className="flex items-center gap-1.5">
+              <CardTitle className="text-sm font-medium text-primary">Crawler Compute Wasted (30-day)</CardTitle>
+              <TooltipProvider>
+                <Tooltip delayDuration={100}>
+                  <TooltipTrigger asChild>
+                    <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="bg-popover text-popover-foreground border-primary/50 max-w-xs">
+                    <p className="text-xs">
+                      Each hit from 30-day activity summaries contributes $0.0001 to this illustrative total.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+            <DollarSign className="h-6 w-6 text-primary" /> {/* Icon size updated */}
           </CardHeader>
           <CardContent>
             {isLoadingWastedCompute ? (
@@ -265,7 +276,7 @@ export default function DashboardPage() {
         <Card className="border-accent/30 shadow-lg shadow-accent/10 hover:shadow-accent/20 transition-shadow duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-accent">User Agent Activity (30-day)</CardTitle>
-            <Fingerprint className="h-5 w-5 text-primary" />
+            <Fingerprint className="h-6 w-6 text-primary" /> {/* Icon size updated */}
           </CardHeader>
           <CardContent>
             {isLoadingUserAgentStats ? (
@@ -283,7 +294,7 @@ export default function DashboardPage() {
                   <>
                     <p className="text-xs text-muted-foreground mt-1 mb-0.5">Top Agents (from latest summary):</p>
                     <ul className="text-xs text-muted-foreground space-y-0.5 max-h-20 overflow-y-auto">
-                      {latestTopUserAgents.slice(0, 3).map((ua, index) => ( // Show top 3 for brevity
+                      {latestTopUserAgents.slice(0, 3).map((ua, index) => ( 
                         <li key={index} className="truncate">
                           <span title={ua.userAgent}>{ua.userAgent}</span> ({ua.hits} hits)
                         </li>
