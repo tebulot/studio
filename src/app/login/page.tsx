@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import BrandLogoIcon from '@/components/icons/BrandLogoIcon';
 import { useState, type FormEvent, useEffect } from 'react'; 
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2, Mail } from 'lucide-react'; // Home icon removed
+import { Loader2, Mail } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton'; 
 
 export default function LoginPage() {
@@ -26,6 +26,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     setIsMounted(true); 
+    // Generate style for the single large background icon
     setBackgroundIconStyle({
       animationDuration: `${Math.random() * 10 + 10}s`, 
     });
@@ -34,6 +35,7 @@ export default function LoginPage() {
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
+    setIsPasswordResetMode(false); // Explicitly set to false on main form submission
     if (isSignUp) {
       await signUp(email, password);
     } else {
