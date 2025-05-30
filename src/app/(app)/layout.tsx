@@ -17,7 +17,7 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
   const { isAnimationEnabled } = useBackgroundAnimation();
 
   useEffect(() => {
-    // console.log('AppLayoutContent: isAnimationEnabled:', isAnimationEnabled); // For debugging
+    // console.log('AppLayoutContent: isAnimationEnabled:', isAnimationEnabled);
   }, [isAnimationEnabled]);
 
 
@@ -37,8 +37,8 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
         </div>
       )}
       <SidebarProvider defaultOpen>
-        {/* Removed bg-background from this div; body already has it. */}
-        <div className="flex min-h-screen font-mono text-foreground">
+        {/* This div now gets bg-background. It's a sibling to the fixed spiral, so it will be on top. */}
+        <div className="flex min-h-screen font-mono text-foreground bg-background">
           <Sidebar collapsible="icon" variant="sidebar" side="left" className="border-r-2 border-primary/20">
             <SidebarHeader className="p-4 border-b border-primary/20 flex items-center justify-between">
               <AppHeaderContent />
@@ -86,9 +86,11 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
                     <span className="text-base text-destructive">Sign Out</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
+                {/* Transparent spacer div */}
                 <div className="h-10 rounded-md mx-[-0.5rem] mb-[-0.5rem]"></div>
             </SidebarFooter>
           </Sidebar>
+          {/* SidebarInset should not have its own opaque background */}
           <SidebarInset>
             <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 border-b bg-background/80 backdrop-blur-sm px-4 md:px-6 md:hidden">
               <NextLink href="/" className="flex items-center gap-2 text-lg font-semibold md:text-base">
@@ -105,6 +107,7 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
                 </SidebarTrigger>
               </div>
             </header>
+            {/* The main content area also should not have its own opaque background */}
             <main className="flex-1 p-6 lg:p-10 overflow-auto">
               {children}
             </main>
