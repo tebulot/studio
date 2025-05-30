@@ -30,17 +30,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={cn(
+    <html lang="en"><body className={cn(
         "min-h-screen bg-background font-mono antialiased",
         geistSans.variable,
         geistMono.variable
-      )}>
-        <AuthProvider>
+      )}><AuthProvider>
           {children}
         </AuthProvider>
-        <Toaster />
-      </body>
-    </html>
+        <Toaster /></body></html>
   );
 }
