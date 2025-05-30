@@ -4,7 +4,7 @@
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset, SidebarTrigger, SidebarFooter } from "@/components/ui/sidebar";
 import AppHeaderContent from '@/components/layout/AppHeaderContent';
 import BackgroundAnimationToggle from '@/components/layout/BackgroundAnimationToggle';
-import { LayoutDashboard, Link2, Menu, LogOut, UserCog, ShieldAlert, FileText } from 'lucide-react'; // Added FileText, ShieldAlert removed as anomaly-detection page is disabled
+import { LayoutDashboard, Link2, Menu, LogOut, UserCog } from 'lucide-react'; // Removed FileText, ShieldAlert
 import NextLink from 'next/link';
 import { Button } from '@/components/ui/button';
 import BrandLogoIcon from '@/components/icons/BrandLogoIcon';
@@ -14,6 +14,8 @@ import { BackgroundAnimationProvider, useBackgroundAnimation } from "@/contexts/
 function AppLayoutContent({ children }: { children: React.ReactNode }) {
   const { signOut, loading } = useAuth();
   const { isAnimationEnabled } = useBackgroundAnimation();
+
+  // console.log('isAnimationEnabled in AppLayout:', isAnimationEnabled); // For debugging
 
   const handleSignOut = async () => {
     await signOut();
@@ -25,7 +27,7 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
       {isAnimationEnabled && (
         <div className="fixed inset-0 -z-10 flex items-center justify-center overflow-hidden pointer-events-none">
           <BrandLogoIcon
-            className="w-[500vw] h-[500vh] opacity-5 animate-spin-slow"
+            className="w-[500vw] h-[500vh] opacity-10 animate-spin-slow" // Increased opacity
             isPriority={false}
           />
         </div>
@@ -57,7 +59,6 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
                     </NextLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-                {/* The "Logs" link was removed here as per previous request for disabling the anomaly-detection page */}
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip={{content:"Account", side:"right", className:"bg-popover text-popover-foreground border-primary/50"}} className="justify-start">
                     <NextLink href="/account" className="flex items-center">
@@ -80,14 +81,13 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
                     <span className="text-base text-destructive">Sign Out</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-                {/* This div acts as a transparent spacer */}
                 <div className="h-10 rounded-md mx-[-0.5rem] mb-[-0.5rem]"></div>
             </SidebarFooter>
           </Sidebar>
           <SidebarInset>
             <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 border-b bg-background/80 backdrop-blur-sm px-4 md:px-6 md:hidden">
               <NextLink href="/" className="flex items-center gap-2 text-lg font-semibold md:text-base">
-                <BrandLogoIcon className="h-8 w-8 text-primary" isPriority /> {/* Adjusted size for mobile header */}
+                <BrandLogoIcon className="h-8 w-8 text-primary" isPriority />
                 <span className="glitch-text text-primary">SpiteSpiral</span>
               </NextLink>
               <div className="flex items-center gap-2">

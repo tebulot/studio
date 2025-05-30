@@ -1,29 +1,22 @@
 
 'use client';
 
-import type { Metadata } from 'next'; // Keep for metadata, but we'll use client features
 import NextLink from 'next/link';
 import { Button } from '@/components/ui/button';
 import BrandLogoIcon from '@/components/icons/BrandLogoIcon';
 import BackgroundAnimationToggle from '@/components/layout/BackgroundAnimationToggle';
 import { BackgroundAnimationProvider, useBackgroundAnimation } from '@/contexts/BackgroundAnimationContext';
 
-// Note: This demo layout does NOT use AuthProvider to avoid auth-based redirects.
-
-// export const metadata: Metadata = { // Metadata typically defined in Server Components or page.tsx for client ones
-//   title: 'SpiteSpiral - Public Demo',
-//   description: 'Public demonstration of SpiteSpiral Tarpit dashboard and logs.',
-// };
-
 function DemoLayoutContent({ children }: { children: React.ReactNode; }) {
   const { isAnimationEnabled } = useBackgroundAnimation();
+  // console.log('isAnimationEnabled in DemoLayout:', isAnimationEnabled); // For debugging
 
   return (
     <>
       {isAnimationEnabled && (
         <div className="fixed inset-0 -z-10 flex items-center justify-center overflow-hidden pointer-events-none">
           <BrandLogoIcon
-            className="w-[500vw] h-[500vh] opacity-5 animate-spin-slow"
+            className="w-[500vw] h-[500vh] opacity-10 animate-spin-slow" // Increased opacity
             isPriority={false}
           />
         </div>
@@ -40,7 +33,7 @@ function DemoLayoutContent({ children }: { children: React.ReactNode; }) {
                 <p className="text-xs text-accent">Public Demo Mode</p>
               </div>
             </NextLink>
-            <nav className="flex items-center gap-4"> {/* Increased gap for toggle */}
+            <nav className="flex items-center gap-4">
               <BackgroundAnimationToggle />
                <Button asChild variant="outline" className="border-accent text-accent hover:bg-accent/10 hover:text-accent-foreground">
                   <NextLink href="/">
@@ -58,7 +51,7 @@ function DemoLayoutContent({ children }: { children: React.ReactNode; }) {
         <main className="flex-1 container mx-auto p-6 lg:p-10">
           {children}
         </main>
-        <footer className="py-6 md:px-8 md:py-0 border-t border-primary/10 bg-card/50">
+        <footer className="py-6 md:px-8 md:py-0 border-t border-primary/10 bg-card/50 mt-auto">
           <div className="container flex flex-col items-center justify-center gap-2 md:h-20 text-center">
             <NextLink href="/" className="flex items-center gap-2 group mb-2">
               <BrandLogoIcon className="h-8 w-8 text-primary" />
