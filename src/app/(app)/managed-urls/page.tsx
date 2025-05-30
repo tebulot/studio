@@ -128,12 +128,10 @@ export default function ManagedUrlsPage() {
       const queryString = params.toString();
       setGeneratedUrl(`${TARPIT_BASE_URL}/trap${queryString ? `?${queryString}` : ''}`);
     } else {
-      // Fallback URL for when user is not available (e.g., during initial load)
       setGeneratedUrl(`${TARPIT_BASE_URL}/trap?client_id=YOUR_USER_ID&intensity=medium&theme=generic&stealth=off&lure_speed=normal`);
     }
   }, [userTrapPath, intensity, theme, entryStealth, lureSpeed, user, TARPIT_BASE_URL]);
 
-  // Snippet definitions
   const simpleHtmlLinkSnippet = (path: string) => `<a href="${path}" title="Archival Data Access" rel="nofollow">Internal Data Archives</a>`;
   const tinyHtmlLinkSnippet = (path: string) => `<a href="${path}" style="font-size:1px; color:transparent;" aria-hidden="true" tabindex="-1" rel="nofollow">.</a>`;
   const sitemapEntrySnippet = (path: string) => `<url>
@@ -224,7 +222,7 @@ export default function ManagedUrlsPage() {
         <CardHeader>
           <div className="flex items-center gap-2">
             <Settings className="h-7 w-7 text-accent" />
-            <CardTitle className="text-2xl text-accent">Step 2: Configure Your SpiteSpiral Trap Settings <span className="font-bold text-destructive text-sm">(Coming Soon)</span></CardTitle>
+            <CardTitle className="text-2xl text-accent">Step 2: Configure Your SpiteSpiral Trap Settings <strong className="text-sm text-destructive">(Coming Soon)</strong><span className="block text-sm font-normal text-muted-foreground mt-1">Current tarpits are modified Nepenthes instances and do not yet support these advanced configurations.</span></CardTitle>
           </div>
           <CardDescription>
             Fine-tune your trap's behavior. Sensible defaults are selected. Your ready-to-use SpiteSpiral URL will generate below.
@@ -306,6 +304,7 @@ export default function ManagedUrlsPage() {
                   checked={entryStealth === 'deep'}
                   onCheckedChange={(checked) => setEntryStealth(checked ? 'deep' : 'generic')}
                   disabled
+                  className="data-[state=unchecked]:border-border"
                 />
                 <Label htmlFor="entry-stealth-toggle" className="text-sm font-medium">
                   {entryStealth === 'deep' ? "Deep Page Simulation (Stealth On)" : "Generic Entry (Stealth Off)"}
@@ -382,8 +381,8 @@ export default function ManagedUrlsPage() {
                 <AccordionTrigger className="text-sm text-accent hover:no-underline">How to set up redirects/proxies (General Advice)</AccordionTrigger>
                 <AccordionContent className="text-xs pt-2 space-y-2">
                   <p><strong>Option A (If SpiteSpiral Offers Managed Proxy/CNAME):</strong> If you've configured <code className="text-xs bg-muted p-0.5 rounded">{userTrapPath}</code> or a subdomain like <code className="text-xs bg-muted p-0.5 rounded">trap.yourdomain.com</code> to be managed by SpiteSpiral (via CNAME or proxy settings we might provide in the future), simply create a link on your website directly to that path/subdomain. This is the simplest setup if available.</p>
-                  <SnippetDisplay title="Example HTML (for Managed Proxy/CNAME)" snippet={`<a href="${userTrapPath}" title="Hidden Archive" rel="nofollow">Extra Resources</a>`} onCopy={handleCopy} />
-                  <p><strong>Option B (User Manages Redirect):</strong> On your server, set up a 301 (permanent) or 302 (temporary) redirect from <code className="text-xs bg-muted p-0.5 rounded">{userTrapPath}</code> to your full SpiteSpiral URL shown above. How to do this depends on your server:</p>
+                  <SnippetDisplay title="Example HTML (for Managed Proxy/CNAME)" snippet={`<a href="${userTrapPath}" title="Hidden Archive" rel="nofollow">Extra Resources</a>`} onCopy={handleCopy} explanation="Link to the path on your site that points to SpiteSpiral."/>
+                  <p><strong>Option B (User Manages Redirect):</strong> On your server, set up a 301 (permanent) or 302 (temporary) redirect from <code className="text-xs bg-muted p-0.5 rounded">{userTrapPath}</code> to your full SpiteSpiral URL shown in Step 2. How to do this depends on your server:</p>
                   <ul className="list-disc pl-5 space-y-1">
                     <li><strong>Apache:</strong> Use <code className="text-xs">.htaccess</code> with <code className="text-xs">Redirect</code> or <code className="text-xs">RewriteRule</code>.</li>
                     <li><strong>Nginx:</strong> Use a <code className="text-xs">location</code> block with a <code className="text-xs">return 301</code> or <code className="text-xs">rewrite</code>.</li>
@@ -402,22 +401,22 @@ export default function ManagedUrlsPage() {
                 <AccordionItem value="direct-html">
                     <AccordionTrigger>Direct HTML Link (Less Stealthy URL)</AccordionTrigger>
                     <AccordionContent className="space-y-2">
-                        <p className="text-xs text-muted-foreground">If you cannot set up a redirect or proxy, you can link directly to the long SpiteSpiral URL. This is less ideal as the URL itself might look suspicious to some advanced bots if they analyze it, but it's functional.</p>
-                        <SnippetDisplay title="Visible Direct Link" snippet={`<a href="${generatedUrl}" title="Archival Data Access" rel="nofollow">Internal Data Archives</a>`} onCopy={handleCopy} />
-                        <SnippetDisplay title="Tiny, Invisible Direct Link" snippet={getCssHiddenLinkSnippet(generatedUrl).replace('Important Data Feed', '.')} onCopy={handleCopy} />
+                        <p className="text-xs text-muted-foreground">If you cannot set up a redirect or proxy, you can link directly to the long SpiteSpiral URL. This is less ideal as the URL itself might look suspicious to some advanced bots if they analyze it, but it's functional. Remember to use `rel="nofollow"` on any anchor tags.</p>
+                        <SnippetDisplay title="Visible Direct Link to SpiteSpiral URL" snippet={`<a href="${generatedUrl}" title="Archival Data Access" rel="nofollow">Internal Data Archives</a>`} onCopy={handleCopy} />
+                        <SnippetDisplay title="Tiny, Invisible Direct Link to SpiteSpiral URL" snippet={tinyHtmlLinkSnippet(generatedUrl).replace('<a href="PLACEHOLDER_URL"', `<a href="${generatedUrl}"`)} onCopy={handleCopy} />
                     </AccordionContent>
                 </AccordionItem>
                 <AccordionItem value="sitemap">
                     <AccordionTrigger>sitemap.xml Entry</AccordionTrigger>
                     <AccordionContent className="space-y-2">
                         <p className="text-xs text-muted-foreground">Directly tells crawlers (that read sitemaps) about your trap path. Ensure this path is disallowed for good bots in <code className="text-xs">robots.txt</code>.</p>
-                        <SnippetDisplay title="sitemap.xml Entry Example" snippet={sitemapEntrySnippet(userTrapPath)} explanation="Replace 'https://example.com' with your actual domain and adjust lastmod." onCopy={handleCopy} />
+                        <SnippetDisplay title="sitemap.xml Entry Example" snippet={sitemapEntrySnippet(userTrapPath)} explanation="Replace 'https://example.com' with your actual domain and adjust lastmod. This points to your site's path, which should then lead to SpiteSpiral." onCopy={handleCopy} />
                     </AccordionContent>
                 </AccordionItem>
                  <AccordionItem value="css-hidden">
                     <AccordionTrigger>CSS-Hidden Links</AccordionTrigger>
                     <AccordionContent className="space-y-2">
-                        <p className="text-xs text-muted-foreground">Links present in HTML (so crawlers see them) but invisible or nearly invisible to users.</p>
+                        <p className="text-xs text-muted-foreground">Links present in HTML (so crawlers see them) but invisible or nearly invisible to users. These should link to your `userTrapPath` which then leads to SpiteSpiral, or directly to `generatedUrl` if not using a redirect/proxy (remember `rel="nofollow"`).</p>
                         <SnippetDisplay title="Off-Screen Link (Inline Style)" snippet={getCssHiddenLinkSnippet(generatedUrl)} onCopy={handleCopy} />
                         <SnippetDisplay title="Link with CSS Class" snippet={getCssClassLinkSnippet(generatedUrl)} onCopy={handleCopy} />
                         <SnippetDisplay title="Required CSS for .spite-link" snippet={cssClassStyleSnippet} onCopy={handleCopy} />
@@ -426,7 +425,7 @@ export default function ManagedUrlsPage() {
                 <AccordionItem value="js-injection">
                     <AccordionTrigger>JavaScript Link Injection (Advanced)</AccordionTrigger>
                     <AccordionContent className="space-y-2">
-                        <p className="text-xs text-muted-foreground">For dynamic control; may be missed by less sophisticated scrapers. Prefer HTML links for broad compatibility.</p>
+                        <p className="text-xs text-muted-foreground">For dynamic control; may be missed by less sophisticated scrapers. Prefer HTML links for broad compatibility. Remember `rel="nofollow"` on any anchor tags.</p>
                         <SnippetDisplay title="JS Link Injection Example" snippet={getJsInjectionSnippet(generatedUrl)} onCopy={handleCopy} />
                     </AccordionContent>
                 </AccordionItem>
@@ -477,5 +476,6 @@ export default function ManagedUrlsPage() {
     </div>
   );
 }
+    
 
     
