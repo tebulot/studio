@@ -6,7 +6,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -14,6 +13,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Link as LinkIcon, Copy, Settings, Code, CheckCircle, HelpCircle, ShieldCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 // Trap Configuration Options
 const intensityOptions = [
@@ -42,13 +42,58 @@ const lureSpeedOptions = [
   { value: 'fast_intro', label: 'Slightly Faster Initial Page' },
 ];
 
+// Simplified Snippet Constants
+const robotsTxtExample = `User-agent: * \nDisallow: /your-chosen-spitespiral-path/`;
+const simpleHtmlLinkSnippet = `<a href="/your-chosen-spitespiral-path/">Link</a>`;
+const tinyHtmlLinkSnippet = `<a href="/your-chosen-spitespiral-path/" style="font-size:1px;">.</a>`;
+const sitemapEntrySnippet = `<url><loc>https://example.com/path</loc></url>`;
+const cssClassStyleSnippet = `.spite-link { display:none; }`;
+
+const getCssHiddenLinkSnippet = (url: string) => `<a href="${url}" style="display:none;">Hidden</a>`;
+const getCssClassLinkSnippet = (url: string) => `<a href="${url}" class="spite-link">Hidden Class</a>`;
+const getJsInjectionSnippet = (url: string) => `<script>console.log("Injecting ${url}");</script>`;
+
+/*
+// Temporarily Commented Out SnippetDisplay
+const SnippetDisplay = ({ title, snippet, explanation }: { title: string, snippet: string, explanation?: string }) => {
+  const { toast } = useToast(); // SnippetDisplay needs its own toast instance if used
+  const handleCopySnippet = (textToCopy: string, type: string = "Text") => {
+    navigator.clipboard.writeText(textToCopy)
+      .then(() => {
+        toast({ title: "Copied!", description: `${type} copied to clipboard.` });
+      })
+      .catch(err => {
+        console.error("Copy error:", err);
+        toast({ title: "Error", description: `Could not copy ${type}.`, variant: "destructive" });
+      });
+  };
+
+  return (
+    <div className="space-y-2 mb-4">
+      <h4 className="font-semibold text-sm text-primary">{title}</h4>
+      <Textarea
+        value={snippet}
+        readOnly
+        rows={snippet.split('\n').length > 1 ? Math.min(snippet.split('\n').length + 2, 12) : 3}
+        className="bg-input border-border focus:ring-primary text-foreground/90 font-mono text-xs"
+      />
+      {explanation && <p className="text-xs text-muted-foreground">{explanation}</p>}
+      <Button onClick={() => handleCopySnippet(snippet, `${title} Snippet`)} variant="outline" size="sm" className="text-accent border-accent hover:bg-accent/10">
+        <Copy className="mr-2 h-3 w-3" /> Copy Snippet
+      </Button>
+    </div>
+  );
+};
+*/
+
+
 export default function ManagedUrlsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
 
   const [intensity, setIntensity] = useState('medium');
   const [theme, setTheme] = useState('generic');
-  const [entryStealthValue, setEntryStealthValue] = useState('generic'); // 'generic' (off) or 'deep' (on)
+  const [entryStealthValue, setEntryStealthValue] = useState('generic');
   const [lureSpeed, setLureSpeed] = useState('normal');
   const [generatedUrl, setGeneratedUrl] = useState('');
 
@@ -70,84 +115,17 @@ export default function ManagedUrlsPage() {
     }
   }, [intensity, theme, entryStealthValue, lureSpeed, user, TARPIT_BASE_URL]);
 
-  const handleCopy = (textToCopy: string, type: string = "Text") => {
+  const handleCopyUrl = (textToCopy: string) => {
     navigator.clipboard.writeText(textToCopy)
       .then(() => {
-        toast({ title: "Copied!", description: `${type} copied to clipboard.` });
+        toast({ title: "Copied!", description: `Generated URL copied to clipboard.` });
       })
       .catch(err => {
         console.error("Copy error:", err);
-        toast({ title: "Error", description: `Could not copy ${type}.`, variant: "destructive" });
+        toast({ title: "Error", description: `Could not copy URL.`, variant: "destructive" });
       });
   };
 
-  const robotsTxtExample = `User-agent: Googlebot
-Disallow: /your-chosen-spitespiral-path/
-
-User-agent: bingbot
-Disallow: /your-chosen-spitespiral-path/
-
-User-agent: AhrefsBot
-Disallow: /your-chosen-spitespiral-path/
-
-User-agent: SemrushBot
-Disallow: /your-chosen-spitespiral-path/
-
-User-agent: *
-Allow: / # This ensures general bots can access everything by default...
-Disallow: /your-chosen-spitespiral-path/ # ...EXCEPT your SpiteSpiral path
-`;
-
-  const simpleHtmlLinkSnippet = `<!-- Example: Link to your chosen path on your site -->
-<a href="/your-chosen-spitespiral-path/" title="Archival Data Access" rel="nofollow">Internal Data Archives</a>`;
-
-  const tinyHtmlLinkSnippet = `<!-- A tiny, almost invisible link to your chosen path -->
-<a href="/your-chosen-spitespiral-path/" style="font-size:1px; color:transparent;" aria-hidden="true" tabindex="-1" rel="nofollow">.</a>`;
-
-  const sitemapEntrySnippet = `<url>
-  <loc>https://data-archive.yourdomain.com/</loc> 
-  <lastmod>2024-01-01</lastmod>
-  <priority>0.1</priority>
-</url>`;
-
-  const getCssHiddenLinkSnippet = (url: string) => `<a href="${url}" style="position:absolute; left:-9999px; top:-9999px;" rel="nofollow">Important Data Feed</a>`;
-  const getCssClassLinkSnippet = (url: string) => `<a href="${url}" class="spite-link" rel="nofollow">Hidden Archive</a>`;
-  const cssClassStyleSnippet = `.spite-link {
-  position: absolute;
-  left: -9999px; /* Moves it off-screen */
-  /* Or more subtly: opacity: 0.01; font-size: 1px; */
-}`;
-  const getJsInjectionSnippet = (url: string) => `<div id="spite-container"></div>
-<script>
-  document.addEventListener('DOMContentLoaded', function() {
-    // Potentially add conditions here before injecting
-    const spiteLink = document.createElement('a');
-    spiteLink.href = "${url}"; 
-    spiteLink.innerHTML = "Diagnostic Data";
-    spiteLink.setAttribute('aria-hidden', 'true'); // If it's not for users
-    spiteLink.setAttribute('rel', 'nofollow'); // Good practice
-    spiteLink.style.opacity = '0.01'; // Make it unobtrusive
-    document.getElementById('spite-container').appendChild(spiteLink);
-  });
-</script>`;
-
-  const SnippetDisplay = ({ title, snippet, explanation }: { title: string, snippet: string, explanation?: string }) => {
-    return (
-      <div className="space-y-2 mb-4">
-        <h4 className="font-semibold text-sm text-primary">{title}</h4>
-        <Textarea
-          value={snippet}
-          readOnly
-          rows={snippet.split('\n').length > 1 ? Math.min(snippet.split('\n').length + 1, 10) : 3}
-          className="bg-input border-border focus:ring-primary text-foreground/90 font-mono text-xs"
-        />
-        {explanation && <p className="text-xs text-muted-foreground">{explanation}</p>}
-        <Button onClick={() => handleCopy(snippet, `${title} Snippet`)} variant="outline" size="sm" className="text-accent border-accent hover:bg-accent/10">
-          <Copy className="mr-2 h-3 w-3" /> Copy Snippet
-        </Button>
-      </div>
-    );
-  };
 
   return (
     <div className="space-y-8">
@@ -184,10 +162,10 @@ Disallow: /your-chosen-spitespiral-path/ # ...EXCEPT your SpiteSpiral path
           <Textarea
             value={robotsTxtExample}
             readOnly
-            rows={15}
+            rows={5} // Adjusted for simplified content
             className="font-mono text-xs bg-input border-border focus:ring-primary"
           />
-          <Button onClick={() => handleCopy(robotsTxtExample, "robots.txt Example")} variant="outline" size="sm" className="text-accent border-accent hover:bg-accent/10">
+          <Button onClick={() => handleCopyUrl(robotsTxtExample)} variant="outline" size="sm" className="text-accent border-accent hover:bg-accent/10">
             <Copy className="mr-2 h-3 w-3" /> Copy Example
           </Button>
           <p className="text-sm text-foreground/80"><strong className="text-destructive">IMPORTANT:</strong> Replace <code className="bg-muted px-1 py-0.5 rounded-sm text-xs text-accent">/your-chosen-spitespiral-path/</code> with the actual path you decide on. Make sure it has leading and trailing slashes if it represents a directory.</p>
@@ -216,7 +194,7 @@ Disallow: /your-chosen-spitespiral-path/ # ...EXCEPT your SpiteSpiral path
                 </div>
               ))}
             </RadioGroup>
-            <p className="text-xs text-muted-foreground">Controls the initial &apos;aggressiveness&apos; of the trap. Medium is recommended. For details on each level, consult our documentation.</p>
+            <p className="text-xs text-muted-foreground">Controls the initial &apos;aggressiveness&apos; of the trap.</p>
           </div>
 
           <div className="space-y-2">
@@ -243,10 +221,10 @@ Disallow: /your-chosen-spitespiral-path/ # ...EXCEPT your SpiteSpiral path
                     onCheckedChange={(checked) => setEntryStealthValue(checked ? 'deep' : 'generic')}
                 />
                 <Label htmlFor="stealth-toggle" className="font-normal text-sm">
-                    {entryStealthValue === 'deep' ? 'Deep Page Simulation / Stealth On' : 'Generic Entry / Stealth Off (Default)'}
+                    {entryStealthValue === 'deep' ? entryStealthOptions.find(o=>o.value==='deep')?.label : entryStealthOptions.find(o=>o.value==='generic')?.label}
                 </Label>
             </div>
-            <p className="text-xs text-muted-foreground">Determines if the trap simulates entry into a deep page (Stealth On) or starts from a generic root (Stealth Off).</p>
+            <p className="text-xs text-muted-foreground">Determines if the trap simulates entry into a deep page.</p>
           </div>
           
           <div className="space-y-2">
@@ -259,20 +237,19 @@ Disallow: /your-chosen-spitespiral-path/ # ...EXCEPT your SpiteSpiral path
                 </div>
               ))}
             </RadioGroup>
-            <p className="text-xs text-muted-foreground">Adjusts the loading speed of the very first page in the trap.</p>
+            <p className="text-xs text-muted-foreground">Adjusts the loading speed of the very first page.</p>
           </div>
           
           <div className="space-y-2 pt-4 border-t border-border">
             <Label htmlFor="generated-url" className="text-foreground/80 font-semibold">Generated SpiteSpiral URL:</Label>
             <div className="flex items-center gap-2">
               <Input id="generated-url" value={generatedUrl} readOnly className="flex-grow bg-input border-border focus:ring-primary text-sm" />
-              <Button onClick={() => handleCopy(generatedUrl, "Generated URL")} variant="outline" size="icon" className="text-accent border-accent hover:bg-accent/10">
+              <Button onClick={() => handleCopyUrl(generatedUrl)} variant="outline" size="icon" className="text-accent border-accent hover:bg-accent/10">
                 <Copy className="h-4 w-4" />
               </Button>
             </div>
              <p className="text-xs text-muted-foreground">
-                Your User ID (<code className="bg-muted px-1 py-0.5 rounded-sm text-xs text-accent">{user?.uid || 'N/A'}</code>) is included as <code className="bg-muted px-1 py-0.5 rounded-sm text-xs text-accent">client_id</code>.
-                Use this full URL in the embedding methods in Step 3.
+                Your User ID (<code className="bg-muted px-1 py-0.5 rounded-sm text-xs text-accent">{user?.uid || 'N/A'}</code>) is included.
              </p>
           </div>
         </CardContent>
@@ -294,41 +271,15 @@ Disallow: /your-chosen-spitespiral-path/ # ...EXCEPT your SpiteSpiral path
             <AccordionItem value="easy-embed-1">
               <AccordionTrigger className="text-accent hover:text-primary">Method: Simple HTML Link (Basic)</AccordionTrigger>
               <AccordionContent className="space-y-3 pt-2 text-sm text-muted-foreground">
-                 <p><strong>Use Case:</strong> Easy to implement, good for footers, &quot;Terms of Service&quot; pages, or deep utility pages not often visited by humans.</p>
-                 <p><strong>How To:</strong></p>
-                 <ol className="list-decimal list-inside space-y-2 my-2">
-                   <li>
-                     <strong>Embed the Link:</strong> Copy one of the HTML snippets below and paste it into your website&apos;s code.
-                     <ul className="list-disc list-inside pl-5 mt-1">
-                       <li>Replace <code className="bg-muted px-1 py-0.5 rounded-sm text-xs text-accent">&quot;/your-chosen-spitespiral-path/&quot;</code> in the snippet with the <strong>exact path you disallowed in your `robots.txt` (Step 1)</strong>.</li>
-                     </ul>
-                   </li>
-                   <li>
-                     <strong>Make Your Path Lead to SpiteSpiral:</strong> The path you chose (e.g., <code className="bg-muted px-1 py-0.5 rounded-sm text-xs text-accent">/secret-bot-area/</code>) on your website now needs to send visitors (especially bots) to your <strong>&apos;Generated SpiteSpiral URL&apos;</strong> (from Step 2), typically via a server-side redirect. Consult your web developer or hosting provider if unsure how to set up a redirect.
-                   </li>
-                 </ol>
-                 <p className="mt-3 font-semibold text-foreground/90">Link Snippets:</p>
-                <SnippetDisplay
-                  title="Visible Link Snippet"
-                  snippet={simpleHtmlLinkSnippet}
-                />
-                <SnippetDisplay
-                  title="Less Visible Link Snippet"
-                  snippet={tinyHtmlLinkSnippet}
-                  explanation="A tiny, almost invisible link."
-                />
+                 <p>Placeholder for Simple HTML Link details.</p>
+                 {/* Placeholder for SnippetDisplay usages */}
               </AccordionContent>
             </AccordionItem>
             <AccordionItem value="easy-embed-2">
               <AccordionTrigger className="text-accent hover:text-primary">Method: sitemap.xml Entry</AccordionTrigger>
               <AccordionContent className="space-y-3 pt-2 text-sm text-muted-foreground">
-                <p><strong>Use Case:</strong> Directly tells crawlers (that read sitemaps) about the existence of this &quot;section.&quot;</p>
-                <p><strong>How To:</strong> Add an entry to your sitemap.xml file pointing to the path on your domain (e.g., <code className="bg-muted px-1 rounded-sm text-xs text-accent">https://yourdomain.com/your-chosen-spitespiral-path/</code>) that you&apos;ve disallowed for good bots and configured to lead to your SpiteSpiral URL.</p>
-                 <SnippetDisplay
-                    title="Sitemap.xml Snippet"
-                    snippet={sitemapEntrySnippet}
-                    explanation="Note: Set a low priority. Replace the example https://data-archive.yourdomain.com/ with your actual chosen path."
-                  />
+                <p>Placeholder for sitemap.xml Entry details.</p>
+                {/* Placeholder for SnippetDisplay usage */}
               </AccordionContent>
             </AccordionItem>
           </Accordion>
@@ -338,39 +289,21 @@ Disallow: /your-chosen-spitespiral-path/ # ...EXCEPT your SpiteSpiral path
              <AccordionItem value="advanced-embed-1">
               <AccordionTrigger className="text-accent hover:text-primary">Method: CSS-Hidden Links (More Subtle)</AccordionTrigger>
               <AccordionContent className="space-y-3 pt-2 text-sm text-muted-foreground">
-                <p><strong>Use Case:</strong> Links that are part of the HTML (so crawlers see them) but are invisible or nearly invisible to human users. These can use your <code className="bg-muted px-1 rounded-sm text-xs text-accent">{generatedUrl}</code> directly.</p>
-                <SnippetDisplay
-                    title="CSS Hidden Link Snippet 1 (Inline Style)"
-                    snippet={getCssHiddenLinkSnippet(generatedUrl)}
-                  />
-                <p className="mt-2">OR use a dedicated CSS class:</p>
-                 <SnippetDisplay
-                    title="CSS Hidden Link Snippet 2 (Using Class)"
-                    snippet={getCssClassLinkSnippet(generatedUrl)}
-                  />
-                 <SnippetDisplay
-                    title="Required CSS for Class Method"
-                    snippet={cssClassStyleSnippet}
-                  />
+                <p>Placeholder for CSS-Hidden Links details.</p>
+                {/* Placeholder for SnippetDisplay usages */}
               </AccordionContent>
             </AccordionItem>
             <AccordionItem value="advanced-embed-2">
               <AccordionTrigger className="text-accent hover:text-primary">Method: JavaScript Link Injection (Advanced)</AccordionTrigger>
               <AccordionContent className="space-y-3 pt-2 text-sm text-muted-foreground">
-                <p><strong>Use Case:</strong> For more dynamic control; can make the link appear only under certain conditions or after a delay. Can use your <code className="bg-muted px-1 rounded-sm text-xs text-accent">{generatedUrl}</code> directly.</p>
-                <SnippetDisplay
-                    title="JavaScript Injection Snippet"
-                    snippet={getJsInjectionSnippet(generatedUrl)}
-                    explanation="Caution: Over-reliance on JS for link generation might be missed by less sophisticated scrapers that don't execute JS well. Prefer HTML links when possible for broad compatibility."
-                  />
+                <p>Placeholder for JavaScript Link Injection details.</p>
+                {/* Placeholder for SnippetDisplay usage */}
               </AccordionContent>
             </AccordionItem>
             <AccordionItem value="advanced-embed-3">
               <AccordionTrigger className="text-accent hover:text-primary">Method: Server-Side Conditional Redirection (Most Complex)</AccordionTrigger>
               <AccordionContent className="space-y-3 pt-2 text-sm text-muted-foreground">
-                <p><strong>Use Case:</strong> Identifying suspicious bot behavior at the server level and then serving a link to, or directly redirecting to, your SpiteSpiral path/subdomain (which in turn loads your Generated SpiteSpiral URL).</p>
-                <p><strong>How To:</strong> This is highly environment-specific. Requires server-side coding or configuration (e.g., Nginx if statements with rate limiting, or application middleware). If a bot trips a &quot;bad behavior&quot; threshold, your server could redirect it: HTTP 302 Found to your disallowed path (e.g., <code className="bg-muted px-1 rounded-sm text-xs text-accent">/your-chosen-spitespiral-path/</code>) or directly to your Generated SpiteSpiral URL.</p>
-                <p className="mt-2 text-xs text-primary"><strong>SpiteSpiral Note:</strong> This is an advanced technique for clients to implement on their servers. SpiteSpiral provides the destination trap URL.</p>
+                <p>Placeholder for Server-Side Redirection details.</p>
               </AccordionContent>
             </AccordionItem>
           </Accordion>
@@ -386,17 +319,16 @@ Disallow: /your-chosen-spitespiral-path/ # ...EXCEPT your SpiteSpiral path
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
           <ul className="list-disc pl-5 space-y-1">
-            <li><strong className="text-foreground/80">Double-Check `robots.txt`:</strong> Ensure it correctly disallows your chosen SpiteSpiral path for good bots. Test it!</li>
-            <li><strong className="text-foreground/80">Use a Dedicated Path/Subdomain on Your Site:</strong> This makes `robots.txt` management easier and clearer for the &quot;Simple HTML Link&quot; and &quot;Sitemap&quot; methods.</li>
-            <li><strong className="text-foreground/80">Monitor (If Possible):</strong> If your server logs allow, you might see traffic hitting your chosen path. This can indicate the trap is being visited.</li>
-            <li><strong className="text-foreground/80">Subtlety is Key:</strong> Don&apos;t make your SpiteSpiral link obvious or alarming to human users. The goal is to trap bots.</li>
-            <li><strong className="text-foreground/80">`rel="nofollow"`:</strong> When using `<a>` tags for embedding (especially if visible), add `rel="nofollow"` to the link. This instructs search engines not to follow the link or pass ranking value, further protecting your SEO. Our snippets for `<a>` tags include this.</li>
-            <li><strong className="text-foreground/80">SpiteSpiral Does the Heavy Lifting:</strong> Once a bot hits your configured SpiteSpiral URL (either directly or via your site&apos;s redirected path), our system takes over with the LLM babble, delays, and recursive linking.</li>
+            <li><strong className="text-foreground/80">Double-Check `robots.txt`</strong></li>
+            <li><strong className="text-foreground/80">Use a Dedicated Path/Subdomain</strong></li>
+            <li><strong className="text-foreground/80">Monitor (If Possible)</strong></li>
+            <li><strong className="text-foreground/80">Subtlety is Key</strong></li>
+            <li><strong className="text-foreground/80">`rel="nofollow"`</strong></li>
+            <li><strong className="text-foreground/80">SpiteSpiral Does the Heavy Lifting</strong></li>
           </ul>
         </CardContent>
       </Card>
     </div>
   );
 }
-
     
