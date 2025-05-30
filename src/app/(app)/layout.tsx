@@ -79,13 +79,13 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
                     <span className="text-base text-destructive">Sign Out</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-                <div className="h-10 bg-sidebar-primary rounded-md mx-[-0.5rem] mb-[-0.5rem]"></div>
+                {/* <div className="h-10 bg-sidebar-primary rounded-md mx-[-0.5rem] mb-[-0.5rem]"></div> Removed this line */}
             </SidebarFooter>
           </Sidebar>
           <SidebarInset>
             <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 border-b bg-background/80 backdrop-blur-sm px-4 md:px-6 md:hidden">
               <NextLink href="/" className="flex items-center gap-2 text-lg font-semibold md:text-base">
-                <BrandLogoIcon className="h-6 w-6 text-primary" />
+                <BrandLogoIcon className="h-8 w-8 text-primary" /> {/* Adjusted size for mobile header */}
                 <span className="glitch-text text-primary">SpiteSpiral</span>
               </NextLink>
               <div className="flex items-center gap-2">
