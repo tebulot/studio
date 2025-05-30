@@ -122,10 +122,10 @@ export default function HomePage() {
         </div>
         
         <div className="mb-10">
-          <h1 className="text-5xl md:text-7xl font-black font-sans glitch-text tracking-wider">
+           <h1 className="text-5xl md:text-7xl font-black font-sans glitch-text tracking-wider">
             <span className="text-primary-foreground">Spite</span><span className="text-primary">Spiral</span>
           </h1>
-           <p className="text-lg md:text-xl text-muted-foreground mt-2 max-w-xl md:max-w-2xl mx-auto">
+          <p className="text-lg md:text-xl text-muted-foreground mt-2 max-w-xl md:max-w-2xl mx-auto">
             Active Defense Against Persistent AI Crawlers & Data Scrapers.
           </p>
         </div>
@@ -242,13 +242,13 @@ export default function HomePage() {
       {/* Demo Tracking Pixel */}
       <img src="https://api.spitespiral.com/trap/38e19a7e-1a3f-4bf0-b83f-edd7efe6fceb" width="1" height="1" alt="" style={{border:0, position:"absolute", left:"-9999px"}} aria-hidden="true" loading="eager" />
 
-      <footer className="py-6 md:px-8 md:py-0 border-t border-primary/10 bg-card/50 mt-auto">
+      <footer className="py-6 md:px-8 md:py-0 border-t border-primary/10 bg-card/50 mt-auto z-20 relative">
         <div className="container flex flex-col items-center justify-center gap-2 md:h-20 text-center">
           <NextLink href="/" className="flex items-center gap-2 group mb-2">
             <BrandLogoIcon className="h-8 w-8 text-primary" />
             <span className="text-sm font-semibold text-primary">SpiteSpiral</span>
           </NextLink>
-          <NextLink href="/legal/licenses" className="text-xs text-muted-foreground/70 hover:text-accent animate-link-glow">
+          <NextLink href="/legal/licenses" className="text-xs text-muted-foreground/70 hover:text-accent">
             Licenses & Acknowledgements
           </NextLink>
           <p className="text-xs text-muted-foreground/70">
@@ -259,3 +259,5 @@ export default function HomePage() {
     </div>
   );
 }
+
+    
