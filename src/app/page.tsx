@@ -125,7 +125,7 @@ export default function HomePage() {
            <h1 className="text-5xl md:text-7xl font-black font-sans glitch-text tracking-wider">
             <span className="text-primary-foreground">Spite</span><span className="text-primary">Spiral</span>
           </h1>
-          <p className="text-lg md:text-xl text-muted-foreground mt-2 max-w-xl md:max-w-2xl mx-auto">
+           <p className="text-lg md:text-xl text-muted-foreground mt-2 max-w-xl md:max-w-2xl mx-auto">
             Active Defense Against Persistent AI Crawlers & Data Scrapers.
           </p>
         </div>
@@ -159,7 +159,7 @@ export default function HomePage() {
               <CardTitle className="text-2xl text-accent glitch-text min-h-12 flex items-center">The Problem: When Scrapers Ignore the Rules</CardTitle>
             </CardHeader>
             <CardContent className="text-foreground/80 space-y-3 flex-grow">
-                <p>Your digital presence – from carefully crafted content and unique intellectual property to proprietary business data – is under constant siege by automated bots. These aren&apos;t just passive visitors; many are aggressive scrapers with a clear agenda, often leading to significant issues:</p>
+                <p>Your valuable content, data, and intellectual property are prime targets for automated bots. Many of these scrapers brazenly ignore <code className="bg-muted px-1.5 py-0.5 rounded-sm text-xs">robots.txt</code> and bypass conventional blocking techniques, constantly draining your server resources and stealing your work for AI training models or competitive analysis. Simply blocking isn&apos;t enough for these persistent threats.</p>
                  <ul className="list-disc pl-5 space-y-2 mt-2 text-foreground/80">
                     <li><strong>Brazen Disregard for Rules:</strong> These scrapers frequently ignore <code className="bg-muted px-1.5 py-0.5 rounded-sm text-xs">robots.txt</code> directives, the established standard for bot etiquette. They are engineered to bypass common blocking techniques, making traditional defenses feel like sieves.</li>
                     <li><strong>Relentless Resource Drain:</strong> Unchecked scraping can overwhelm your server, consuming excessive bandwidth, CPU, and memory. This can lead to slower site performance for legitimate users, increased hosting costs, and even potential downtime.</li>
@@ -174,7 +174,7 @@ export default function HomePage() {
               <CardTitle className="text-2xl text-accent glitch-text min-h-12 flex items-center">The SpiteSpiral Solution: Active Deterrence & Data Devaluation</CardTitle>
             </CardHeader>
             <CardContent className="text-foreground/80 space-y-3 flex-grow">
-              <p>SpiteSpiral isn&apos;t a passive shield; it&apos;s an active trap. By strategically embedding a SpiteSpiral link, you redirect these rule-ignoring bots into a carefully constructed digital maze:</p>
+              <p>SpiteSpiral isn&apos;t a passive shield; it&s an active trap. By strategically embedding a SpiteSpiral link, you redirect these rule-ignoring bots into a carefully constructed digital maze:</p>
               <ul className="list-disc pl-5 space-y-2 text-foreground/80">
                   <li><strong>LLM-Powered Deception:</strong> Our core uses advanced, small language models (like DistilGPT-2) to generate vast quantities of unique, contextually plausible (yet ultimately nonsensical) content. This &apos;intelligent babble&apos; is far more convincing than simple repeated text, making it harder for scrapers to detect the trap and more likely to be ingested into their datasets.</li>
                   <li><strong>Strategic Resource Drain:</strong> Each interaction is designed to be slow and demanding for the bot, consuming its CPU cycles, bandwidth, and time with an endless stream of unique pages and deep, recursive links.</li>
@@ -242,14 +242,14 @@ export default function HomePage() {
       {/* Demo Tracking Pixel */}
       <img src="https://api.spitespiral.com/trap/38e19a7e-1a3f-4bf0-b83f-edd7efe6fceb" width="1" height="1" alt="" style={{border:0, position:"absolute", left:"-9999px"}} aria-hidden="true" loading="eager" />
 
-      <footer className="py-6 md:px-8 md:py-0 border-t border-primary/10 bg-card/50 mt-auto z-20 relative">
+      <footer className="py-6 md:px-8 md:py-0 border-t border-primary/10 bg-card/50 relative z-20">
         <div className="container flex flex-col items-center justify-center gap-2 md:h-20 text-center">
           <NextLink href="/" className="flex items-center gap-2 group mb-2">
             <BrandLogoIcon className="h-8 w-8 text-primary" />
             <span className="text-sm font-semibold text-primary">SpiteSpiral</span>
           </NextLink>
-          <NextLink href="/legal/licenses" className="text-xs text-muted-foreground/70 hover:text-accent">
-            Licenses & Acknowledgements
+          <NextLink href="/legal/licenses" className="text-xs text-muted-foreground/70 hover:text-accent animate-link-glow">
+            Licenses &amp; Acknowledgements
           </NextLink>
           <p className="text-xs text-muted-foreground/70">
             © {new Date().getFullYear()} SpiteSpiral. Trap with malice.
@@ -260,4 +260,5 @@ export default function HomePage() {
   );
 }
 
+    
     
