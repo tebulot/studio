@@ -10,10 +10,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Link2 as LinkIcon, Copy, Settings, Code, CheckCircle, HelpCircle, Info, ShieldCheck } from 'lucide-react'; // Changed Link to Link2
+import { Link2 as LinkIcon, Copy, Settings, Code, CheckCircle, HelpCircle, Info, ShieldCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label'; // Added Label import
+import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 // SnippetDisplay component definition
@@ -478,3 +478,4 @@ export default function ManagedUrlsPage() {
   );
 }
 
+    
