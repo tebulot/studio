@@ -11,9 +11,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { LinkIcon, Copy, Settings, Code, CheckCircle, HelpCircle, ShieldCheck } from 'lucide-react';
+import { Link as LinkIcon, Copy, Settings, Code, CheckCircle, HelpCircle, ShieldCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Switch } from '@/components/ui/switch'; // Added Switch import
+import { Switch } from '@/components/ui/switch';
 
 // Trap Configuration Options
 const intensityOptions = [
@@ -48,7 +48,7 @@ export default function ManagedUrlsPage() {
 
   const [intensity, setIntensity] = useState('medium');
   const [theme, setTheme] = useState('generic');
-  const [entryStealthValue, setEntryStealthValue] = useState('generic'); // 'generic' or 'deep'
+  const [entryStealthValue, setEntryStealthValue] = useState('generic'); // 'generic' (off) or 'deep' (on)
   const [lureSpeed, setLureSpeed] = useState('normal');
   const [generatedUrl, setGeneratedUrl] = useState('');
 
@@ -60,14 +60,13 @@ export default function ManagedUrlsPage() {
       params.append('client_id', user.uid);
       if (intensity !== 'medium') params.append('intensity', intensity);
       if (theme !== 'generic') params.append('theme', theme);
-      if (entryStealthValue === 'deep') params.append('stealth', 'on'); // 'on' if deep, implies 'off' otherwise
+      if (entryStealthValue === 'deep') params.append('stealth', 'on');
       if (lureSpeed !== 'normal') params.append('lure_speed', lureSpeed);
-
+      
       const queryString = params.toString();
       setGeneratedUrl(`${TARPIT_BASE_URL}/trap${queryString ? `?${queryString}` : ''}`);
     } else {
-      // Default URL for logged-out users or if UID is not available
-      setGeneratedUrl(`${TARPIT_BASE_URL}/trap?client_id=YOUR_USER_ID_WHEN_LOGGED_IN&intensity=medium&theme=generic&stealth=off&lure_speed=normal`);
+      setGeneratedUrl(`${TARPIT_BASE_URL}/trap?client_id=YOUR_USER_ID&intensity=medium&theme=generic&stealth=off&lure_speed=normal`);
     }
   }, [intensity, theme, entryStealthValue, lureSpeed, user, TARPIT_BASE_URL]);
 
@@ -77,6 +76,7 @@ export default function ManagedUrlsPage() {
         toast({ title: "Copied!", description: `${type} copied to clipboard.` });
       })
       .catch(err => {
+        console.error("Copy error:", err);
         toast({ title: "Error", description: `Could not copy ${type}.`, variant: "destructive" });
       });
   };
@@ -100,8 +100,10 @@ Disallow: /your-chosen-spitespiral-path/ # ...EXCEPT your SpiteSpiral path
 
   const simpleHtmlLinkSnippet = `<!-- Example: Link to your chosen path on your site -->
 <a href="/your-chosen-spitespiral-path/" title="Archival Data Access" rel="nofollow">Internal Data Archives</a>`;
+
   const tinyHtmlLinkSnippet = `<!-- A tiny, almost invisible link to your chosen path -->
 <a href="/your-chosen-spitespiral-path/" style="font-size:1px; color:transparent;" aria-hidden="true" tabindex="-1" rel="nofollow">.</a>`;
+
   const sitemapEntrySnippet = `<url>
   <loc>https://data-archive.yourdomain.com/</loc> 
   <lastmod>2024-01-01</lastmod>
@@ -129,21 +131,23 @@ Disallow: /your-chosen-spitespiral-path/ # ...EXCEPT your SpiteSpiral path
   });
 </script>`;
 
-  const SnippetDisplay = ({ title, snippet, explanation }: { title: string, snippet: string, explanation?: string }) => (
-    <div className="space-y-2 mb-4">
-      <h4 className="font-semibold text-sm text-primary">{title}</h4>
-      <Textarea
-        value={snippet}
-        readOnly
-        rows={snippet.split('\n').length > 1 ? Math.min(snippet.split('\n').length + 1, 10) : 3}
-        className="bg-input border-border focus:ring-primary text-foreground/90 font-mono text-xs"
-      />
-      {explanation && <p className="text-xs text-muted-foreground">{explanation}</p>}
-      <Button onClick={() => handleCopy(snippet, `${title} Snippet`)} variant="outline" size="sm" className="text-accent border-accent hover:bg-accent/10">
-        <Copy className="mr-2 h-3 w-3" /> Copy Snippet
-      </Button>
-    </div>
-  );
+  const SnippetDisplay = ({ title, snippet, explanation }: { title: string, snippet: string, explanation?: string }) => {
+    return (
+      <div className="space-y-2 mb-4">
+        <h4 className="font-semibold text-sm text-primary">{title}</h4>
+        <Textarea
+          value={snippet}
+          readOnly
+          rows={snippet.split('\n').length > 1 ? Math.min(snippet.split('\n').length + 1, 10) : 3}
+          className="bg-input border-border focus:ring-primary text-foreground/90 font-mono text-xs"
+        />
+        {explanation && <p className="text-xs text-muted-foreground">{explanation}</p>}
+        <Button onClick={() => handleCopy(snippet, `${title} Snippet`)} variant="outline" size="sm" className="text-accent border-accent hover:bg-accent/10">
+          <Copy className="mr-2 h-3 w-3" /> Copy Snippet
+        </Button>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-8">
@@ -158,7 +162,6 @@ Disallow: /your-chosen-spitespiral-path/ # ...EXCEPT your SpiteSpiral path
         </p>
       </header>
 
-      {/* Step 1: robots.txt */}
       <Card className="shadow-lg border-primary/20">
         <CardHeader>
           <div className="flex items-center gap-2">
@@ -174,7 +177,7 @@ Disallow: /your-chosen-spitespiral-path/ # ...EXCEPT your SpiteSpiral path
             <h4 className="font-semibold text-foreground/90 mb-1">Instructions for robots.txt:</h4>
             <ul className="list-disc pl-5 space-y-1 text-muted-foreground text-sm">
               <li><strong className="text-foreground/80">Locate or Create robots.txt:</strong> This file should be in the root directory of your website (e.g., www.yourwebsite.com/robots.txt).</li>
-              <li><strong className="text-foreground/80">Define Your SpiteSpiral Path:</strong> Decide on a specific, unique path on your site that will host the SpiteSpiral link (e.g., /secret-bot-area/). This is the path you will disallow. The link you place at this path will then lead to the SpiteSpiral URL generated in Step 2.</li>
+              <li><strong className="text-foreground/80">Define Your SpiteSpiral Path:</strong> Decide on a specific, unique path on your site that will host the SpiteSpiral link. This isn&apos;t the SpiteSpiral service URL itself, but a path on your domain where you&apos;ll place the redirection or the direct link to it. Example: Let&apos;s say you choose <code className="bg-muted px-1 py-0.5 rounded-sm text-xs text-accent">/do-not-enter-bots/</code> or <code className="bg-muted px-1 py-0.5 rounded-sm text-xs text-accent">/special-data-archive/</code>.</li>
               <li><strong className="text-foreground/80">Add Disallow Rules:</strong></li>
             </ul>
           </div>
@@ -192,7 +195,6 @@ Disallow: /your-chosen-spitespiral-path/ # ...EXCEPT your SpiteSpiral path
         </CardContent>
       </Card>
 
-      {/* Step 2: Customize Trap */}
       <Card className="shadow-lg border-accent/20">
         <CardHeader>
           <div className="flex items-center gap-2">
@@ -200,11 +202,10 @@ Disallow: /your-chosen-spitespiral-path/ # ...EXCEPT your SpiteSpiral path
             <CardTitle className="text-xl text-primary">Step 2: Customize Your SpiteSpiral Trap</CardTitle>
           </div>
           <CardDescription>
-            Use the options below to fine-tune the behavior of your SpiteSpiral trap. Your unique, ready-to-embed URL will be generated at the bottom. This URL is what you&apos;ll use in Step 3.
+            Use the options below to fine-tune the behavior of your SpiteSpiral trap. Your unique, ready-to-embed URL will be generated at the bottom.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Intensity */}
           <div className="space-y-2">
             <Label htmlFor="intensity-select" className="text-foreground/80">Trap Intensity</Label>
             <RadioGroup value={intensity} onValueChange={setIntensity} className="flex flex-col space-y-1">
@@ -215,15 +216,9 @@ Disallow: /your-chosen-spitespiral-path/ # ...EXCEPT your SpiteSpiral path
                 </div>
               ))}
             </RadioGroup>
-            <p className="text-xs text-muted-foreground">Controls the initial &apos;aggressiveness&apos; of the trap. <br />
-              Low: Slower introduction of delays, slightly less dense linking.<br />
-              Medium (Recommended Default): Balanced approach.<br />
-              High: Quicker introduction of significant delays, denser internal linking.<br />
-              Extreme: Very aggressive delays and link density from the start.
-            </p>
+            <p className="text-xs text-muted-foreground">Controls the initial &apos;aggressiveness&apos; of the trap. Medium is recommended. For details on each level, consult our documentation.</p>
           </div>
 
-          {/* Theme */}
           <div className="space-y-2">
             <Label htmlFor="theme-select" className="text-foreground/80">Content &quot;Babble&quot; Theme</Label>
             <Select value={theme} onValueChange={setTheme}>
@@ -238,25 +233,22 @@ Disallow: /your-chosen-spitespiral-path/ # ...EXCEPT your SpiteSpiral path
             </Select>
             <p className="text-xs text-muted-foreground">Influences the &apos;flavor&apos; of the LLM-generated text within the trap.</p>
           </div>
-
-          {/* Entry Point Stealth */}
-           <div className="space-y-2">
+          
+          <div className="space-y-2">
             <Label className="text-foreground/80">Entry Point Stealth</Label>
-             <RadioGroup value={entryStealthValue} onValueChange={setEntryStealthValue} className="flex flex-col space-y-1">
-              {entryStealthOptions.map(opt => (
-                <div key={opt.value} className="flex items-center space-x-2">
-                  <RadioGroupItem value={opt.value} id={`stealth-${opt.value}`} />
-                  <Label htmlFor={`stealth-${opt.value}`} className="font-normal text-sm">{opt.label}</Label>
-                </div>
-              ))}
-            </RadioGroup>
-            <p className="text-xs text-muted-foreground">Determines if the trap starts from a &apos;root&apos; page or simulates entry into a deep page.<br/>
-             Generic Entry / Stealth Off (Default): Standard SpiteSpiral URL structure.<br />
-             Deep Page Simulation / Stealth On: URL appears like a deep internal page, potentially less obviously a generic trap.
-            </p>
+            <div className="flex items-center space-x-2">
+                <Switch
+                    id="stealth-toggle"
+                    checked={entryStealthValue === 'deep'}
+                    onCheckedChange={(checked) => setEntryStealthValue(checked ? 'deep' : 'generic')}
+                />
+                <Label htmlFor="stealth-toggle" className="font-normal text-sm">
+                    {entryStealthValue === 'deep' ? 'Deep Page Simulation / Stealth On' : 'Generic Entry / Stealth Off (Default)'}
+                </Label>
+            </div>
+            <p className="text-xs text-muted-foreground">Determines if the trap simulates entry into a deep page (Stealth On) or starts from a generic root (Stealth Off).</p>
           </div>
           
-          {/* Lure Speed */}
           <div className="space-y-2">
             <Label className="text-foreground/80">Initial Lure Speed</Label>
              <RadioGroup value={lureSpeed} onValueChange={setLureSpeed} className="flex flex-col space-y-1">
@@ -267,10 +259,7 @@ Disallow: /your-chosen-spitespiral-path/ # ...EXCEPT your SpiteSpiral path
                 </div>
               ))}
             </RadioGroup>
-            <p className="text-xs text-muted-foreground">Adjusts the loading speed of the very first page in the trap.<br/>
-            Normal Delay (Default): Intensity dictates first page delay.<br />
-            Slightly Faster Initial Page: Minimal delay on first page to &apos;hook&apos; bots quickly.
-            </p>
+            <p className="text-xs text-muted-foreground">Adjusts the loading speed of the very first page in the trap.</p>
           </div>
           
           <div className="space-y-2 pt-4 border-t border-border">
@@ -283,14 +272,12 @@ Disallow: /your-chosen-spitespiral-path/ # ...EXCEPT your SpiteSpiral path
             </div>
              <p className="text-xs text-muted-foreground">
                 Your User ID (<code className="bg-muted px-1 py-0.5 rounded-sm text-xs text-accent">{user?.uid || 'N/A'}</code>) is included as <code className="bg-muted px-1 py-0.5 rounded-sm text-xs text-accent">client_id</code>.
-                The base URL is <code className="bg-muted px-1 py-0.5 rounded-sm text-xs text-accent">{TARPIT_BASE_URL}/trap</code>.
-                Use this full URL in the embedding methods in Step 3 (or the path you chose in Step 1 that redirects to this URL).
+                Use this full URL in the embedding methods in Step 3.
              </p>
           </div>
         </CardContent>
       </Card>
 
-      {/* Step 3: Embedding Strategies */}
       <Card className="shadow-lg border-primary/20">
         <CardHeader>
           <div className="flex items-center gap-2">
@@ -298,7 +285,7 @@ Disallow: /your-chosen-spitespiral-path/ # ...EXCEPT your SpiteSpiral path
             <CardTitle className="text-xl text-primary">Step 3: Embedding Your SpiteSpiral Link</CardTitle>
           </div>
           <CardDescription>
-            Use your Generated SpiteSpiral URL (from Step 2) with the methods below. For the &quot;Simple HTML Link&quot; and &quot;Sitemap.xml Entry&quot;, you will link to the path on your own site (e.g., /your-chosen-spitespiral-path/) which you have configured to redirect to your Generated SpiteSpiral URL. For other methods like CSS-hidden links or JS Injection, you can often use the Generated SpiteSpiral URL directly.
+            Choose a method below to embed the Generated SpiteSpiral URL (from Step 2) on your website.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -313,11 +300,11 @@ Disallow: /your-chosen-spitespiral-path/ # ...EXCEPT your SpiteSpiral path
                    <li>
                      <strong>Embed the Link:</strong> Copy one of the HTML snippets below and paste it into your website&apos;s code.
                      <ul className="list-disc list-inside pl-5 mt-1">
-                       <li>Replace <code>&quot;/your-chosen-spitespiral-path/&quot;</code> in the snippet with the <strong>exact path you disallowed in your `robots.txt` (Step 1)</strong>.</li>
+                       <li>Replace <code className="bg-muted px-1 py-0.5 rounded-sm text-xs text-accent">&quot;/your-chosen-spitespiral-path/&quot;</code> in the snippet with the <strong>exact path you disallowed in your `robots.txt` (Step 1)</strong>.</li>
                      </ul>
                    </li>
                    <li>
-                     <strong>Make Your Path Lead to SpiteSpiral:</strong> The path you chose (e.g., <code>/secret-bot-area/</code>) on your website now needs to send visitors (especially bots) to your <strong>&apos;Generated SpiteSpiral URL&apos;</strong> (from Step 2), typically via a server-side redirect. Consult your web developer or hosting provider if unsure how to set up a redirect.
+                     <strong>Make Your Path Lead to SpiteSpiral:</strong> The path you chose (e.g., <code className="bg-muted px-1 py-0.5 rounded-sm text-xs text-accent">/secret-bot-area/</code>) on your website now needs to send visitors (especially bots) to your <strong>&apos;Generated SpiteSpiral URL&apos;</strong> (from Step 2), typically via a server-side redirect. Consult your web developer or hosting provider if unsure how to set up a redirect.
                    </li>
                  </ol>
                  <p className="mt-3 font-semibold text-foreground/90">Link Snippets:</p>
@@ -328,15 +315,15 @@ Disallow: /your-chosen-spitespiral-path/ # ...EXCEPT your SpiteSpiral path
                 <SnippetDisplay
                   title="Less Visible Link Snippet"
                   snippet={tinyHtmlLinkSnippet}
+                  explanation="A tiny, almost invisible link."
                 />
               </AccordionContent>
             </AccordionItem>
-
             <AccordionItem value="easy-embed-2">
               <AccordionTrigger className="text-accent hover:text-primary">Method: sitemap.xml Entry</AccordionTrigger>
               <AccordionContent className="space-y-3 pt-2 text-sm text-muted-foreground">
                 <p><strong>Use Case:</strong> Directly tells crawlers (that read sitemaps) about the existence of this &quot;section.&quot;</p>
-                <p><strong>How To:</strong> Add an entry to your sitemap.xml file pointing to the path on your domain (e.g., <code className="bg-muted px-1 rounded-sm text-xs">https://yourdomain.com/your-chosen-spitespiral-path/</code>) that you&apos;ve disallowed for good bots and configured to lead to your SpiteSpiral URL.</p>
+                <p><strong>How To:</strong> Add an entry to your sitemap.xml file pointing to the path on your domain (e.g., <code className="bg-muted px-1 rounded-sm text-xs text-accent">https://yourdomain.com/your-chosen-spitespiral-path/</code>) that you&apos;ve disallowed for good bots and configured to lead to your SpiteSpiral URL.</p>
                  <SnippetDisplay
                     title="Sitemap.xml Snippet"
                     snippet={sitemapEntrySnippet}
@@ -367,7 +354,6 @@ Disallow: /your-chosen-spitespiral-path/ # ...EXCEPT your SpiteSpiral path
                   />
               </AccordionContent>
             </AccordionItem>
-
             <AccordionItem value="advanced-embed-2">
               <AccordionTrigger className="text-accent hover:text-primary">Method: JavaScript Link Injection (Advanced)</AccordionTrigger>
               <AccordionContent className="space-y-3 pt-2 text-sm text-muted-foreground">
@@ -379,12 +365,11 @@ Disallow: /your-chosen-spitespiral-path/ # ...EXCEPT your SpiteSpiral path
                   />
               </AccordionContent>
             </AccordionItem>
-
             <AccordionItem value="advanced-embed-3">
               <AccordionTrigger className="text-accent hover:text-primary">Method: Server-Side Conditional Redirection (Most Complex)</AccordionTrigger>
               <AccordionContent className="space-y-3 pt-2 text-sm text-muted-foreground">
                 <p><strong>Use Case:</strong> Identifying suspicious bot behavior at the server level and then serving a link to, or directly redirecting to, your SpiteSpiral path/subdomain (which in turn loads your Generated SpiteSpiral URL).</p>
-                <p><strong>How To:</strong> This is highly environment-specific. Requires server-side coding or configuration (e.g., Nginx if statements with rate limiting, or application middleware). If a bot trips a &quot;bad behavior&quot; threshold, your server could redirect it: HTTP 302 Found to your disallowed path (e.g., `/your-chosen-spitespiral-path/`) or directly to your Generated SpiteSpiral URL.</p>
+                <p><strong>How To:</strong> This is highly environment-specific. Requires server-side coding or configuration (e.g., Nginx if statements with rate limiting, or application middleware). If a bot trips a &quot;bad behavior&quot; threshold, your server could redirect it: HTTP 302 Found to your disallowed path (e.g., <code className="bg-muted px-1 rounded-sm text-xs text-accent">/your-chosen-spitespiral-path/</code>) or directly to your Generated SpiteSpiral URL.</p>
                 <p className="mt-2 text-xs text-primary"><strong>SpiteSpiral Note:</strong> This is an advanced technique for clients to implement on their servers. SpiteSpiral provides the destination trap URL.</p>
               </AccordionContent>
             </AccordionItem>
@@ -392,7 +377,6 @@ Disallow: /your-chosen-spitespiral-path/ # ...EXCEPT your SpiteSpiral path
         </CardContent>
       </Card>
 
-      {/* Step 4: Best Practices */}
       <Card className="shadow-lg border-accent/20">
         <CardHeader>
            <div className="flex items-center gap-2">
@@ -414,3 +398,5 @@ Disallow: /your-chosen-spitespiral-path/ # ...EXCEPT your SpiteSpiral path
     </div>
   );
 }
+
+    
