@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -223,7 +224,7 @@ export default function ManagedUrlsPage() {
         <CardHeader>
           <div className="flex items-center gap-2">
             <Settings className="h-7 w-7 text-accent" />
-            <CardTitle className="text-2xl text-accent">Step 2: Configure Your SpiteSpiral Trap Settings</CardTitle>
+            <CardTitle className="text-2xl text-accent">Step 2: Configure Your SpiteSpiral Trap Settings <span className="font-bold text-destructive text-sm">(Coming Soon)</span></CardTitle>
           </div>
           <CardDescription>
             Fine-tune your trap's behavior. Sensible defaults are selected. Your ready-to-use SpiteSpiral URL will generate below.
@@ -247,10 +248,10 @@ export default function ManagedUrlsPage() {
                   </TooltipContent>
                 </Tooltip>
               </div>
-              <RadioGroup value={intensity} onValueChange={setIntensity} className="flex flex-wrap gap-4">
+              <RadioGroup value={intensity} onValueChange={setIntensity} className="flex flex-wrap gap-4" disabled>
                 {intensityOptions.map(option => (
                   <div key={option.value} className="flex items-center space-x-2">
-                    <RadioGroupItem value={option.value} id={`intensity-${option.value}`} />
+                    <RadioGroupItem value={option.value} id={`intensity-${option.value}`} disabled/>
                     <Label htmlFor={`intensity-${option.value}`} className="text-sm font-normal">{option.label}</Label>
                   </div>
                 ))}
@@ -271,8 +272,8 @@ export default function ManagedUrlsPage() {
                   </TooltipContent>
                 </Tooltip>
               </div>
-              <Select value={theme} onValueChange={setTheme}>
-                <SelectTrigger id="babble-theme" className="w-full md:w-[300px] bg-input border-border focus:ring-primary">
+              <Select value={theme} onValueChange={setTheme} disabled>
+                <SelectTrigger id="babble-theme" className="w-full md:w-[300px] bg-input border-border focus:ring-primary" disabled>
                   <SelectValue placeholder="Select theme" />
                 </SelectTrigger>
                 <SelectContent>
@@ -304,6 +305,7 @@ export default function ManagedUrlsPage() {
                   id="entry-stealth-toggle"
                   checked={entryStealth === 'deep'}
                   onCheckedChange={(checked) => setEntryStealth(checked ? 'deep' : 'generic')}
+                  disabled
                 />
                 <Label htmlFor="entry-stealth-toggle" className="text-sm font-medium">
                   {entryStealth === 'deep' ? "Deep Page Simulation (Stealth On)" : "Generic Entry (Stealth Off)"}
@@ -327,10 +329,10 @@ export default function ManagedUrlsPage() {
                   </TooltipContent>
                 </Tooltip>
               </div>
-              <RadioGroup value={lureSpeed} onValueChange={setLureSpeed} className="flex flex-wrap gap-4">
+              <RadioGroup value={lureSpeed} onValueChange={setLureSpeed} className="flex flex-wrap gap-4" disabled>
                 {lureSpeedOptions.map(option => (
                   <div key={option.value} className="flex items-center space-x-2">
-                    <RadioGroupItem value={option.value} id={`lure-${option.value}`} />
+                    <RadioGroupItem value={option.value} id={`lure-${option.value}`} disabled/>
                     <Label htmlFor={`lure-${option.value}`} className="text-sm font-normal">{option.label}</Label>
                   </div>
                 ))}
@@ -475,3 +477,4 @@ export default function ManagedUrlsPage() {
     </div>
   );
 }
+
