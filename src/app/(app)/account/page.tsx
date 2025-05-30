@@ -62,7 +62,7 @@ const subscriptionTiers = [
     cta: "Switch to Analytics",
     variant: "default" as const,
     actionType: "switch_plan" as const,
-    stripePriceId: "price_1RTim1KPVCKvfVVwDkc5G0at",
+    stripePriceId: "price_1RTim1KPVCKvfVVwDkc5G0at", // CONFIRMED - KEEP THIS
   },
 ];
 
