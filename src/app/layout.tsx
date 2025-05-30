@@ -32,7 +32,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={cn(
-        "min-h-screen font-mono antialiased", // Removed bg-background
+        "min-h-screen bg-background font-mono antialiased", // Ensure body has the background
         geistSans.variable,
         geistMono.variable
       )}>

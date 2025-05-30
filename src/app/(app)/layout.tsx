@@ -37,8 +37,9 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
         </div>
       )}
       <SidebarProvider defaultOpen>
-        {/* This div now gets bg-background. It's a sibling to the fixed spiral, so it will be on top. */}
-        <div className="flex min-h-screen font-mono text-foreground bg-background">
+        {/* This div is a sibling to the fixed spiral, and should NOT have its own opaque background.
+            The page background comes from the body in RootLayout. */}
+        <div className="flex min-h-screen font-mono text-foreground"> {/* Removed bg-background from here */}
           <Sidebar collapsible="icon" variant="sidebar" side="left" className="border-r-2 border-primary/20">
             <SidebarHeader className="p-4 border-b border-primary/20 flex items-center justify-between">
               <AppHeaderContent />
