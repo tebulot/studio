@@ -30,7 +30,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en"> {/* Removed className="dark" to default to the new light theme */}
+    <html lang="en">{/* Removed className="dark" to default to the new light theme */}
       <body className={cn(
         "min-h-screen bg-background font-mono antialiased",
         geistSans.variable,
