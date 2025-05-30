@@ -9,7 +9,7 @@ body {
 @layer base {
   :root {
     /* Light Theme with Dark Charcoal Accent */
-    --background: 0 0% 98%; /* Off-White #FAFAFA */
+    --background: 40 60% 97%; /* Warmer Off-White #FDFBF7 */
     --foreground: 0 0% 20%; /* Dark Gray #333333 */
 
     --card: 0 0% 100%; /* White #FFFFFF */
