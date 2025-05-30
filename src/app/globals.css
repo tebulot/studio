@@ -8,98 +8,57 @@ body {
 
 @layer base {
   :root {
-    --background: 0 0% 3%; /* Near Black #080800 */
-    --foreground: 69 100% 50%; /* Neon Yellow #D4FF00 */
+    /* New Light Theme with Electric Blue Accent */
+    --background: 0 0% 98%; /* Off-White #FAFAFA */
+    --foreground: 0 0% 20%; /* Dark Gray #333333 */
 
-    --card: 0 0% 5%;
-    --card-foreground: 69 100% 50%;
+    --card: 0 0% 100%; /* White #FFFFFF */
+    --card-foreground: 0 0% 20%; /* Dark Gray */
 
-    --popover: 0 0% 5%;
-    --popover-foreground: 69 100% 50%;
+    --popover: 0 0% 100%; /* White */
+    --popover-foreground: 0 0% 20%; /* Dark Gray */
 
-    --primary: 69 100% 50%; /* Neon Yellow #D4FF00 */
-    --primary-foreground: 0 0% 5%; /* Darker text for contrast on primary */
+    --primary: 222 100% 50%; /* Electric Blue #0052FF */
+    --primary-foreground: 0 0% 100%; /* White */
 
-    --secondary: 0 0% 10%; /* A secondary dark shade */
-    --secondary-foreground: 69 100% 50%;
+    --secondary: 0 0% 95%; /* Light Gray for secondary elements/buttons */
+    --secondary-foreground: 222 100% 50%; /* Electric Blue for text on secondary */
 
-    --muted: 0 0% 10%;
-    --muted-foreground: 69 100% 70%; /* Muted yellow */
+    --muted: 0 0% 92%; /* Lighter Gray for muted backgrounds */
+    --muted-foreground: 0 0% 45%; /* Medium Gray for muted text */
 
-    --accent: 79 100% 50%; /* Electric Lime #B0FF00 */
-    --accent-foreground: 0 0% 5%; /* Darker text for contrast on accent */
+    --accent: 222 100% 50%; /* Electric Blue (same as primary) */
+    --accent-foreground: 0 0% 100%; /* White */
 
-    --destructive: 0 84.2% 60.2%; /* Brighter Red */
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 0 84.2% 60.2%; /* Bright Red */
+    --destructive-foreground: 0 0% 98%; /* Light text for destructive */
 
-    --border: 0 0% 15%;
-    --input: 0 0% 10%;
-    --ring: 79 100% 50%; /* Accent color for rings */
+    --border: 0 0% 87%; /* Light Gray border #DDD */
+    --input: 0 0% 100%; /* White input background, relies on border */
+    --ring: 222 100% 50%; /* Electric Blue for focus rings */
 
     --radius: 0.5rem;
 
-    --chart-1: 69 100% 50%; /* Neon Yellow */
-    --chart-2: 79 100% 50%; /* Electric Lime */
-    --chart-3: 69 80% 60%; 
-    --chart-4: 79 80% 60%;
-    --chart-5: 60 100% 50%; /* Standard Yellow as fallback */
+    /* Updated Chart Colors */
+    --chart-1: 222 100% 50%;  /* Electric Blue */
+    --chart-2: 222 100% 70%;  /* Lighter Blue */
+    --chart-3: 0 0% 50%;      /* Medium Gray */
+    --chart-4: 0 0% 70%;      /* Light Gray */
+    --chart-5: 222 80% 40%;   /* Darker Blue */
 
-    /* Sidebar specific vars, matching dark theme */
-    --sidebar-background: 0 0% 2%;
-    --sidebar-foreground: 69 100% 50%;
-    --sidebar-primary: 79 100% 50%; 
-    --sidebar-primary-foreground: 0 0% 3%;
-    --sidebar-accent: 0 0% 8%;
-    --sidebar-accent-foreground: 69 100% 50%;
-    --sidebar-border: 0 0% 10%;
-    --sidebar-ring: 79 100% 50%;
+    /* Updated Sidebar specific vars for a light sidebar */
+    --sidebar-background: 0 0% 96%;        /* Very Light Gray, slightly off main bg */
+    --sidebar-foreground: 0 0% 20%;        /* Dark Gray text */
+    --sidebar-primary: 222 100% 50%;       /* Electric Blue for active/accents */
+    --sidebar-primary-foreground: 0 0% 100%;/* White text on blue elements */
+    --sidebar-accent: 0 0% 90%;            /* Lighter Gray for hovers */
+    --sidebar-accent-foreground: 222 100% 50%;/* Electric Blue for text on hover */
+    --sidebar-border: 0 0% 80%;            /* Light Gray border for sidebar */
+    --sidebar-ring: 222 100% 50%;          /* Electric Blue for focus rings */
   }
 
-  /* The .dark class can be identical if we only support dark mode */
-  .dark {
-    --background: 0 0% 3%;
-    --foreground: 69 100% 50%;
-
-    --card: 0 0% 5%;
-    --card-foreground: 69 100% 50%;
-
-    --popover: 0 0% 5%;
-    --popover-foreground: 69 100% 50%;
-
-    --primary: 69 100% 50%;
-    --primary-foreground: 0 0% 5%;
-
-    --secondary: 0 0% 10%;
-    --secondary-foreground: 69 100% 50%;
-
-    --muted: 0 0% 10%;
-    --muted-foreground: 69 100% 70%;
-
-    --accent: 79 100% 50%;
-    --accent-foreground: 0 0% 5%;
-
-    --destructive: 0 84.2% 60.2%; /* Updated to brighter red for dark theme */
-    --destructive-foreground: 0 0% 98%;
-
-    --border: 0 0% 15%;
-    --input: 0 0% 10%;
-    --ring: 79 100% 50%;
-
-    --chart-1: 69 100% 50%;
-    --chart-2: 79 100% 50%;
-    --chart-3: 69 80% 60%;
-    --chart-4: 79 80% 60%;
-    --chart-5: 60 100% 50%;
-
-    --sidebar-background: 0 0% 2%;
-    --sidebar-foreground: 69 100% 50%;
-    --sidebar-primary: 79 100% 50%;
-    --sidebar-primary-foreground: 0 0% 3%;
-    --sidebar-accent: 0 0% 8%;
-    --sidebar-accent-foreground: 69 100% 50%;
-    --sidebar-border: 0 0% 10%;
-    --sidebar-ring: 79 100% 50%;
-  }
+  /* Remove .dark class if light theme is the only/default one */
+  /* If a dark theme toggle is desired later, this section would be re-added and updated */
 }
 
 @layer base {
@@ -112,20 +71,20 @@ body {
   }
 }
 
-/* Glitch Text Animation */
+/* Glitch Text Animation - Will now use the blue theme colors */
 @keyframes text-flicker-subtle {
-  0%, 100% { 
-    opacity: 1; 
-    text-shadow: 
-      0 0 2px hsl(var(--primary) / 0.5), 
+  0%, 100% {
+    opacity: 1;
+    text-shadow:
+      0 0 2px hsl(var(--primary) / 0.5),
       0 0 4px hsl(var(--primary) / 0.3),
       0 0 1px hsl(var(--accent) / 0.7),
       1px -1px 1px hsl(var(--accent) / 0.5);
   }
-  50% { 
-    opacity: 0.95; 
-    text-shadow: 
-      0 0 2px hsl(var(--accent) / 0.5), 
+  50% {
+    opacity: 0.95;
+    text-shadow:
+      0 0 2px hsl(var(--accent) / 0.5),
       0 0 4px hsl(var(--accent) / 0.3),
       0 0 1px hsl(var(--primary) / 0.7),
       -1px 1px 1px hsl(var(--primary) / 0.5);
@@ -142,17 +101,17 @@ body {
   animation: spin 8s linear infinite;
 }
 
-/* New Link Glow Animation */
+/* New Link Glow Animation - Will now use the blue theme colors */
 @keyframes link-glow {
   0%, 100% {
-    text-shadow: 
-      0 0 3px hsl(var(--accent) / 0.4), 
+    text-shadow:
+      0 0 3px hsl(var(--accent) / 0.4),
       0 0 5px hsl(var(--accent) / 0.3),
       0 0 7px hsl(var(--accent) / 0.2);
   }
   50% {
-    text-shadow: 
-      0 0 5px hsl(var(--accent) / 0.7), 
+    text-shadow:
+      0 0 5px hsl(var(--accent) / 0.7),
       0 0 10px hsl(var(--accent) / 0.5),
       0 0 15px hsl(var(--accent) / 0.3);
   }
