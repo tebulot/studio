@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -9,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Link2 as LinkIcon, Copy, Settings, Code, CheckCircle, HelpCircle, Info, ShieldCheck } from 'lucide-react'; // LinkIcon aliased to Link2
+import { Link2 as LinkIcon, Copy, Settings, Code, CheckCircle, HelpCircle, Info, ShieldCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -90,7 +91,6 @@ export default function ManagedUrlsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  // State for the guide's configurable URL section
   const [userTrapPath, setUserTrapPath] = useState('/secret-data-feed/');
   const [intensity, setIntensity] = useState('medium');
   const [theme, setTheme] = useState('generic');
@@ -98,7 +98,7 @@ export default function ManagedUrlsPage() {
   const [lureSpeed, setLureSpeed] = useState('normal');
 
   const [robotsTxtSnippet, setRobotsTxtSnippet] = useState('');
-  const [generatedGuideUrl, setGeneratedGuideUrl] = useState('');
+  const [generatedUrl, setGeneratedUrl] = useState('');
   
   const TARPIT_BASE_URL = process.env.NEXT_PUBLIC_TARPIT_BASE_URL || 'https://your-spitespiral-service.com';
 
@@ -130,9 +130,9 @@ export default function ManagedUrlsPage() {
       if (lureSpeed !== 'normal') params.append('lure_speed', lureSpeed);
       
       const queryString = params.toString();
-      setGeneratedGuideUrl(`${TARPIT_BASE_URL}/trap${queryString ? `?${queryString}` : ''}`);
+      setGeneratedUrl(`${TARPIT_BASE_URL}/trap${queryString ? `?${queryString}` : ''}`);
     } else {
-      setGeneratedGuideUrl(`${TARPIT_BASE_URL}/trap?client_id=YOUR_USER_ID&intensity=medium&theme=generic&stealth=off&lure_speed=normal`);
+      setGeneratedUrl(`${TARPIT_BASE_URL}/trap?client_id=YOUR_USER_ID&intensity=medium&theme=generic&stealth=off&lure_speed=normal`);
     }
   }, [userTrapPath, intensity, theme, entryStealth, lureSpeed, user, TARPIT_BASE_URL]);
 
@@ -175,22 +175,29 @@ export default function ManagedUrlsPage() {
         </p>
       </header>
 
-      {/* Section 1: Create & Manage Tarpits */}
-      <Card className="shadow-lg border-primary/20">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Settings className="h-7 w-7 text-accent" />
-            <CardTitle className="text-2xl text-accent">Create & Manage Your Tarpit Instances</CardTitle>
-          </div>
-          <CardDescription>
-            Create named tarpit instances here. Each instance will have a unique SpiteSpiral URL that you can embed. Use the guide below for setup and best practices.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <AddUrlForm />
-          <UrlList />
-        </CardContent>
-      </Card>
+      <Accordion type="single" collapsible className="w-full" defaultValue="create-manage-urls">
+        <AccordionItem value="create-manage-urls">
+          <AccordionTrigger className="text-2xl font-semibold text-accent hover:no-underline">
+            <div className="flex items-center gap-2">
+              <Settings className="h-7 w-7 text-accent" />
+              <span>Create & Manage Your Tarpit Instances</span>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="pt-3">
+            <Card className="shadow-none border-0">
+              <CardHeader className="px-0 pt-0">
+                <CardDescription>
+                  Create named tarpit instances here. Each instance will have a unique SpiteSpiral URL that you can embed. Use the guide below for setup and best practices.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4 px-0 pb-0">
+                <AddUrlForm />
+                <UrlList />
+              </CardContent>
+            </Card>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
 
       {/* Section 2: Setup & Embedding Guide */}
       <Card className="shadow-lg border-primary/20">
@@ -250,11 +257,11 @@ export default function ManagedUrlsPage() {
             <AccordionItem value="step-2-configure">
               <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">
                 Step 2: Configure Your SpiteSpiral Trap Settings <strong className="text-sm text-destructive ml-2">(Coming Soon)</strong>
+                 <span className="block text-xs text-muted-foreground font-normal mt-1">Current tarpits are modified Nepenthes tarpits that, while functional, do not support these features yet.</span>
               </AccordionTrigger>
               <AccordionContent className="space-y-6 pt-3">
                 <p className="text-muted-foreground">
                   The following options demonstrate future capabilities for fine-tuning trap behavior. Currently, Managed URLs created above use default SpiteSpiral (Nepenthes-based) settings. The URL generated below is an example of how parameters *could* be used for future, more advanced trap types.
-                  <span className="block mt-1 text-sm font-semibold text-destructive">Current tarpits are modified Nepenthes tarpits, that while functional, do not support these features yet.</span>
                 </p>
                  <TooltipProvider>
                     {/* Trap Intensity */}
@@ -367,15 +374,15 @@ export default function ManagedUrlsPage() {
                 </TooltipProvider>
                 {/* Generated URL */}
                 <div>
-                  <Label htmlFor="generated-guide-url" className="text-foreground/80 font-semibold">Example Parameterized SpiteSpiral URL</Label>
+                  <Label htmlFor="generated-url" className="text-foreground/80 font-semibold">Example Parameterized SpiteSpiral URL</Label>
                   <div className="flex items-center gap-2 mt-1">
                     <Input
-                      id="generated-guide-url"
-                      value={generatedGuideUrl}
+                      id="generated-url"
+                      value={generatedUrl}
                       readOnly
                       className="flex-grow bg-input border-2 border-primary focus:ring-primary text-sm"
                     />
-                    <Button onClick={() => handleCopy(generatedGuideUrl, "Example SpiteSpiral URL")} variant="outline" className="text-accent border-accent hover:bg-accent/10">
+                    <Button onClick={() => handleCopy(generatedUrl, "Example SpiteSpiral URL")} variant="outline" className="text-accent border-accent hover:bg-accent/10">
                       <Copy className="mr-2 h-4 w-4" /> Copy Example URL
                     </Button>
                   </div>
@@ -384,7 +391,7 @@ export default function ManagedUrlsPage() {
               </AccordionContent>
             </AccordionItem>
 
-             {/* STEP 3: Embedding Strategies */}
+            {/* STEP 3: Embedding Strategies */}
             <AccordionItem value="step-3-embed">
               <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">Step 3: Place the Trap Link on Your Site</AccordionTrigger>
               <AccordionContent className="space-y-4 pt-3">
@@ -398,7 +405,9 @@ export default function ManagedUrlsPage() {
                     <AccordionTrigger>Simple HTML Link (Basic)</AccordionTrigger>
                     <AccordionContent className="space-y-2 pt-2">
                        <p className="text-sm text-muted-foreground">
-                        Place a standard HTML link on your website. The <code className="bg-muted px-1 py-0.5 rounded text-xs">href</code> value should be the "Your Website's Trap Path" you defined in Step 1 (e.g., <code className="bg-muted px-1 py-0.5 rounded text-xs">{userTrapPath}</code>). You must then configure your server (or use a service like Cloudflare Workers) to redirect requests from this path to your actual SpiteSpiral URL. Consult your web developer or hosting provider for help setting up redirects if you're unsure.
+                        The idea is to place an HTML link on your website pointing to your chosen "Trap Path" (e.g., <code className="bg-muted px-1 py-0.5 rounded text-xs">{userTrapPath}</code>).
+                        You then need to configure your server to make this path redirect to your *Generated SpiteSpiral URL* (from Step 2).
+                        If you're unsure how to set up redirects, please consult your web developer or hosting provider.
                       </p>
                       <SnippetDisplay title="Visible HTML Link Example" snippet={simpleHtmlLinkSnippet(userTrapPath)} explanation={`Links to ${userTrapPath} on your site, which should then redirect to your generated SpiteSpiral URL.`} onCopy={handleCopy}/>
                       <SnippetDisplay title="Tiny, Invisible HTML Link Example" snippet={tinyHtmlLinkSnippet(userTrapPath)} explanation={`A less visible link to ${userTrapPath} on your site, which redirects to SpiteSpiral.`} onCopy={handleCopy}/>
@@ -419,8 +428,8 @@ export default function ManagedUrlsPage() {
                       <AccordionTrigger>CSS-Hidden Links</AccordionTrigger>
                       <AccordionContent className="space-y-2 pt-2">
                           <p className="text-sm text-muted-foreground">These links are present in HTML but invisible to users. Link directly to your "Generated SpiteSpiral URL" (from Step 2 or your Managed URL list).</p>
-                          <SnippetDisplay title="Off-Screen Link (Inline Style)" snippet={getCssHiddenLinkSnippet(generatedGuideUrl)} onCopy={handleCopy} />
-                          <SnippetDisplay title="Link with CSS Class" snippet={getCssClassLinkSnippet(generatedGuideUrl)} onCopy={handleCopy} />
+                          <SnippetDisplay title="Off-Screen Link (Inline Style)" snippet={getCssHiddenLinkSnippet(generatedUrl)} onCopy={handleCopy} />
+                          <SnippetDisplay title="Link with CSS Class" snippet={getCssClassLinkSnippet(generatedUrl)} onCopy={handleCopy} />
                           <SnippetDisplay title="Required CSS for .spite-link class" snippet={cssClassStyleSnippet} onCopy={handleCopy} />
                       </AccordionContent>
                   </AccordionItem>
@@ -428,14 +437,14 @@ export default function ManagedUrlsPage() {
                       <AccordionTrigger>JavaScript Link Injection</AccordionTrigger>
                       <AccordionContent className="space-y-2 pt-2">
                           <p className="text-sm text-muted-foreground">Dynamically inject the link. May be missed by some less sophisticated scrapers. Link directly to your "Generated SpiteSpiral URL".</p>
-                          <SnippetDisplay title="JS Link Injection Example" snippet={getJsInjectionSnippet(generatedGuideUrl)} onCopy={handleCopy} />
+                          <SnippetDisplay title="JS Link Injection Example" snippet={getJsInjectionSnippet(generatedUrl)} onCopy={handleCopy} />
                       </AccordionContent>
                   </AccordionItem>
                   <AccordionItem value="embed-server-side">
                       <AccordionTrigger>Server-Side Conditional Redirection</AccordionTrigger>
                       <AccordionContent className="space-y-2 pt-2">
                           <p className="text-sm text-muted-foreground">Identify suspicious bots on your server and redirect them to your SpiteSpiral URL. This is highly environment-specific and requires server-side configuration (e.g., Nginx, Apache, application middleware).</p>
-                          <p className="text-xs text-muted-foreground">Example: If a bot trips a "bad behavior" threshold, your server could issue an HTTP 302 redirect to: <code className="bg-muted px-1 py-0.5 rounded text-xs text-accent break-all">{generatedGuideUrl}</code>.</p>
+                          <p className="text-xs text-muted-foreground">Example: If a bot trips a "bad behavior" threshold, your server could issue an HTTP 302 redirect to: <code className="bg-muted px-1 py-0.5 rounded text-xs text-accent break-all">{generatedUrl}</code>.</p>
                       </AccordionContent>
                   </AccordionItem>
                 </Accordion>
