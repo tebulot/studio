@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -10,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Link2 as LinkIcon, Copy, Settings, Code, CheckCircle, HelpCircle, Info, ShieldCheck } from 'lucide-react';
+import { Link2 as LinkIcon, Copy, Settings, Code, CheckCircle, HelpCircle, Info, ShieldCheck } from 'lucide-react'; // LinkIcon aliased to Link2
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -137,8 +136,8 @@ export default function ManagedUrlsPage() {
     }
   }, [userTrapPath, intensity, theme, entryStealth, lureSpeed, user, TARPIT_BASE_URL]);
 
-  const simpleHtmlLinkSnippet = (path: string) => `<a href="${path}" title="Archival Data Access" rel="nofollow">Internal Data Archives</a>`;
-  const tinyHtmlLinkSnippet = (path: string) => `<a href="${path}" style="font-size:1px; color:transparent;" aria-hidden="true" tabindex="-1" rel="nofollow">.</a>`;
+  const simpleHtmlLinkSnippet = (path: string) => `<a href="${path}" title="Archival Data Access">Internal Data Archives</a>`;
+  const tinyHtmlLinkSnippet = (path: string) => `<a href="${path}" style="font-size:1px; color:transparent;" aria-hidden="true" tabindex="-1">.</a>`;
   const sitemapEntrySnippet = (path: string) => `<url>
   <loc>https://yourwebsite.com${path.startsWith('/') ? path : '/' + path}</loc>
   <lastmod>2024-01-01</lastmod>
@@ -147,10 +146,7 @@ export default function ManagedUrlsPage() {
 
   const getCssHiddenLinkSnippet = (url: string) => `<a href="${url}" style="position:absolute; left:-9999px; top:-9999px;" rel="nofollow">Important Data Feed</a>`;
   const getCssClassLinkSnippet = (url: string) => `<a href="${url}" class="spite-link" rel="nofollow">Hidden Archive</a>`;
-  const cssClassStyleSnippet = `.spite-link {
-  position: absolute;
-  left: -9999px;
-}`;
+  const cssClassStyleSnippet = `.spite-link {\n  position: absolute;\n  left: -9999px;\n}`;
   const getJsInjectionSnippet = (url: string) => `<div id="spite-container"></div>
 <script>
   document.addEventListener('DOMContentLoaded', function() {
@@ -190,7 +186,7 @@ export default function ManagedUrlsPage() {
             Create named tarpit instances here. Each instance will have a unique SpiteSpiral URL that you can embed. Use the guide below for setup and best practices.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-4">
           <AddUrlForm />
           <UrlList />
         </CardContent>
@@ -239,7 +235,7 @@ export default function ManagedUrlsPage() {
                           <AccordionContent className="text-xs pt-2 space-y-1 text-muted-foreground">
                             <p><code className="text-xs bg-muted p-0.5 rounded">robots.txt</code> is a file at the root of your site (e.g., <code className="text-xs bg-muted p-0.5 rounded">yourwebsite.com/robots.txt</code>) that tells 'good' web crawlers (like Googlebot) which pages or sections they shouldn't crawl.</p>
                             <p>We want these good bots to crawl your real content for SEO, but *not* the path you dedicate for SpiteSpiral. Malicious bots often ignore `robots.txt`, which is how they find our trap.</p>
-                            <p className="font-semibold text-destructive">CRITICAL: Be careful not to accidentally disallow your entire site (e.g., by writing <code className="text-xs">Disallow: /</code> under <code className="text-xs">User-agent: *</code> without other `Allow` rules). Always test your `robots.txt` changes using <a href="https://developers.google.com/search/docs/crawling-indexing/robots/robots_txt#test-robots-txt" target="_blank" rel="noopener noreferrer" className="underline hover:text-accent">Google Search Console's robots.txt Tester</a> or similar tools.</p>
+                            <p className="font-semibold text-destructive">CRITICAL: Be careful not to accidentally disallow your entire site (e.g., by writing <code className="text-xs bg-muted p-0.5 rounded">Disallow: /</code> under <code className="text-xs bg-muted p-0.5 rounded">User-agent: *</code> without other `Allow` rules). Always test your `robots.txt` changes using <a href="https://developers.google.com/search/docs/crawling-indexing/robots/robots_txt#test-robots-txt" target="_blank" rel="noopener noreferrer" className="underline hover:text-accent">Google Search Console's robots.txt Tester</a> or similar tools.</p>
                           </AccordionContent>
                         </AccordionItem>
                       </Accordion>
@@ -253,7 +249,7 @@ export default function ManagedUrlsPage() {
             {/* STEP 2: Configure Trap */}
             <AccordionItem value="step-2-configure">
               <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">
-                Step 2: Configure Your SpiteSpiral Trap Settings <strong className="text-sm text-destructive ml-2">(Advanced Features - Coming Soon)</strong>
+                Step 2: Configure Your SpiteSpiral Trap Settings <strong className="text-sm text-destructive ml-2">(Coming Soon)</strong>
               </AccordionTrigger>
               <AccordionContent className="space-y-6 pt-3">
                 <p className="text-muted-foreground">
@@ -393,7 +389,7 @@ export default function ManagedUrlsPage() {
               <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">Step 3: Place the Trap Link on Your Site</AccordionTrigger>
               <AccordionContent className="space-y-4 pt-3">
                 <p className="text-muted-foreground">
-                  Now, link your chosen "Trap Path" (from Step 1) to your SpiteSpiral URL (from Step 2, or more practically, from your "Managed URLs" list above). Here's how:
+                  Now, link your chosen "Trap Path" (from Step 1) to your SpiteSpiral URL (from your "Managed URLs" list above, or if testing, the "Example Parameterized SpiteSpiral URL" from Step 2). Here's how:
                 </p>
                 
                 <h3 className="text-lg font-semibold text-accent mt-6 mb-2">Easy Embedding Methods</h3>
@@ -402,9 +398,9 @@ export default function ManagedUrlsPage() {
                     <AccordionTrigger>Simple HTML Link (Basic)</AccordionTrigger>
                     <AccordionContent className="space-y-2 pt-2">
                        <p className="text-sm text-muted-foreground">
-                        Place a standard HTML link on your website. The <code className="bg-muted px-1 py-0.5 rounded text-xs">href</code> value should be the "Your Website's Trap Path" you defined in Step 1 (e.g., <code className="bg-muted px-1 py-0.5 rounded text-xs">{userTrapPath}</code>). You must then configure your server (or use a service like Cloudflare Workers) to redirect requests from this path to your actual "Generated SpiteSpiral URL" (from Step 2). Consult your web developer or hosting provider for help setting up redirects if you're unsure.
+                        Place a standard HTML link on your website. The <code className="bg-muted px-1 py-0.5 rounded text-xs">href</code> value should be the "Your Website's Trap Path" you defined in Step 1 (e.g., <code className="bg-muted px-1 py-0.5 rounded text-xs">{userTrapPath}</code>). You must then configure your server (or use a service like Cloudflare Workers) to redirect requests from this path to your actual SpiteSpiral URL. Consult your web developer or hosting provider for help setting up redirects if you're unsure.
                       </p>
-                      <SnippetDisplay title="Visible HTML Link Example" snippet={simpleHtmlLinkSnippet(userTrapPath)} explanation={`Links to ${userTrapPath} on your site, which should then redirect to ${generatedGuideUrl}.`} onCopy={handleCopy}/>
+                      <SnippetDisplay title="Visible HTML Link Example" snippet={simpleHtmlLinkSnippet(userTrapPath)} explanation={`Links to ${userTrapPath} on your site, which should then redirect to your generated SpiteSpiral URL.`} onCopy={handleCopy}/>
                       <SnippetDisplay title="Tiny, Invisible HTML Link Example" snippet={tinyHtmlLinkSnippet(userTrapPath)} explanation={`A less visible link to ${userTrapPath} on your site, which redirects to SpiteSpiral.`} onCopy={handleCopy}/>
                     </AccordionContent>
                   </AccordionItem>
@@ -422,7 +418,7 @@ export default function ManagedUrlsPage() {
                   <AccordionItem value="embed-css-hidden">
                       <AccordionTrigger>CSS-Hidden Links</AccordionTrigger>
                       <AccordionContent className="space-y-2 pt-2">
-                          <p className="text-sm text-muted-foreground">These links are present in HTML but invisible to users. Link directly to your "Generated SpiteSpiral URL" (from Step 2).</p>
+                          <p className="text-sm text-muted-foreground">These links are present in HTML but invisible to users. Link directly to your "Generated SpiteSpiral URL" (from Step 2 or your Managed URL list).</p>
                           <SnippetDisplay title="Off-Screen Link (Inline Style)" snippet={getCssHiddenLinkSnippet(generatedGuideUrl)} onCopy={handleCopy} />
                           <SnippetDisplay title="Link with CSS Class" snippet={getCssClassLinkSnippet(generatedGuideUrl)} onCopy={handleCopy} />
                           <SnippetDisplay title="Required CSS for .spite-link class" snippet={cssClassStyleSnippet} onCopy={handleCopy} />
@@ -453,7 +449,7 @@ export default function ManagedUrlsPage() {
                  <p className="text-sm text-muted-foreground">Before you're done, quickly verify:</p>
                   <ul className="list-disc pl-5 space-y-1 text-sm text-foreground/80">
                     <li>Your <code className="text-xs bg-muted p-0.5 rounded">robots.txt</code> is updated correctly with the path <code className="text-xs bg-muted p-0.5 rounded">{userTrapPath}</code> (from Step 1) and allows good bots to your main site.</li>
-                    <li>A link to your site's 'Trap Path' (which leads to a SpiteSpiral URL from your "Managed URLs" list above or the "Generated SpiteSpiral URL" from Step 2 if you're not using named instances) is live on your website (Step 3).</li>
+                    <li>A link to your site's 'Trap Path' (which leads to a SpiteSpiral URL from your "Managed URLs" list above or the "Example Parameterized SpiteSpiral URL" from Step 2 if you're not using named instances) is live on your website (Step 3).</li>
                     <li>(Optional) Reviewed advanced configurations or embedding methods.</li>
                   </ul>
                   <p className="text-sm text-muted-foreground mt-3">You're all set! Unauthorized bots that ignore <code className="text-xs bg-muted p-0.5 rounded">robots.txt</code> and discover your link will now get caught in the SpiteSpiral. Our system will handle the rest.</p>
