@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -16,10 +16,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Input } from "@/components/ui/input";
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useAuth } from "@/contexts/AuthContext";
 import { db } from "@/lib/firebase/clientApp";
-import { collection, query, where, onSnapshot, Timestamp, type DocumentData, type QueryDocumentSnapshot, doc, updateDoc, deleteDoc, serverTimestamp, orderBy } from "firebase/firestore"; // Added orderBy
+import { collection, query, where, onSnapshot, Timestamp, type DocumentData, type QueryDocumentSnapshot, doc, updateDoc, deleteDoc, serverTimestamp, orderBy } from "firebase/firestore";
 import { deprovisionTarpitInstance } from '@/lib/actions';
 
 interface ManagedUrlFirestoreData {
@@ -101,7 +100,7 @@ export default function UrlList() {
             userId: data.userId as string,
           });
         } else {
-          // console.warn(`Document ${docSnap.id} is missing required fields or has invalid createdAt. Data:`, data);
+           console.warn(`Document ${docSnap.id} is missing required fields or has invalid createdAt. Data:`, data);
         }
       });
       setUrls(validUrls);
@@ -177,7 +176,7 @@ export default function UrlList() {
       const docRef = doc(db, "tarpit_configs", currentUrlToDelete.id);
       await deleteDoc(docRef);
 
-      toast({ title: "Success!", description: "Managed URL and associated instance (if applicable) successfully marked for deletion!", variant: "default" });
+      toast({ title: "Success!", description: "Managed URL and associated instance successfully marked for deletion!", variant: "default" });
       setIsDeleteDialogOpen(false);
       setCurrentUrlToDelete(null);
 
@@ -189,6 +188,21 @@ export default function UrlList() {
       setIsDeleteLoading(false);
     }
   };
+
+  const handleCopy = useCallback((textToCopy: string, type: string = "Text") => {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(textToCopy)
+        .then(() => {
+          toast({ title: "Copied!", description: `${type} copied to clipboard.` });
+        })
+        .catch(err => {
+          console.error(`Could not copy ${type}: `, err);
+          toast({ title: "Error", description: `Could not copy ${type}.`, variant: "destructive" });
+        });
+    } else {
+       toast({ title: "Error", description: "Clipboard API not available.", variant: "destructive" });
+    }
+  }, [toast]);
 
   const handleEmbedOpen = (url: ManagedUrlFirestoreData) => {
     setCurrentUrlForEmbed(url);
@@ -211,31 +225,6 @@ export default function UrlList() {
   if (urls.length === 0 && !authLoading && user) {
     return <p className="text-muted-foreground text-center py-4">No managed URLs configured yet. Add one above!</p>;
   }
-
-  const handleCopy = (text: string, type: string = "Text") => {
-    navigator.clipboard.writeText(text).then(() => {
-      toast({ title: "Copied!", description: `${type} copied to clipboard.` });
-    }).catch(err => {
-      console.error(`Could not copy ${type}: `, err);
-      toast({ title: "Error", description: `Could not copy ${type}.`, variant: "destructive" });
-    });
-  };
-
-  const SnippetDisplay = ({ title, snippet, explanation }: { title: string, snippet: string, explanation: string }) => (
-    <div className="space-y-2 mb-4">
-      <h4 className="font-semibold text-sm text-primary">{title}</h4>
-      <Textarea
-        value={snippet}
-        readOnly
-        rows={snippet.split('\n').length > 1 ? snippet.split('\n').length + 1 : 3}
-        className="bg-input border-border focus:ring-primary text-foreground/90 font-mono text-xs"
-      />
-      <p className="text-xs text-muted-foreground">{explanation}</p>
-      <Button onClick={() => handleCopy(snippet, `${title} Snippet`)} variant="outline" size="sm" className="text-accent border-accent hover:bg-accent/10">
-        <Copy className="mr-2 h-3 w-3" /> Copy Snippet
-      </Button>
-    </div>
-  );
 
   return (
     <>
@@ -270,8 +259,8 @@ export default function UrlList() {
                 </p>
               </CardContent>
               <CardFooter className="flex justify-end gap-2 border-t border-border pt-4">
-                <Button variant="ghost" size="icon" title="Get Embed Code & Instructions" onClick={() => handleEmbedOpen(url)} className="text-muted-foreground hover:text-primary">
-                  <HelpCircle className="mr-2 h-4 w-4" />
+                <Button variant="ghost" size="icon" title="Get Embed Code" onClick={() => handleEmbedOpen(url)} className="text-muted-foreground hover:text-primary">
+                  <Code className="mr-0 h-4 w-4" /> {/* Using Code icon instead of HelpCircle */}
                 </Button>
                 <Button variant="ghost" size="icon" onClick={() => handleCopy(url.fullUrl, "URL")} title="Copy URL" className="text-muted-foreground hover:text-primary">
                   <Copy className="h-4 w-4" />
@@ -288,98 +277,38 @@ export default function UrlList() {
         </div>
       </ScrollArea>
 
-      {/* Embed Code Dialog */}
+      {/* Embed Code Dialog - Simplified */}
       <Dialog open={isEmbedDialogOpen} onOpenChange={setIsEmbedDialogOpen}>
-        <DialogContent className="max-w-2xl bg-card border-primary/30">
+        <DialogContent className="max-w-xl bg-card border-primary/30">
           <DialogHeader>
-            <DialogTitle className="text-primary flex items-center"><Code className="mr-2 h-5 w-5"/>Embed Instructions for: {currentUrlForEmbed?.name}</DialogTitle>
+            <DialogTitle className="text-primary flex items-center"><Code className="mr-2 h-5 w-5"/>Embed Your SpiteSpiral Link</DialogTitle>
             <DialogDescription>
-              Follow these instructions to effectively embed your SpiteSpiral Tarpit link and start trapping crawlers. These methods are designed to be SEO-neutral.
+              Copy and paste this snippet into your website&apos;s HTML to start trapping bots. This is designed to be invisible to users and SEO-neutral.
             </DialogDescription>
           </DialogHeader>
-          <ScrollArea className="max-h-[70vh] p-1 pr-4">
+          <div className="py-4 space-y-3">
             {currentUrlForEmbed && (
-                <Accordion type="single" collapsible className="w-full space-y-3">
-                <AccordionItem value="item-1">
-                  <AccordionTrigger className="text-accent hover:text-primary">Primary Recommended Snippets</AccordionTrigger>
-                  <AccordionContent className="space-y-4 pt-2">
-                    <SnippetDisplay
-                      title="1x1 Invisible Pixel Image"
-                      snippet={`<img src="${currentUrlForEmbed.fullUrl}" width="1" height="1" alt="" style="border:0; position:absolute; left:-9999px;" aria-hidden="true" loading="eager" />`}
-                      explanation={`This creates a tiny, invisible image. Most web crawlers will try to fetch this image, leading them to your tarpit. The loading="eager" hint encourages it to load even if off-screen. It's designed to be completely invisible, not affect your page layout, and is semantically neutral for SEO.`}
-                    />
-                    <SnippetDisplay
-                      title="Fake Stylesheet Link (for the <head>)"
-                      snippet={`<link rel="stylesheet" href="${currentUrlForEmbed.fullUrl}" media="print" onload="this.media='all'; this.onload=null;" />`}
-                      explanation={`This looks like a stylesheet to crawlers. We use media="print" and an onload trick to ensure it doesn't block your page rendering for actual visitors while still being discoverable by many bots. This method is generally not interpreted by search engines as a content link.`}
-                    />
-                  </AccordionContent>
-                </AccordionItem>
-
-                <AccordionItem value="item-2">
-                  <AccordionTrigger className="text-accent hover:text-primary">Alternative Snippets</AccordionTrigger>
-                  <AccordionContent className="space-y-4 pt-2">
-                    <SnippetDisplay
-                      title="Fake Script Tag"
-                      snippet={`<script src="${currentUrlForEmbed.fullUrl}" async defer></script>`}
-                      explanation={`This mimics a JavaScript file. 'async' and 'defer' help prevent it from blocking your page load for human visitors. Script tags are generally not followed for link equity by search engines.`}
-                    />
-                  </AccordionContent>
-                </AccordionItem>
-
-                <AccordionItem value="item-3">
-                  <AccordionTrigger className="text-accent hover:text-primary">Step-by-Step Guidance</AccordionTrigger>
-                  <AccordionContent className="text-sm text-foreground/80 space-y-1 pt-2">
-                    <p>1. Choose one of the HTML snippets provided above.</p>
-                    <p>2. Copy the entire snippet.</p>
-                    <p>3. Open the HTML code for the website pages where you want to detect crawlers.</p>
-                    <p>4. Paste the snippet into the recommended location within your HTML (see 'Where to Place it' below).</p>
-                    <p>5. If you use a website template or a common include file (like a header or footer), placing it there will deploy it across many pages at once.</p>
-                    <p>6. Save and publish your website changes.</p>
-                  </AccordionContent>
-                </AccordionItem>
-
-                <AccordionItem value="item-4">
-                  <AccordionTrigger className="text-accent hover:text-primary">Where to Place It to Catch the Most Crawlers</AccordionTrigger>
-                  <AccordionContent className="text-sm text-foreground/80 space-y-2 pt-2">
-                    <p><strong className="text-primary">Goal:</strong> The Managed URL should be easily discoverable by automated crawlers but generally ignored by human visitors and have minimal SEO impact.</p>
-                    <p className="font-semibold text-foreground/90">Key Locations on Their Website:</p>
-                    <ul className="list-disc pl-5 space-y-1">
-                      <li><strong className="text-primary/90">In the HTML &lt;head&gt;:</strong> Ideal for the &lt;link rel="stylesheet" ...&gt; method. Crawlers almost always parse the head for metadata and resource links.</li>
-                      <li><strong className="text-primary/90">End of the &lt;body&gt; tag:</strong> A common place for tracking scripts and non-critical elements. Good for the &lt;img&gt; or &lt;script&gt; methods. This ensures it doesn't interfere with the rendering of the main content.</li>
-                      <li><strong className="text-primary/90">Common Headers/Footers:</strong> If their website uses templates (e.g., WordPress, Shopify, or a custom CMS), tell them to place the snippet in their site-wide header or footer template file. This ensures the tarpit link is present on every page, maximizing coverage.</li>
-                    </ul>
-                    <p><strong className="text-primary">Throughout Multiple Pages:</strong> Emphasize that the more pages it's on, the higher the chance of catching various types of crawlers exploring different parts of their site.</p>
-                    <p><strong className="text-primary">Subtlety is Key (for Humans):</strong> Our provided snippets are designed to be invisible or non-disruptive to your human visitors. The goal is for automated bots to follow these links, not your customers.</p>
-                     <p className="font-semibold text-foreground/90 mt-2">What to (Generally) Avoid for this Specific Purpose:</p>
-                     <ul className="list-disc pl-5 space-y-1">
-                        <li>Placing it only in robots.txt.</li>
-                        <li>Hiding it too well with JavaScript that some crawlers might not execute.</li>
-                    </ul>
-                  </AccordionContent>
-                </AccordionItem>
-                {/*
-                <AccordionItem value="item-5">
-                  <AccordionTrigger className="text-accent hover:text-primary">Do's and Don'ts (SEO & Best Practices)</AccordionTrigger>
-                  <AccordionContent className="text-sm text-foreground/80 space-y-2 pt-2">
-                    <p className="font-semibold text-foreground/90">Do:</p>
-                    <ul className="list-disc pl-5 space-y-1">
-                      <li>Use the provided snippets as they are designed for low SEO impact.</li>
-                      <li>Place it where it's likely to be parsed by automated tools.</li>
-                      <li>Test your page after adding it to ensure it doesn't break your layout.</li>
-                    </ul>
-                    <p className="font-semibold text-foreground/90 mt-2">Don't:</p>
-                     <ul className="list-disc pl-5 space-y-1">
-                        <li>Make the Managed URL a standard, visible, crawlable link for your human users.</li>
-                        <li>If you must use an anchor tag, add rel="nofollow".</li>
-                        <li>Modify the URL part of the snippet.</li>
-                    </ul>
-                  </AccordionContent>
-                </AccordionItem>
-                */}
-              </Accordion>
+              <>
+                <Textarea
+                  value={`<img src="${currentUrlForEmbed.fullUrl}" width="1" height="1" alt="" style="border:0; position:absolute; left:-9999px;" aria-hidden="true" loading="eager" />`}
+                  readOnly
+                  rows={4}
+                  className="bg-input border-border focus:ring-primary text-foreground/90 font-mono text-xs"
+                />
+                <Button 
+                  onClick={() => handleCopy(`<img src="${currentUrlForEmbed.fullUrl}" width="1" height="1" alt="" style="border:0; position:absolute; left:-9999px;" aria-hidden="true" loading="eager" />`, "Embed Snippet")} 
+                  variant="outline" 
+                  size="sm" 
+                  className="text-accent border-accent hover:bg-accent/10"
+                >
+                  <Copy className="mr-2 h-3 w-3" /> Copy Snippet
+                </Button>
+                <p className="text-xs text-muted-foreground pt-2">
+                  Place this snippet in a common area of your website, like the footer template, so it appears on all pages. Ensure your website&apos;s <code className="bg-muted px-1 py-0.5 rounded-sm text-xs text-accent">robots.txt</code> file disallows legitimate search engines from crawling the path where you intend this to be notionally linked from (if applicable to your strategy), but allows them to crawl your main content.
+                </p>
+              </>
             )}
-          </ScrollArea>
+          </div>
           <DialogFooter className="pt-4">
             <DialogClose asChild>
               <Button type="button" variant="outline">Close</Button>
@@ -387,7 +316,6 @@ export default function UrlList() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -469,5 +397,3 @@ export default function UrlList() {
     </>
   );
 }
-    
-    
