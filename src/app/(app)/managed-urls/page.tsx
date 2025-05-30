@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -52,7 +51,7 @@ const themeOptions = [
   { value: 'legal', label: 'Pseudo-Legal Text', description: "Subtly mimic content resembling legal documents." },
 ];
 
-const entryStealthOptions = [
+const entryStealthOptions = [ // For tooltip content
   { value: 'generic', label: 'Generic Entry', description: "The trap starts with a more generic-looking base URL structure provided by SpiteSpiral." },
   { value: 'deep', label: 'Deep Page Simulation', description: "The generated URL will include more complex path segments (still leading to SpiteSpiral, but appearing like a deep internal page)." },
 ];
@@ -78,7 +77,7 @@ Disallow: ${path}
 
 User-agent: *
 # Ensure this doesn't conflict with a broader "Disallow: /" for User-agent: *
-# The goal is to disallow your specific trap path for all bots,
+# The primary goal is to disallow your specific trap path for all bots,
 # especially those that might ignore the specific good bot directives.
 Disallow: ${path}`;
 
@@ -90,7 +89,7 @@ export default function ManagedUrlsPage() {
   const [userTrapPath, setUserTrapPath] = useState('/secret-data-feed/');
   const [intensity, setIntensity] = useState('medium');
   const [theme, setTheme] = useState('generic');
-  const [entryStealthEnabled, setEntryStealthEnabled] = useState(false); // Switched to boolean for Switch
+  const [entryStealth, setEntryStealth] = useState('generic'); // 'generic' (off) or 'deep' (on)
   const [lureSpeed, setLureSpeed] = useState('normal');
 
   const [robotsTxtSnippet, setRobotsTxtSnippet] = useState('');
@@ -122,7 +121,7 @@ export default function ManagedUrlsPage() {
       params.append('client_id', user.uid);
       if (intensity !== 'medium') params.append('intensity', intensity);
       if (theme !== 'generic') params.append('theme', theme);
-      if (entryStealthEnabled) params.append('stealth', 'on'); // if true, 'on', else parameter is omitted
+      if (entryStealth === 'deep') params.append('stealth', 'on');
       if (lureSpeed !== 'normal') params.append('lure_speed', lureSpeed);
       
       const queryString = params.toString();
@@ -131,7 +130,7 @@ export default function ManagedUrlsPage() {
       // Fallback URL for when user is not available (e.g., during initial load)
       setGeneratedUrl(`${TARPIT_BASE_URL}/trap?client_id=YOUR_USER_ID&intensity=medium&theme=generic&stealth=off&lure_speed=normal`);
     }
-  }, [userTrapPath, intensity, theme, entryStealthEnabled, lureSpeed, user, TARPIT_BASE_URL]);
+  }, [userTrapPath, intensity, theme, entryStealth, lureSpeed, user, TARPIT_BASE_URL]);
 
   // Snippet definitions
   const simpleHtmlLinkSnippet = (path: string) => `<a href="${path}" title="Archival Data Access" rel="nofollow">Internal Data Archives</a>`;
@@ -144,11 +143,7 @@ export default function ManagedUrlsPage() {
 
   const getCssHiddenLinkSnippet = (url: string) => `<a href="${url}" style="position:absolute; left:-9999px; top:-9999px;" rel="nofollow">Important Data Feed</a>`;
   const getCssClassLinkSnippet = (url: string) => `<a href="${url}" class="spite-link" rel="nofollow">Hidden Archive</a>`;
-  const cssClassStyleSnippet = `.spite-link {
-  position: absolute;
-  left: -9999px; /* Moves it off-screen */
-  /* Or more subtly: opacity: 0.01; font-size: 1px; */
-}`;
+  const cssClassStyleSnippet = `.spite-link {\n  position: absolute;\n  left: -9999px;\n}`;
   const getJsInjectionSnippet = (url: string) => `<div id="spite-container"></div>
 <script>
   document.addEventListener('DOMContentLoaded', function() {
@@ -210,7 +205,7 @@ export default function ManagedUrlsPage() {
                   <AccordionItem value="robots-txt-details">
                     <AccordionTrigger className="text-xs text-accent hover:no-underline p-0 [&>svg]:h-3 [&>svg]:w-3">What is robots.txt and why is this important?</AccordionTrigger>
                     <AccordionContent className="text-xs pt-2 space-y-1">
-                      <p><code className="text-xs">robots.txt</code> is a file at the root of your site (e.g., <code className="text-xs">yourwebsite.com/robots.txt</code>) that tells 'good' web crawlers (like Googlebot) which pages or sections they shouldn't crawl.</p>
+                      <p><code className="text-xs bg-muted p-0.5 rounded">robots.txt</code> is a file at the root of your site (e.g., <code className="text-xs bg-muted p-0.5 rounded">yourwebsite.com/robots.txt</code>) that tells 'good' web crawlers (like Googlebot) which pages or sections they shouldn't crawl.</p>
                       <p>We want these good bots to crawl your real content for SEO, but *not* the path you dedicate for SpiteSpiral. Malicious bots often ignore `robots.txt`, which is how they find our trap.</p>
                       <p className="font-semibold text-destructive">CRITICAL: Be careful not to accidentally disallow your entire site (e.g., by writing <code className="text-xs">Disallow: /</code> under <code className="text-xs">User-agent: *</code> without other `Allow` rules). Always test your <code className="text-xs">robots.txt</code> changes, for example, using <a href="https://developers.google.com/search/docs/crawling-indexing/robots/robots_txt#test-robots-txt" target="_blank" rel="noopener noreferrer" className="underline hover:text-accent">Google Search Console's robots.txt Tester</a>.</p>
                     </AccordionContent>
@@ -291,24 +286,27 @@ export default function ManagedUrlsPage() {
             {/* Entry Point Stealth */}
             <div className="space-y-2">
               <div className="flex items-center">
-                <Label className="text-foreground/80 font-semibold">Entry Point Stealth</Label>
-                 <Tooltip>
+                <Label htmlFor="entry-stealth-toggle" className="text-foreground/80 font-semibold">Entry Point Stealth</Label>
+                <Tooltip>
                   <TooltipTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-5 w-5 ml-1 text-muted-foreground"><Info className="h-3.5 w-3.5" /></Button>
                   </TooltipTrigger>
                   <TooltipContent className="max-w-xs bg-popover text-popover-foreground border-primary/50">
                     <p className="font-bold mb-1">Makes the trap entry point look more like a deep internal page:</p>
-                     <ul className="list-disc pl-4 text-xs space-y-1">
-                      <li><strong>Generic Entry (Default):</strong> The trap starts with a more generic-looking base URL structure.</li>
-                      <li><strong>Deep Page Simulation (Stealth On):</strong> The URL includes more complex path segments, appearing like a deep internal page.</li>
+                    <ul className="list-disc pl-4 text-xs space-y-1">
+                      {entryStealthOptions.map(opt => <li key={opt.value}><strong>{opt.label}:</strong> {opt.description}</li>)}
                     </ul>
                   </TooltipContent>
                 </Tooltip>
               </div>
-               <div className="flex items-center space-x-2">
-                <Switch id="entry-stealth-toggle" checked={entryStealthEnabled} onCheckedChange={setEntryStealthEnabled} />
-                <Label htmlFor="entry-stealth-toggle" className="text-sm font-normal">
-                  {entryStealthEnabled ? "Deep Page Simulation (Stealth On)" : "Generic Entry (Stealth Off)"}
+              <div className="flex items-center space-x-2 p-2 border border-dashed border-border rounded-md">
+                <Switch
+                  id="entry-stealth-toggle"
+                  checked={entryStealth === 'deep'}
+                  onCheckedChange={(checked) => setEntryStealth(checked ? 'deep' : 'generic')}
+                />
+                <Label htmlFor="entry-stealth-toggle" className="text-sm font-medium">
+                  {entryStealth === 'deep' ? "Deep Page Simulation (Stealth On)" : "Generic Entry (Stealth Off)"}
                 </Label>
               </div>
             </div>
@@ -477,5 +475,3 @@ export default function ManagedUrlsPage() {
     </div>
   );
 }
-
-    
