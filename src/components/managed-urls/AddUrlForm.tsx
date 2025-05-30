@@ -11,10 +11,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { PlusCircle, Loader2, ShieldAlert } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth, type UserProfile } from "@/contexts/AuthContext"; // Added UserProfile type
 import { provisionAndGenerateManagedTarpitConfigDetails } from "@/lib/actions";
 import { db } from "@/lib/firebase/clientApp";
-import { collection, addDoc, serverTimestamp, query, where, getDocs } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, query, where, getDocs, onSnapshot, type QuerySnapshot, type DocumentData } from "firebase/firestore"; // Added onSnapshot, QuerySnapshot, DocumentData
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -25,6 +25,8 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
+// const ADMIN_TEST_MAX_URLS = 1; // User can create up to 1 URL for "Set & Forget"
+
 export default function AddUrlForm() {
   const [isSubmittingForm, setIsSubmittingForm] = useState(false);
   const [isCheckingUrlCount, setIsCheckingUrlCount] = useState(true);
@@ -32,7 +34,7 @@ export default function AddUrlForm() {
   const [canAddMoreUrls, setCanAddMoreUrls] = useState(false);
 
   const { toast } = useToast();
-  const { user, userProfile, loading: authContextLoading } = useAuth(); // Get userProfile
+  const { user, userProfile, loading: authContextLoading } = useAuth();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -43,38 +45,34 @@ export default function AddUrlForm() {
   });
 
   useEffect(() => {
-    if (authContextLoading) { // This now includes profile loading
+    if (authContextLoading || !user || !userProfile) {
       setIsCheckingUrlCount(true);
-      return;
-    }
-    if (!user || !userProfile) { // Check for userProfile as well
-      setCanAddMoreUrls(false);
-      setIsCheckingUrlCount(false);
-      return;
-    }
-
-    const fetchUrlCount = async () => {
-      setIsCheckingUrlCount(true);
-      try {
-        const q = query(collection(db, "tarpit_configs"), where("userId", "==", user.uid));
-        const querySnapshot = await getDocs(q);
-        const count = querySnapshot.size;
-        setCurrentUserUrlCount(count);
-        
-        // Use managedUrlLimit from userProfile
-        const limit = userProfile.managedUrlLimit || 0; 
-        setCanAddMoreUrls(count < limit);
-
-      } catch (error) {
-        console.error("Error fetching user URL count:", error);
-        toast({ title: "Error", description: "Could not verify your current URL count.", variant: "destructive" });
-        setCanAddMoreUrls(false);
-      } finally {
+      setCanAddMoreUrls(false); // Default to false if user/profile not loaded
+      if (!authContextLoading && !user) { // If done loading and no user, stop checking
         setIsCheckingUrlCount(false);
       }
-    };
+      return;
+    }
 
-    fetchUrlCount();
+    setIsCheckingUrlCount(true);
+    const q = query(collection(db, "tarpit_configs"), where("userId", "==", user.uid));
+
+    // Use onSnapshot for real-time updates to currentUserUrlCount
+    const unsubscribe = onSnapshot(q, (snapshot: QuerySnapshot<DocumentData>) => {
+      const count = snapshot.size;
+      setCurrentUserUrlCount(count);
+      const limit = userProfile.managedUrlLimit || 0;
+      setCanAddMoreUrls(count < limit);
+      setIsCheckingUrlCount(false);
+    }, (error) => {
+      console.error("Error fetching user URL count with onSnapshot:", error);
+      toast({ title: "Error", description: "Could not verify your current URL count.", variant: "destructive" });
+      setCanAddMoreUrls(false);
+      setIsCheckingUrlCount(false);
+    });
+
+    return () => unsubscribe(); // Cleanup listener on component unmount or when dependencies change
+
   }, [user, userProfile, authContextLoading, toast]);
 
 
@@ -118,9 +116,8 @@ export default function AddUrlForm() {
 
       if (!provisionResult.success || !provisionResult.configData || !provisionResult.fullUrl) {
         let toastMessage = provisionResult.message || "Failed to provision tarpit instance or generate URL configuration.";
-        // Handle specific backend error messages for limits or inactive subscriptions
         if (provisionResult.message.includes("limit reached") || provisionResult.message.includes("subscription status")) {
-            toastMessage = provisionResult.message; // Use the backend's specific message
+            toastMessage = provisionResult.message;
         }
         toast({
           title: "Provisioning Failed",
@@ -150,13 +147,7 @@ export default function AddUrlForm() {
         duration: 7000,
       });
       form.reset();
-      // Re-fetch URL count to update canAddMoreUrls state
-        const q = query(collection(db, "tarpit_configs"), where("userId", "==", user.uid));
-        const querySnapshot = await getDocs(q);
-        const count = querySnapshot.size;
-        setCurrentUserUrlCount(count);
-        const limit = userProfile.managedUrlLimit || 0;
-        setCanAddMoreUrls(count < limit);
+      // No need to manually re-fetch count here as onSnapshot will handle it.
 
     } catch (error) {
       console.error("Error in onSubmit AddUrlForm:", error);
@@ -191,12 +182,12 @@ export default function AddUrlForm() {
           <AlertTitle>
             {userProfile.subscriptionStatus !== "active" && userProfile.subscriptionStatus !== "trialing"
               ? "Subscription Inactive"
-              : "URL Limit Reached"}
+              : `URL Limit Reached (${currentUserUrlCount}/${currentLimit})`}
           </AlertTitle>
           <AlertDescription>
             {userProfile.subscriptionStatus !== "active" && userProfile.subscriptionStatus !== "trialing"
               ? `Your subscription status is '${userProfile.subscriptionStatus}'. Please check your Account page to activate your subscription.`
-              : `You have reached the Managed URL limit (${currentLimit}) for your current plan. Please upgrade or manage existing URLs.`}
+              : `You have reached the Managed URL limit (${currentLimit}) for your current plan. Please upgrade your plan or delete existing URLs to add more.`}
           </AlertDescription>
         </Alert>
       )}
@@ -236,17 +227,20 @@ export default function AddUrlForm() {
             disabled={isSubmittingForm || !user || !userProfile || !canAddMoreUrls || isCheckingUrlCount || (userProfile.subscriptionStatus !== "active" && userProfile.subscriptionStatus !== "trialing")}
             className="w-full md:w-auto bg-primary text-primary-foreground hover:bg-accent hover:text-accent-foreground"
           >
-            {isSubmittingForm ? (
+            {isSubmittingForm || isCheckingUrlCount ? ( // Show loader if checking count too
               <Loader2 className="mr-2 h-5 w-5 animate-spin" />
             ) : (
               <PlusCircle className="mr-2 h-5 w-5" />
             )}
-            {isSubmittingForm ? "Provisioning & Adding..." : "Add Managed URL"}
+            {isSubmittingForm ? "Provisioning & Adding..." : isCheckingUrlCount ? "Checking Limits..." : "Add Managed URL"}
           </Button>
+           {!isCheckingUrlCount && userProfile && userProfile.subscriptionStatus === "active" && userProfile.managedUrlLimit > 0 && (
+             <p className="text-xs text-muted-foreground">
+                You have {currentUserUrlCount} out of {currentLimit} Managed URLs.
+             </p>
+           )}
         </form>
       </Form>
     </>
   );
 }
-
-    
