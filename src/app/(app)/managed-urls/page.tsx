@@ -10,7 +10,6 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Switch } from '@/components/ui/switch';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { LinkIcon, Copy, Info, ShieldCheck, Settings, Code, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -32,7 +31,7 @@ const themeOptions = [
   { value: 'legal', label: 'Pseudo-Legal Text' },
 ];
 
-const entryStealthOptions = [ 
+const entryStealthOptions = [
   { value: 'generic', label: 'Generic Entry / Stealth Off (Default)' },
   { value: 'deep', label: 'Deep Page Simulation / Stealth On' },
 ];
@@ -48,7 +47,7 @@ export default function ManagedUrlsPage() {
 
   const [intensity, setIntensity] = useState('medium');
   const [theme, setTheme] = useState('generic');
-  const [entryStealthValue, setEntryStealthValue] = useState('generic'); // Renamed to avoid conflict with HTML stealth attribute
+  const [entryStealthValue, setEntryStealthValue] = useState('generic');
   const [lureSpeed, setLureSpeed] = useState('normal');
   const [generatedUrl, setGeneratedUrl] = useState('');
 
@@ -57,7 +56,7 @@ export default function ManagedUrlsPage() {
   useEffect(() => {
     if (user?.uid) {
       const params = new URLSearchParams();
-      params.append('client_id', user.uid);
+      params.append('client_id', user.uid); // Always include client_id
       if (intensity !== 'medium') params.append('intensity', intensity);
       if (theme !== 'generic') params.append('theme', theme);
       if (entryStealthValue !== 'generic') params.append('stealth', entryStealthValue === 'deep' ? 'on' : 'off');
@@ -66,6 +65,7 @@ export default function ManagedUrlsPage() {
       const queryString = params.toString();
       setGeneratedUrl(`${TARPIT_BASE_URL}/trap${queryString ? `?${queryString}` : ''}`);
     } else {
+      // Example URL for logged-out users or if user ID is not available
       setGeneratedUrl(`${TARPIT_BASE_URL}/trap?client_id=YOUR_USER_ID_WHEN_LOGGED_IN&intensity=medium&theme=generic&stealth=off&lure_speed=normal`);
     }
   }, [intensity, theme, entryStealthValue, lureSpeed, user, TARPIT_BASE_URL]);
@@ -169,7 +169,7 @@ Disallow: /your-chosen-spitespiral-path/ # ...EXCEPT your SpiteSpiral path
             <Copy className="mr-2 h-3 w-3" /> Copy Example
           </Button>
           <p className="text-sm text-foreground/80"><strong className="text-destructive">IMPORTANT:</strong> Replace <code className="bg-muted px-1 py-0.5 rounded-sm text-xs text-accent">/your-chosen-spitespiral-path/</code> with the actual path you decide on. Make sure it has leading and trailing slashes if it represents a directory.</p>
-          <p className="text-sm text-muted-foreground"><strong className="text-destructive">Warning:</strong> Be very careful not to accidentally disallow your entire site (e.g., <code className="bg-muted px-1 py-0.5 rounded-sm text-xs text-accent">Disallow: /</code>). Test your robots.txt changes using Google Search Console's robots.txt Tester or similar tools.</p>
+          <p className="text-sm text-muted-foreground"><strong className="text-destructive">Warning:</strong> Be very careful not to accidentally disallow your entire site (e.g., <code className="bg-muted px-1 py-0.5 rounded-sm text-xs text-accent">Disallow: /</code>). Test your robots.txt changes using <a href='https://support.google.com/webmasters/answer/6062598' target='_blank' rel='noopener noreferrer' className='text-accent hover:underline'>Google Search Console's robots.txt Tester</a> or similar tools.</p>
         </CardContent>
       </Card>
 
