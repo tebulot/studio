@@ -191,7 +191,7 @@ export default function ManagedUrlsPage() {
               id="userTrapPath"
               value={userTrapPath}
               onChange={(e) => setUserTrapPath(e.target.value)}
-              placeholder="e.g., /secret-data-feed/"
+              placeholder="e.g., /secret-data-feed/ or /bot-honeypot/"
               className="mt-1 bg-input border-border focus:ring-primary"
             />
             <p className="text-xs text-muted-foreground mt-1">Enter a unique path for your SpiteSpiral link on your site. This path will be used in the robots.txt snippet below.</p>
@@ -204,7 +204,7 @@ export default function ManagedUrlsPage() {
               explanation={
                 <Accordion type="single" collapsible className="w-full mt-2">
                   <AccordionItem value="robots-txt-details">
-                    <AccordionTrigger className="text-xs text-accent hover:no-underline p-0 [&>svg]:h-3 [&>svg]:w-3">What is robots.txt and why is this important?</AccordionTrigger>
+                    <AccordionTrigger className="font-bold text-sm text-accent border border-accent/50 rounded-md px-3 py-2 hover:no-underline [&>svg]:h-4 [&>svg]:w-4">What is `robots.txt` and why is this important?</AccordionTrigger>
                     <AccordionContent className="text-xs pt-2 space-y-1">
                       <p><code className="text-xs bg-muted p-0.5 rounded">robots.txt</code> is a file at the root of your site (e.g., <code className="text-xs bg-muted p-0.5 rounded">yourwebsite.com/robots.txt</code>) that tells 'good' web crawlers (like Googlebot) which pages or sections they shouldn't crawl.</p>
                       <p>We want these good bots to crawl your real content for SEO, but *not* the path you dedicate for SpiteSpiral. Malicious bots often ignore `robots.txt`, which is how they find our trap.</p>
@@ -478,3 +478,4 @@ export default function ManagedUrlsPage() {
   );
 }
 
+    
