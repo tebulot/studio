@@ -158,14 +158,13 @@ export default function HomePage() {
               <CardTitle className="text-2xl text-accent glitch-text min-h-12 flex items-center">The Problem: When Scrapers Ignore the Rules</CardTitle>
             </CardHeader>
             <CardContent className="text-foreground/80 space-y-3 flex-grow">
-              <p>Your digital presence – from carefully crafted content and unique intellectual property to proprietary business data – is under constant siege by automated bots. These aren't just passive visitors; many are aggressive scrapers with a clear agenda, often leading to significant issues:</p>
-              <ul className="list-disc pl-5 space-y-2 mt-2 text-foreground/80">
-                  <li><strong>Brazen Disregard for Rules:</strong> These scrapers frequently ignore <code className="bg-muted px-1.5 py-0.5 rounded-sm">robots.txt</code> directives, the established standard for bot etiquette. They are engineered to bypass common blocking techniques, making traditional defenses feel like sieves.</li>
-                  <li><strong>Relentless Resource Drain:</strong> Unchecked scraping can overwhelm your server, consuming excessive bandwidth, CPU, and memory. This can lead to slower site performance for legitimate users, increased hosting costs, and even potential downtime.</li>
-                  <li><strong>Theft for AI & Competitive Exploitation:</strong> Your original work, articles, images, product information, and pricing data are prime targets. This stolen information is then often fed into large AI training models without consent or used by competitors to gain an unfair advantage, diluting your brand and devaluing your efforts.</li>
-                  <li><strong>Conventional Blocking is Often Insufficient:</strong> Static IP blocks, basic firewall rules, or simple rate limiting are often outmaneuvered by sophisticated scraping operations that use distributed networks and constantly changing identities. These persistent threats require a more dynamic and active countermeasure.</li>
-              </ul>
-              <p className="mt-3">Simply trying to block these advanced scrapers is a never-ending game of cat and mouse. It's time for a different approach – one that makes scraping your site an actively unpleasant and costly mistake for them.</p>
+                <p>Your digital presence – from carefully crafted content and unique intellectual property to proprietary business data – is under constant siege by automated bots. These aren&apos;t just passive visitors; many are aggressive scrapers with a clear agenda, often leading to significant issues:</p>
+                <ul className="list-disc pl-5 space-y-2 mt-2 text-foreground/80">
+                    <li><strong>Brazen Disregard for Rules:</strong> These scrapers frequently ignore <code className="bg-muted px-1.5 py-0.5 rounded-sm text-xs">robots.txt</code> directives, the established standard for bot etiquette. They are engineered to bypass common blocking techniques, making traditional defenses feel like sieves.</li>
+                    <li><strong>Relentless Resource Drain:</strong> Unchecked scraping can overwhelm your server, consuming excessive bandwidth, CPU, and memory. This can lead to slower site performance for legitimate users, increased hosting costs, and even potential downtime.</li>
+                    <li><strong>Theft for AI & Competitive Exploitation:</strong> Your original work, articles, images, product information, and pricing data are prime targets. This stolen information is then often fed into large AI training models without consent or used by competitors to gain an unfair advantage, diluting your brand and devaluing your efforts.</li>
+                    <li><strong>Conventional Blocking is Often Insufficient:</strong> Static IP blocks, basic firewall rules, or simple rate limiting are often outmaneuvered by sophisticated scraping operations that use distributed networks and constantly changing identities. These persistent threats require a more dynamic and active countermeasure.</li>
+                </ul>
             </CardContent>
           </Card>
 
