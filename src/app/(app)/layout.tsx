@@ -4,18 +4,22 @@
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset, SidebarTrigger, SidebarFooter } from "@/components/ui/sidebar";
 import AppHeaderContent from '@/components/layout/AppHeaderContent';
 import BackgroundAnimationToggle from '@/components/layout/BackgroundAnimationToggle';
-import { LayoutDashboard, Link2, Menu, LogOut, UserCog } from 'lucide-react'; // Removed FileText, ShieldAlert
+import { LayoutDashboard, Link2, Menu, LogOut, UserCog } from 'lucide-react';
 import NextLink from 'next/link';
 import { Button } from '@/components/ui/button';
 import BrandLogoIcon from '@/components/icons/BrandLogoIcon';
 import { useAuth } from "@/contexts/AuthContext";
 import { BackgroundAnimationProvider, useBackgroundAnimation } from "@/contexts/BackgroundAnimationContext";
+import { useEffect } from "react";
 
 function AppLayoutContent({ children }: { children: React.ReactNode }) {
   const { signOut, loading } = useAuth();
   const { isAnimationEnabled } = useBackgroundAnimation();
 
-  // console.log('isAnimationEnabled in AppLayout:', isAnimationEnabled); // For debugging
+  useEffect(() => {
+    // console.log('AppLayoutContent: isAnimationEnabled:', isAnimationEnabled); // For debugging
+  }, [isAnimationEnabled]);
+
 
   const handleSignOut = async () => {
     await signOut();
@@ -27,13 +31,14 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
       {isAnimationEnabled && (
         <div className="fixed inset-0 -z-10 flex items-center justify-center overflow-hidden pointer-events-none">
           <BrandLogoIcon
-            className="w-[500vw] h-[500vh] opacity-10 animate-spin-slow" // Increased opacity
+            className="w-[500vw] h-[500vh] opacity-10 animate-spin-slow" 
             isPriority={false}
           />
         </div>
       )}
       <SidebarProvider defaultOpen>
-        <div className="flex min-h-screen bg-background font-mono text-foreground">
+        {/* Removed bg-background from this div; body already has it. */}
+        <div className="flex min-h-screen font-mono text-foreground">
           <Sidebar collapsible="icon" variant="sidebar" side="left" className="border-r-2 border-primary/20">
             <SidebarHeader className="p-4 border-b border-primary/20 flex items-center justify-between">
               <AppHeaderContent />
