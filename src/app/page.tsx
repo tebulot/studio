@@ -108,7 +108,7 @@ export default function HomePage() {
   return (
     <div className="relative flex flex-col items-center justify-center min-h-screen bg-background text-foreground font-mono p-8 selection:bg-primary selection:text-primary-foreground">
       {isMounted && (
-          <div className="absolute inset-0 overflow-hidden z-0 flex items-center justify-center">
+          <div className="fixed inset-0 overflow-hidden z-0 flex items-center justify-center">
             <BrandLogoIcon
                 className="w-[500vw] h-[500vh] opacity-5 animate-spin-slow"
                 isPriority={false}
@@ -137,8 +137,8 @@ export default function HomePage() {
             <Button
               asChild
               size="lg"
-              variant="outline" /* Changed from default to outline */
-              className="px-10 py-6 text-lg text-accent border-accent hover:text-accent-foreground hover:bg-accent/90 transition-all duration-100 ease-in-out shadow-[0_0_15px_hsl(var(--accent)/0.5),_0_0_30px_hsl(var(--accent)/0.3)] hover:shadow-[0_0_20px_hsl(var(--accent)),_0_0_40px_hsl(var(--accent)/0.7)] rounded-lg border-b-4 border-accent/60 active:translate-y-0.5 active:border-b-2 active:[box-shadow:inset_0_3px_5px_rgba(0,0,0,0.2)] active:brightness-90" /* Matched styling */
+              variant="outline"
+              className="px-10 py-6 text-lg text-accent border-accent hover:text-accent-foreground hover:bg-accent/90 transition-all duration-100 ease-in-out shadow-[0_0_15px_hsl(var(--accent)/0.5),_0_0_30px_hsl(var(--accent)/0.3)] hover:shadow-[0_0_20px_hsl(var(--accent)),_0_0_40px_hsl(var(--accent)/0.7)] rounded-lg border-b-4 border-accent/60 active:translate-y-0.5 active:border-b-2 active:[box-shadow:inset_0_3px_5px_rgba(0,0,0,0.3)] active:brightness-90"
             >
               <NextLink href="/login">Deploy Your Trap</NextLink>
             </Button>
@@ -146,7 +146,7 @@ export default function HomePage() {
               asChild
               size="lg"
               variant="outline"
-              className="px-10 py-6 text-lg text-accent border-accent hover:text-accent-foreground hover:bg-accent/90 transition-all duration-100 ease-in-out shadow-[0_0_15px_hsl(var(--accent)/0.5),_0_0_30px_hsl(var(--accent)/0.3)] hover:shadow-[0_0_20px_hsl(var(--accent)),_0_0_40px_hsl(var(--accent)/0.7)] rounded-lg border-b-4 border-accent/60 active:translate-y-0.5 active:border-b-2 active:[box-shadow:inset_0_3px_5px_rgba(0,0,0,0.2)] active:brightness-90"
+              className="px-10 py-6 text-lg text-accent border-accent hover:text-accent-foreground hover:bg-accent/90 transition-all duration-100 ease-in-out shadow-[0_0_15px_hsl(var(--accent)/0.5),_0_0_30px_hsl(var(--accent)/0.3)] hover:shadow-[0_0_20px_hsl(var(--accent)),_0_0_40px_hsl(var(--accent)/0.7)] rounded-lg border-b-4 border-accent/60 active:translate-y-0.5 active:border-b-2 active:[box-shadow:inset_0_3px_5px_rgba(0,0,0,0.3)] active:brightness-90"
             >
               <NextLink href="/demo/dashboard">View Live Demo</NextLink>
             </Button>
@@ -159,7 +159,7 @@ export default function HomePage() {
               <CardTitle className="text-2xl text-accent glitch-text min-h-12 flex items-center">The Problem: When Scrapers Ignore the Rules</CardTitle>
             </CardHeader>
             <CardContent className="text-foreground/80 space-y-3 flex-grow">
-                <p>Your valuable content, data, and intellectual property are prime targets for automated bots. Many of these scrapers brazenly ignore <code className="bg-muted px-1.5 py-0.5 rounded-sm text-xs">robots.txt</code> and bypass conventional blocking techniques, constantly draining your server resources and stealing your work for AI training models or competitive analysis. Simply blocking isn&apos;t enough for these persistent threats.</p>
+                <p>Your digital presence – from carefully crafted content and unique intellectual property to proprietary business data – is under constant siege by automated bots. These aren&apos;t just passive visitors; many are aggressive scrapers with a clear agenda, often leading to significant issues:</p>
                  <ul className="list-disc pl-5 space-y-2 mt-2 text-foreground/80">
                     <li><strong>Brazen Disregard for Rules:</strong> These scrapers frequently ignore <code className="bg-muted px-1.5 py-0.5 rounded-sm text-xs">robots.txt</code> directives, the established standard for bot etiquette. They are engineered to bypass common blocking techniques, making traditional defenses feel like sieves.</li>
                     <li><strong>Relentless Resource Drain:</strong> Unchecked scraping can overwhelm your server, consuming excessive bandwidth, CPU, and memory. This can lead to slower site performance for legitimate users, increased hosting costs, and even potential downtime.</li>
