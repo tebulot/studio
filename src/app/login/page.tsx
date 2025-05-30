@@ -7,10 +7,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import BrandLogoIcon from '@/components/icons/BrandLogoIcon';
-import { useState, type FormEvent, useEffect } from 'react'; 
+import { useState, type FormEvent, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2, Mail } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton'; 
+import { Loader2, Mail, Home } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -18,24 +18,19 @@ export default function LoginPage() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [isPasswordResetMode, setIsPasswordResetMode] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
-  
+
   const { signIn, signUp, loading: authContextLoading, sendPasswordReset } = useAuth();
   const [resetLoading, setResetLoading] = useState(false);
-  const [backgroundIconStyle, setBackgroundIconStyle] = useState<React.CSSProperties | null>(null);
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
-    setIsMounted(true); 
-    // Generate style for the single large background icon
-    setBackgroundIconStyle({
-      animationDuration: `${Math.random() * 10 + 10}s`, 
-    });
+    setIsMounted(true);
   }, []);
 
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    setIsPasswordResetMode(false); // Explicitly set to false on main form submission
+    setIsPasswordResetMode(false); // Ensure we are not in password reset mode on main submission
     if (isSignUp) {
       await signUp(email, password);
     } else {
@@ -49,27 +44,27 @@ export default function LoginPage() {
     const success = await sendPasswordReset(resetEmail);
     setResetLoading(false);
     if (success) {
-      setIsPasswordResetMode(false); 
+      setIsPasswordResetMode(false);
       setResetEmail('');
     }
   };
 
   const handleAuthModeToggle = () => {
     setIsSignUp(prev => !prev);
-    setIsPasswordResetMode(false); 
+    setIsPasswordResetMode(false);
   };
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground font-mono p-8 selection:bg-primary selection:text-primary-foreground">
-      <div className="absolute inset-0 overflow-hidden z-0 flex items-center justify-center">
-        {backgroundIconStyle && (
-           <BrandLogoIcon
+      {isMounted && (
+        <div className="fixed inset-0 overflow-hidden z-0 flex items-center justify-center">
+          <BrandLogoIcon
             className="w-[500vw] h-[500vh] opacity-5 animate-spin-slow"
-            style={backgroundIconStyle}
             isPriority={false}
+            // style={backgroundIconStyle} // Removed this remnant
           />
-        )}
-      </div>
+        </div>
+      )}
       <Card className="w-full max-w-md z-10 bg-card/80 backdrop-blur-sm border-primary/20 shadow-xl shadow-primary/10">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4">
@@ -79,10 +74,10 @@ export default function LoginPage() {
             {isPasswordResetMode ? 'Reset Password' : isSignUp ? 'Create Account' : 'Welcome Back'}
           </CardTitle>
           <CardDescription className="text-muted-foreground">
-            {isPasswordResetMode 
-              ? 'Enter your email to receive a password reset link.' 
-              : isSignUp 
-              ? 'Enter your details to join SpiteSpiral.' 
+            {isPasswordResetMode
+              ? 'Enter your email to receive a password reset link.'
+              : isSignUp
+              ? 'Enter your details to join SpiteSpiral.'
               : 'Enter your credentials to access your SpiteSpiral dashboard.'}
           </CardDescription>
         </CardHeader>
@@ -97,18 +92,18 @@ export default function LoginPage() {
             <form onSubmit={handlePasswordResetRequest} className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="reset-email" className="text-foreground/80">Email</Label>
-                <Input 
-                  id="reset-email" 
-                  type="email" 
-                  placeholder="you@example.com" 
-                  className="bg-input border-border focus:ring-primary" 
+                <Input
+                  id="reset-email"
+                  type="email"
+                  placeholder="you@example.com"
+                  className="bg-input border-border focus:ring-primary"
                   value={resetEmail}
                   onChange={(e) => setResetEmail(e.target.value)}
                   required
                 />
               </div>
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="w-full bg-primary text-primary-foreground hover:bg-accent hover:text-accent-foreground shadow-[0_0_10px_hsl(var(--primary)/0.5)] hover:shadow-[0_0_15px_hsl(var(--accent)/0.7)]"
                 disabled={resetLoading || authContextLoading}
               >
@@ -125,11 +120,11 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-foreground/80">Email</Label>
-                <Input 
-                  id="email" 
-                  type="email" 
-                  placeholder="you@example.com" 
-                  className="bg-input border-border focus:ring-primary" 
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  className="bg-input border-border focus:ring-primary"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -144,19 +139,19 @@ export default function LoginPage() {
                     </Button>
                   )}
                 </div>
-                <Input 
-                  id="password" 
-                  type="password" 
-                  placeholder="••••••••" 
-                  className="bg-input border-border focus:ring-primary" 
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  className="bg-input border-border focus:ring-primary"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   minLength={6}
                 />
               </div>
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="w-full bg-primary text-primary-foreground hover:bg-accent hover:text-accent-foreground shadow-[0_0_10px_hsl(var(--primary)/0.5)] hover:shadow-[0_0_15px_hsl(var(--accent)/0.7)]"
                 disabled={authContextLoading}
               >
@@ -175,10 +170,19 @@ export default function LoginPage() {
       </Card>
        <footer className="py-6 md:px-8 md:py-0 border-t border-primary/10 bg-card/50 mt-auto">
         <div className="container flex flex-col items-center justify-center gap-2 md:h-20 text-center">
-          <NextLink href="/" className="flex items-center gap-2 group mb-2">
+          <NextLink href="/" className="flex items-center gap-2 group mb-1">
             <BrandLogoIcon className="h-8 w-8 text-primary" />
             <span className="text-sm font-semibold text-primary">SpiteSpiral</span>
           </NextLink>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground/70">
+            <NextLink href="/" className="hover:text-accent animate-link-glow flex items-center">
+              <Home className="mr-1 h-3 w-3" /> Back to Home
+            </NextLink>
+            <span>|</span>
+            <NextLink href="/legal/licenses" className="hover:text-accent animate-link-glow">
+              Licenses & Acknowledgements
+            </NextLink>
+          </div>
           <p className="text-xs text-muted-foreground/70">
             © {new Date().getFullYear()} SpiteSpiral. Trap with malice.
           </p>
