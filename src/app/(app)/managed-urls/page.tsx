@@ -205,7 +205,7 @@ export default function ManagedUrlsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Accordion type="single" collapsible className="w-full" defaultValue="step-1-robots">
+          <Accordion type="single" collapsible className="w-full">
             {/* STEP 1: robots.txt */}
             <AccordionItem value="step-1-robots">
               <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">Step 1: Safeguard Your SEO with `robots.txt`</AccordionTrigger>
