@@ -239,8 +239,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Demo Tracking Pixel */}
-      <img src="https://api.spitespiral.com/trap/38e19a7e-1a3f-4bf0-b83f-edd7efe6fceb" width="1" height="1" alt="" style={{border:0, position:"absolute", left:"-9999px"}} aria-hidden="true" loading="eager" />
+      {/* Demo Tracking Pixel Removed */}
 
       <footer className="py-6 md:px-8 md:py-0 border-t border-primary/10 bg-card/50 relative z-20">
         <div className="container flex flex-col items-center justify-center gap-2 md:h-20 text-center">
@@ -259,6 +258,5 @@ export default function HomePage() {
     </div>
   );
 }
-
     
     
