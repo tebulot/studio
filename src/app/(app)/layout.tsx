@@ -4,7 +4,7 @@
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset, SidebarTrigger, SidebarFooter } from "@/components/ui/sidebar";
 import AppHeaderContent from '@/components/layout/AppHeaderContent';
 import BackgroundAnimationToggle from '@/components/layout/BackgroundAnimationToggle';
-import { LayoutDashboard, Link2, Menu, LogOut, UserCog } from 'lucide-react';
+import { LayoutDashboard, Link2, Menu, LogOut, UserCog, Code2 } from 'lucide-react'; // Added Code2
 import NextLink from 'next/link';
 import { Button } from '@/components/ui/button';
 import BrandLogoIcon from '@/components/icons/BrandLogoIcon';
@@ -31,7 +31,7 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
       {isAnimationEnabled && (
         <div className="fixed inset-0 -z-10 flex items-center justify-center overflow-hidden pointer-events-none">
           <BrandLogoIcon
-            className="w-[500vw] h-[500vh] opacity-10 animate-spin-slow" 
+            className="w-[500vw] h-[500vh] opacity-10 animate-spin-slow"
             isPriority={false}
           />
         </div>
@@ -62,6 +62,14 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
                     <NextLink href="/managed-urls" className="flex items-center">
                       <Link2 className="mr-2 h-5 w-5 text-accent" />
                       <span className="text-base">Managed URLs</span>
+                    </NextLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip={{content:"API Access", side:"right", className:"bg-popover text-popover-foreground border-primary/50"}} className="justify-start">
+                    <NextLink href="/api-access" className="flex items-center">
+                      <Code2 className="mr-2 h-5 w-5 text-accent" />
+                      <span className="text-base">API Access</span>
                     </NextLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
