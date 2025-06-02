@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Link2 as Link2Icon, Copy, Settings, Code, CheckCircle, HelpCircle, Info, ShieldCheck } from 'lucide-react'; // Changed LinkIcon to Link2Icon
+import { Link2 as Link2Icon, Copy, Settings, Code, CheckCircle, HelpCircle, Info, ShieldCheck, Settings2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -85,6 +85,34 @@ User-agent: *
 # Malicious bots that ignore these rules for good bots are our target.
 Disallow: ${path}`;
 
+const simpleHtmlLinkSnippet = (path: string) => `<a href="${path}" title="Archival Data Access">Internal Data Archives</a>`;
+const tinyHtmlLinkSnippet = (path: string) => `<a href="${path}" style="font-size:1px; color:transparent;" aria-hidden="true" tabindex="-1">.</a>`;
+const sitemapEntrySnippet = (path: string) => `<url>
+  <loc>https://yourwebsite.com${path.startsWith('/') ? path : '/' + path}</loc>
+  <lastmod>2024-01-01</lastmod>
+  <priority>0.1</priority>
+</url>`;
+
+const getCssHiddenLinkSnippet = (url: string) => `<a href="${url}" style="position:absolute; left:-9999px; top:-9999px;" rel="nofollow">Important Data Feed</a>`;
+const getCssClassLinkSnippet = (url: string) => `<a href="${url}" class="spite-link" rel="nofollow">Hidden Archive</a>`;
+const cssClassStyleSnippet = `.spite-link {\n  position: absolute;\n  left: -9999px;\n}`;
+const getJsInjectionSnippet = (url: string) => `<div id="spite-container"></div>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Potentially add conditions here before injecting
+    const spiteLink = document.createElement('a');
+    spiteLink.href = "${url}";
+    spiteLink.innerHTML = "Diagnostic Data";
+    spiteLink.setAttribute('aria-hidden', 'true'); // If it's not for users
+    spiteLink.setAttribute('rel', 'nofollow'); // Good practice
+    spiteLink.style.opacity = '0.01'; // Make it unobtrusive
+    if(document.getElementById('spite-container')) {
+      document.getElementById('spite-container').appendChild(spiteLink);
+    }
+  });
+</script>`;
+
+const getExtremelyBasicLinkSnippet = (url: string) => `<a href="${url}" rel="nofollow noopener noreferrer" aria-hidden="true" tabindex="-1" style="opacity:0.01; position:absolute; left:-9999px; top:-9999px; font-size:1px; color:transparent;" title="Data Archive (Internal Use Only)">Internal Resources</a>`;
 
 export default function ManagedUrlsPage() {
   const { user } = useAuth();
@@ -135,32 +163,6 @@ export default function ManagedUrlsPage() {
     }
   }, [userTrapPath, intensity, theme, entryStealth, lureSpeed, user, TARPIT_BASE_URL]);
 
-  const simpleHtmlLinkSnippet = (path: string) => `<a href="${path}" title="Archival Data Access">Internal Data Archives</a>`;
-  const tinyHtmlLinkSnippet = (path: string) => `<a href="${path}" style="font-size:1px; color:transparent;" aria-hidden="true" tabindex="-1">.</a>`;
-  const sitemapEntrySnippet = (path: string) => `<url>
-  <loc>https://yourwebsite.com${path.startsWith('/') ? path : '/' + path}</loc>
-  <lastmod>2024-01-01</lastmod>
-  <priority>0.1</priority>
-</url>`;
-
-  const getCssHiddenLinkSnippet = (url: string) => `<a href="${url}" style="position:absolute; left:-9999px; top:-9999px;" rel="nofollow">Important Data Feed</a>`;
-  const getCssClassLinkSnippet = (url: string) => `<a href="${url}" class="spite-link" rel="nofollow">Hidden Archive</a>`;
-  const cssClassStyleSnippet = `.spite-link {\n  position: absolute;\n  left: -9999px;\n}`;
-  const getJsInjectionSnippet = (url: string) => `<div id="spite-container"></div>
-<script>
-  document.addEventListener('DOMContentLoaded', function() {
-    // Potentially add conditions here before injecting
-    const spiteLink = document.createElement('a');
-    spiteLink.href = "${url}";
-    spiteLink.innerHTML = "Diagnostic Data";
-    spiteLink.setAttribute('aria-hidden', 'true'); // If it's not for users
-    spiteLink.setAttribute('rel', 'nofollow'); // Good practice
-    spiteLink.style.opacity = '0.01'; // Make it unobtrusive
-    if(document.getElementById('spite-container')) {
-      document.getElementById('spite-container').appendChild(spiteLink);
-    }
-  });
-</script>`;
 
   return (
     <div className="space-y-8">
@@ -393,23 +395,37 @@ export default function ManagedUrlsPage() {
                 
                 <h3 className="text-lg font-semibold text-accent mt-6 mb-2">Easy Embedding Methods</h3>
                 <Accordion type="single" collapsible className="w-full">
-                  <AccordionItem value="embed-simple-html">
-                    <AccordionTrigger>Simple HTML Link (Basic)</AccordionTrigger>
+                  <AccordionItem value="embed-extremely-basic">
+                    <AccordionTrigger>Extremely Basic: Hidden HTML Link (Direct to SpiteSpiral)</AccordionTrigger>
                     <AccordionContent className="space-y-2 pt-2">
                        <p className="text-sm text-muted-foreground">
-                        The idea is to place an HTML link on your website pointing to your chosen "Trap Path" (e.g., <code className="bg-muted px-1 py-0.5 rounded text-xs">{userTrapPath}</code>).
-                        You then need to configure your server to make this path redirect to your *Generated SpiteSpiral URL* (from Step 2).
-                        If you're unsure how to set up redirects, please consult your web developer or hosting provider.
+                        This method directly links to your Generated SpiteSpiral URL (from Step 2 or your Managed URL list). It's simple to add to your HTML but makes the full SpiteSpiral URL visible in your site's source code. It includes many attributes to discourage good bots and hide it from users.
                       </p>
-                      <SnippetDisplay title="Visible HTML Link Example" snippet={simpleHtmlLinkSnippet(userTrapPath)} explanation={`Links to ${userTrapPath} on your site, which should then redirect to your generated SpiteSpiral URL.`} onCopy={handleCopy}/>
-                      <SnippetDisplay title="Tiny, Invisible HTML Link Example" snippet={tinyHtmlLinkSnippet(userTrapPath)} explanation={`A less visible link to ${userTrapPath} on your site, which redirects to SpiteSpiral.`} onCopy={handleCopy}/>
+                      <SnippetDisplay 
+                        title="Extremely Basic Hidden HTML Link" 
+                        snippet={getExtremelyBasicLinkSnippet(generatedUrl)} 
+                        explanation="Paste this directly into your website's HTML where you want the hidden link to appear, e.g., near the closing </body> tag."
+                        onCopy={handleCopy}
+                      />
+                    </AccordionContent>
+                  </AccordionItem>
+                  <AccordionItem value="embed-simple-html">
+                    <AccordionTrigger>Simple HTML Link (Requires Redirect/Proxy)</AccordionTrigger>
+                    <AccordionContent className="space-y-2 pt-2">
+                       <p className="text-sm text-muted-foreground">
+                        Place an HTML link on your website pointing to your chosen "Trap Path" (e.g., <code className="bg-muted px-1 py-0.5 rounded text-xs">{userTrapPath}</code>).
+                        You then need to configure your server to make this path redirect or proxy to your *Generated SpiteSpiral URL* (from Step 2 or your Managed URL list).
+                        If you're unsure how to set up redirects/proxies, please consult your web developer or hosting provider, or use the "Extremely Basic" method above.
+                      </p>
+                      <SnippetDisplay title="Visible HTML Link Example (to your Trap Path)" snippet={simpleHtmlLinkSnippet(userTrapPath)} explanation={`Links to ${userTrapPath} on your site, which should then redirect/proxy to your SpiteSpiral URL.`} onCopy={handleCopy}/>
+                      <SnippetDisplay title="Tiny, Invisible HTML Link Example (to your Trap Path)" snippet={tinyHtmlLinkSnippet(userTrapPath)} explanation={`A less visible link to ${userTrapPath} on your site, which redirects/proxies to SpiteSpiral.`} onCopy={handleCopy}/>
                     </AccordionContent>
                   </AccordionItem>
                   <AccordionItem value="embed-sitemap">
-                    <AccordionTrigger>sitemap.xml Entry</AccordionTrigger>
+                    <AccordionTrigger>sitemap.xml Entry (Requires Redirect/Proxy)</AccordionTrigger>
                     <AccordionContent className="space-y-2 pt-2">
-                      <p className="text-sm text-muted-foreground">Add an entry to your sitemap.xml file pointing to your chosen "Trap Path". Ensure this path is disallowed for good bots in `robots.txt`.</p>
-                      <SnippetDisplay title="sitemap.xml Entry Example" snippet={sitemapEntrySnippet(userTrapPath)} explanation={`Points to your site's path ${userTrapPath}, which should then redirect to SpiteSpiral.`} onCopy={handleCopy}/>
+                      <p className="text-sm text-muted-foreground">Add an entry to your sitemap.xml file pointing to your chosen "Trap Path". Ensure this path is disallowed for good bots in `robots.txt` and that it redirects/proxies to SpiteSpiral.</p>
+                      <SnippetDisplay title="sitemap.xml Entry Example (for your Trap Path)" snippet={sitemapEntrySnippet(userTrapPath)} explanation={`Points to your site's path ${userTrapPath}, which should then redirect/proxy to SpiteSpiral.`} onCopy={handleCopy}/>
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
@@ -417,7 +433,7 @@ export default function ManagedUrlsPage() {
                 <h3 className="text-lg font-semibold text-accent mt-6 mb-2">More Advanced Embedding Methods</h3>
                  <Accordion type="single" collapsible className="w-full">
                   <AccordionItem value="embed-css-hidden">
-                      <AccordionTrigger>CSS-Hidden Links</AccordionTrigger>
+                      <AccordionTrigger>CSS-Hidden Links (Direct to SpiteSpiral)</AccordionTrigger>
                       <AccordionContent className="space-y-2 pt-2">
                           <p className="text-sm text-muted-foreground">These links are present in HTML but invisible to users. Link directly to your "Generated SpiteSpiral URL" (from Step 2 or your Managed URL list).</p>
                           <SnippetDisplay title="Off-Screen Link (Inline Style)" snippet={getCssHiddenLinkSnippet(generatedUrl)} onCopy={handleCopy} />
@@ -426,14 +442,14 @@ export default function ManagedUrlsPage() {
                       </AccordionContent>
                   </AccordionItem>
                   <AccordionItem value="embed-js-injection">
-                      <AccordionTrigger>JavaScript Link Injection</AccordionTrigger>
+                      <AccordionTrigger>JavaScript Link Injection (Direct to SpiteSpiral)</AccordionTrigger>
                       <AccordionContent className="space-y-2 pt-2">
                           <p className="text-sm text-muted-foreground">Dynamically inject the link. May be missed by some less sophisticated scrapers. Link directly to your "Generated SpiteSpiral URL".</p>
                           <SnippetDisplay title="JS Link Injection Example" snippet={getJsInjectionSnippet(generatedUrl)} onCopy={handleCopy} />
                       </AccordionContent>
                   </AccordionItem>
                   <AccordionItem value="embed-server-side">
-                      <AccordionTrigger>Server-Side Conditional Redirection</AccordionTrigger>
+                      <AccordionTrigger>Server-Side Conditional Redirection (Direct to SpiteSpiral)</AccordionTrigger>
                       <AccordionContent className="space-y-2 pt-2">
                           <p className="text-sm text-muted-foreground">Identify suspicious bots on your server and redirect them to your SpiteSpiral URL. This is highly environment-specific and requires server-side configuration (e.g., Nginx, Apache, application middleware).</p>
                           <p className="text-xs text-muted-foreground">Example: If a bot trips a "bad behavior" threshold, your server could issue an HTTP 302 redirect to: <code className="bg-muted px-1 py-0.5 rounded text-xs text-accent break-all">{generatedUrl}</code>.</p>
