@@ -254,9 +254,11 @@ export default function ManagedUrlsPage() {
             <AccordionItem value="step-2-configure">
               <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">
                 Step 2: Configure Your SpiteSpiral Trap Settings (Advanced - Coming Soon)
-                 <span className="block text-xs text-muted-foreground font-normal mt-1">Current tarpits are modified Nepenthes tarpits that, while functional, do not support these features yet.</span>
               </AccordionTrigger>
               <AccordionContent className="space-y-6 pt-3">
+                <p className="text-sm text-muted-foreground font-normal mb-4 block">
+                  Current tarpits are modified Nepenthes tarpits that, while functional, do not support these features yet.
+                </p>
                 <p className="text-muted-foreground">
                   The following options demonstrate future capabilities for fine-tuning trap behavior. Currently, Managed URLs created above use default SpiteSpiral (Nepenthes-based) settings. The URL generated below is an example of how parameters *could* be used for future, more advanced trap types.
                 </p>
@@ -440,7 +442,7 @@ export default function ManagedUrlsPage() {
                 <h3 className="text-lg font-semibold text-accent mt-6 mb-2">More Advanced Embedding Methods</h3>
                  <Accordion type="single" collapsible className="w-full">
                   <AccordionItem value="embed-css-hidden-direct">
-                      <AccordionTrigger>CSS-Hidden Links (Direct to SpiteSpiral)</AccordionTrigger>
+                      <AccordionTrigger>CSS-Hidden Links (Alternative to Simplest, Direct to SpiteSpiral)</AccordionTrigger>
                       <AccordionContent className="space-y-2 pt-2">
                           <p className="text-sm text-muted-foreground">These links are present in HTML but made invisible to users using CSS. They link *directly* to your <span className="font-semibold">Generated SpiteSpiral URL</span>. This is an alternative to the "Simplest HTML Link" if you prefer using CSS classes for styling.</p>
                           <SnippetDisplay title="Link with CSS Class (Direct to SpiteSpiral)" snippet={getCssClassLinkSnippet(generatedUrl)} explanation={<>Uses a <span className="font-semibold">Generated SpiteSpiral URL</span>.</>} onCopy={handleCopy} />
