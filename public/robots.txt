@@ -1,0 +1,9 @@
+User-agent: Googlebot
+Disallow: /sneedsfeedandseed/
+
+User-agent: bingbot
+Disallow: /sneedsfeedandseed/
+
+User-agent: *
+Disallow: /sneedsfeedandseed/
+Disallow: /api/
