@@ -10,13 +10,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Link2 as LinkIcon, Copy, Settings, Code, CheckCircle, HelpCircle, Info, ShieldCheck } from 'lucide-react';
+import { Link2 as Link2Icon, Copy, Settings, Code, CheckCircle, HelpCircle, Info, ShieldCheck } from 'lucide-react'; // Changed LinkIcon to Link2Icon
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-// Import the components for creating and listing URLs
 import AddUrlForm from '@/components/managed-urls/AddUrlForm';
 import UrlList from '@/components/managed-urls/UrlList';
 
@@ -94,7 +93,7 @@ export default function ManagedUrlsPage() {
   const [userTrapPath, setUserTrapPath] = useState('/secret-data-feed/');
   const [intensity, setIntensity] = useState('medium');
   const [theme, setTheme] = useState('generic');
-  const [entryStealth, setEntryStealth] = useState('generic'); 
+  const [entryStealth, setEntryStealth] = useState('generic');
   const [lureSpeed, setLureSpeed] = useState('normal');
 
   const [robotsTxtSnippet, setRobotsTxtSnippet] = useState('');
@@ -167,7 +166,7 @@ export default function ManagedUrlsPage() {
     <div className="space-y-8">
       <header className="mb-10">
         <div className="flex items-center gap-3">
-          <LinkIcon className="h-10 w-10 text-primary" />
+          <Link2Icon className="h-10 w-10 text-primary" />
           <h1 className="text-4xl font-bold tracking-tight text-primary glitch-text">Activate Your SpiteSpiral Trap</h1>
         </div>
         <p className="text-muted-foreground mt-2 text-lg">
@@ -175,36 +174,29 @@ export default function ManagedUrlsPage() {
         </p>
       </header>
 
-      <Accordion type="single" collapsible className="w-full" defaultValue="create-manage-urls">
-        <AccordionItem value="create-manage-urls">
-          <AccordionTrigger className="text-2xl font-semibold text-accent hover:no-underline">
-            <div className="flex items-center gap-2">
-              <Settings className="h-7 w-7 text-accent" />
-              <span>Create & Manage Your Tarpit Instances</span>
-            </div>
-          </AccordionTrigger>
-          <AccordionContent className="pt-3">
-            <Card className="shadow-none border-0">
-              <CardHeader className="px-0 pt-0">
-                <CardDescription>
-                  Create named tarpit instances here. Each instance will have a unique SpiteSpiral URL that you can embed. Use the guide below for setup and best practices.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4 px-0 pb-0">
-                <AddUrlForm />
-                <UrlList />
-              </CardContent>
-            </Card>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
+      {/* Section 1: Create & Manage Your Tarpit Instances */}
+      <Card className="shadow-lg border-accent/20">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Settings className="h-7 w-7 text-accent" />
+            <CardTitle className="text-2xl text-accent">Create &amp; Manage Your Tarpit Instances</CardTitle>
+          </div>
+          <CardDescription>
+            Create named tarpit instances here. Each instance will have a unique SpiteSpiral URL that you can embed. Use the guide below for setup and best practices.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <AddUrlForm />
+          <UrlList />
+        </CardContent>
+      </Card>
 
       {/* Section 2: Setup & Embedding Guide */}
       <Card className="shadow-lg border-primary/20">
         <CardHeader>
            <div className="flex items-center gap-2">
             <Info className="h-7 w-7 text-accent" />
-            <CardTitle className="text-2xl text-accent">Setup & Embedding Guide</CardTitle>
+            <CardTitle className="text-2xl text-accent">Setup &amp; Embedding Guide</CardTitle>
           </div>
           <CardDescription>
             Follow these steps to effectively integrate SpiteSpiral and protect your website.
@@ -453,7 +445,7 @@ export default function ManagedUrlsPage() {
 
             {/* STEP 4: Final Checks */}
             <AccordionItem value="step-4-final">
-              <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">Step 4: Final Review & Go Live!</AccordionTrigger>
+              <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">Step 4: Final Review &amp; Go Live!</AccordionTrigger>
               <AccordionContent className="space-y-3 pt-3">
                  <p className="text-sm text-muted-foreground">Before you're done, quickly verify:</p>
                   <ul className="list-disc pl-5 space-y-1 text-sm text-foreground/80">
@@ -464,7 +456,7 @@ export default function ManagedUrlsPage() {
                   <p className="text-sm text-muted-foreground mt-3">You're all set! Unauthorized bots that ignore <code className="text-xs bg-muted p-0.5 rounded">robots.txt</code> and discover your link will now get caught in the SpiteSpiral. Our system will handle the rest.</p>
                   <Accordion type="single" collapsible className="w-full mt-4">
                       <AccordionItem value="best-practices">
-                        <AccordionTrigger className="text-sm text-accent hover:no-underline">View All Best Practices & Tips</AccordionTrigger>
+                        <AccordionTrigger className="text-sm text-accent hover:no-underline">View All Best Practices &amp; Tips</AccordionTrigger>
                         <AccordionContent className="text-xs pt-2 space-y-2 text-muted-foreground">
                             <ul className="list-disc pl-4 space-y-1">
                                 <li><strong>Double-Check <code className="text-xs">robots.txt</code>:</strong> Ensure it's correctly disallowing your SpiteSpiral path for good bots and allowing everything else they need. Test it!</li>
