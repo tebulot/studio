@@ -8,7 +8,7 @@ import * as z from "zod";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Copy, Edit3, Loader2, Save, Settings2, HelpCircle, ShieldCheck, Code as CodeIcon } from "lucide-react"; // Added Settings2, HelpCircle, CodeIcon
+import { Trash2, Copy, Edit3, Loader2, Save, Settings2, HelpCircle, Code as CodeIcon } from "lucide-react"; // Added Settings2, HelpCircle, CodeIcon
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
@@ -48,7 +48,7 @@ const editFormSchema = z.object({
 type EditFormData = z.infer<typeof editFormSchema>;
 
 
-// SnippetDisplay component definition (moved from managed-urls/page.tsx)
+// SnippetDisplay component definition
 const SnippetDisplay = ({ title, snippet, explanation, onCopy }: { title: string, snippet: string, explanation?: React.ReactNode, onCopy: (text: string, type: string) => void }) => {
   return (
     <div className="space-y-2 mb-4">
@@ -67,7 +67,7 @@ const SnippetDisplay = ({ title, snippet, explanation, onCopy }: { title: string
   );
 };
 
-// Trap Configuration Options (moved from managed-urls/page.tsx)
+// Trap Configuration Options
 const intensityOptions = [
   { value: 'low', label: 'Low', description: "Slower introduction of delays, slightly less dense linking." },
   { value: 'medium', label: 'Medium (Recommended)', description: "Balanced approach." },
@@ -78,7 +78,6 @@ const intensityOptions = [
 const themeOptions = [
   { value: 'generic', label: 'Generic (Default)', description: "A broad mix of plausible-sounding text." },
   { value: 'tech', label: 'Generic Tech', description: "Content mimicking the tech industry." },
-  // Add other themes as needed
 ];
 
 const entryStealthOptions = [
@@ -91,10 +90,10 @@ const lureSpeedOptions = [
   { value: 'fast_intro', label: 'Slightly Faster Initial Page', description: "Minimal delay on the first page to 'hook' bots." },
 ];
 
-// Snippet generating functions (moved and adapted from managed-urls/page.tsx)
+// Snippet generating functions
 const robotsTxtTemplate = (yourSiteTrapPath: string) => `# Add this to your website's robots.txt file:
 # Replace '${yourSiteTrapPath}' with the actual path you configure on your site
-# that will redirect/proxy to the SpiteSpiral URL.
+# that will redirect to the SpiteSpiral URL.
 
 User-agent: Googlebot
 Disallow: ${yourSiteTrapPath}
@@ -153,11 +152,9 @@ export default function UrlList() {
   const [currentUrlToDelete, setCurrentUrlToDelete] = useState<ManagedUrlFirestoreData | null>(null);
   const [isDeleteLoading, setIsDeleteLoading] = useState(false);
 
-  // For the new setup guide dialog
   const [isSetupGuideOpen, setIsSetupGuideOpen] = useState(false);
   const [currentUrlForSetupGuide, setCurrentUrlForSetupGuide] = useState<ManagedUrlFirestoreData | null>(null);
   
-  // State for the (disabled) advanced config example within the setup guide dialog
   const [exampleIntensity, setExampleIntensity] = useState('medium');
   const [exampleTheme, setExampleTheme] = useState('generic');
   const [exampleEntryStealth, setExampleEntryStealth] = useState('generic');
@@ -263,7 +260,6 @@ export default function UrlList() {
 
   const handleSetupGuideOpen = (url: ManagedUrlFirestoreData) => {
     setCurrentUrlForSetupGuide(url);
-    // Reset example config state for the dialog
     setExampleIntensity('medium');
     setExampleTheme('generic');
     setExampleEntryStealth('generic');
@@ -274,10 +270,9 @@ export default function UrlList() {
   const generatedExampleAdvancedUrl = currentUrlForSetupGuide ? (() => {
     const base = currentUrlForSetupGuide.fullUrl;
     const params = new URLSearchParams();
-    // Only add params if they differ from default, to keep URL clean
     if (exampleIntensity !== 'medium') params.append('intensity', exampleIntensity);
     if (exampleTheme !== 'generic') params.append('theme', exampleTheme);
-    if (exampleEntryStealth === 'deep') params.append('stealth', 'on'); // 'on' if deep, not present if generic
+    if (exampleEntryStealth === 'deep') params.append('stealth', 'on'); 
     if (exampleLureSpeed !== 'normal') params.append('lure_speed', exampleLureSpeed);
     
     const queryString = params.toString();
@@ -301,7 +296,7 @@ export default function UrlList() {
     return <p className="text-muted-foreground text-center py-4">No URLs configured. Add one!</p>;
   }
 
-  const USER_TRAP_PATH_PLACEHOLDER = "/your-chosen-path-for-this-trap/";
+  const USER_TRAP_PATH_PLACEHOLDER = "/your-chosen-trap-path/";
 
   return (
     <>
@@ -358,7 +353,6 @@ export default function UrlList() {
           <ScrollArea className="max-h-[70vh]">
             <div className="p-6">
             <Accordion type="single" collapsible className="w-full">
-              {/* STEP 1: robots.txt */}
               <AccordionItem value="step-1-robots">
                 <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">Step 1: Safeguard Your SEO with `robots.txt`</AccordionTrigger>
                 <AccordionContent className="space-y-4 pt-3">
@@ -373,7 +367,7 @@ export default function UrlList() {
                       readOnly
                       className="mt-1 bg-input border-border focus:ring-primary cursor-not-allowed"
                     />
-                    <p className="text-xs text-muted-foreground mt-1">This is a <span className="font-semibold">placeholder</span>. On your website, you will choose a unique path (e.g., <code className="text-xs">/internal-data-archive/</code>) and configure your server to redirect or proxy requests from this path to your SpiteSpiral URL: <code className="text-xs bg-muted p-0.5 rounded text-accent break-all">{currentUrlForSetupGuide?.fullUrl}</code>. Then, use your chosen path in the `robots.txt` snippet below.</p>
+                    <p className="text-xs text-muted-foreground mt-1">This is a <span className="font-semibold">placeholder</span>. On your website, you will choose a unique path (e.g., <code className="text-xs">/internal-data-archive/</code>) and configure your server to <strong className="text-accent">redirect</strong> requests from this path to your SpiteSpiral URL: <code className="text-xs bg-muted p-0.5 rounded text-accent break-all">{currentUrlForSetupGuide?.fullUrl}</code>. Then, use your chosen path in the `robots.txt` snippet below.</p>
                   </div>
                   <div>
                     <Label className="text-foreground/80 font-semibold">Add to Your `robots.txt`</Label>
@@ -398,13 +392,12 @@ export default function UrlList() {
                 </AccordionContent>
               </AccordionItem>
 
-              {/* STEP 2: Configure Trap (Advanced) */}
               <AccordionItem value="step-2-configure">
                 <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">Step 2: Advanced Trap Settings (Informational)</AccordionTrigger>
                 <AccordionContent className="space-y-6 pt-3">
-                   <p className="text-sm text-muted-foreground font-normal mb-4 block">
+                  <span className="text-sm text-muted-foreground font-normal mb-4 block">
                     The current Managed URL (<code className="text-xs bg-muted p-0.5 rounded text-accent break-all">{currentUrlForSetupGuide?.fullUrl}</code>) is a SpiteSpiral (Nepenthes-based) tarpit instance. These use optimized default settings and do not currently support the advanced parameters below.
-                  </p>
+                  </span>
                   <p className="text-muted-foreground">
                     The following options demonstrate future capabilities for fine-tuning newer types of traps. The URL generated below is an *example* of how parameters *could* be appended to your current URL for such future trap types.
                   </p>
@@ -447,12 +440,11 @@ export default function UrlList() {
                 </AccordionContent>
               </AccordionItem>
 
-              {/* STEP 3: Embedding Strategies */}
               <AccordionItem value="step-3-embed">
                 <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">Step 3: Place the Trap Link on Your Site</AccordionTrigger>
                 <AccordionContent className="space-y-4 pt-3">
                   <p className="text-muted-foreground">
-                    Link to your SpiteSpiral service. You'll either link *directly* to this SpiteSpiral URL (<code className="text-xs bg-muted p-0.5 rounded text-accent break-all">{currentUrlForSetupGuide?.fullUrl}</code>) OR link to your chosen "Trap Path" (e.g., <code className="bg-muted px-1 py-0.5 rounded text-xs">{USER_TRAP_PATH_PLACEHOLDER}</code> from Step 1) and then configure your server to redirect/proxy that path to this SpiteSpiral URL.
+                    You can link *directly* to this SpiteSpiral URL (<code className="text-xs bg-muted p-0.5 rounded text-accent break-all">{currentUrlForSetupGuide?.fullUrl}</code>) or, for a cleaner appearance on your site, link to a path you choose on your domain (e.g., <code className="bg-muted px-1 py-0.5 rounded text-xs">{USER_TRAP_PATH_PLACEHOLDER}</code>) and then configure your server to <strong className="text-accent">redirect</strong> requests from this path to your SpiteSpiral URL. Redirecting is generally recommended over proxying to avoid adding load to your own server.
                   </p>
                   
                   <h3 className="text-lg font-semibold text-accent mt-6 mb-2">Easy Embedding Methods</h3>
@@ -465,18 +457,18 @@ export default function UrlList() {
                       </AccordionContent>
                     </AccordionItem>
                     <AccordionItem value="embed-standard-html-redirect">
-                      <AccordionTrigger>Standard: HTML Link on Your Site (Requires Redirect/Proxy)</AccordionTrigger>
+                      <AccordionTrigger>Standard: HTML Link on Your Site (Requires Redirect)</AccordionTrigger>
                       <AccordionContent className="space-y-2 pt-2">
-                        <p className="text-sm text-muted-foreground">Place an HTML link on your site pointing to your chosen "Trap Path" (e.g., <code className="bg-muted px-1 py-0.5 rounded text-xs">{USER_TRAP_PATH_PLACEHOLDER}</code>). Your server *must* then redirect/proxy this path to <span className="font-semibold text-accent">this SpiteSpiral URL</span>. Hides the SpiteSpiral URL from source.</p>
-                        <SnippetDisplay title="Visible HTML Link (to your Trap Path)" snippet={simpleHtmlLinkSnippet(USER_TRAP_PATH_PLACEHOLDER)} explanation={<>Links to your site's <code className="bg-muted px-1 py-0.5 rounded text-xs">{USER_TRAP_PATH_PLACEHOLDER}</code>, which redirects/proxies to <strong className="text-accent">this SpiteSpiral URL</strong>.</>} onCopy={handleCopy}/>
-                        <SnippetDisplay title="Tiny, Invisible HTML Link (to your Trap Path)" snippet={tinyHtmlLinkSnippet(USER_TRAP_PATH_PLACEHOLDER)} explanation={<>A less visible link to your site's <code className="bg-muted px-1 py-0.5 rounded text-xs">{USER_TRAP_PATH_PLACEHOLDER}</code>, redirecting/proxying to <strong className="text-accent">this SpiteSpiral URL</strong>.</>} onCopy={handleCopy}/>
+                        <p className="text-sm text-muted-foreground">Place an HTML link on your site pointing to your chosen "Trap Path" (e.g., <code className="bg-muted px-1 py-0.5 rounded text-xs">{USER_TRAP_PATH_PLACEHOLDER}</code>). Your server *must* then <strong className="text-accent">redirect</strong> (e.g., with a 301 or 302 status code) requests from this path to <span className="font-semibold text-accent">this SpiteSpiral URL</span>. This method hides the direct SpiteSpiral URL from your site's source code. While proxying is also an option, redirecting is preferred to minimize load on your server.</p>
+                        <SnippetDisplay title="Visible HTML Link (to your Trap Path)" snippet={simpleHtmlLinkSnippet(USER_TRAP_PATH_PLACEHOLDER)} explanation={<>Links to your site's <code className="bg-muted px-1 py-0.5 rounded text-xs">{USER_TRAP_PATH_PLACEHOLDER}</code>, which <strong className="text-accent">redirects</strong> to <strong className="text-accent">this SpiteSpiral URL</strong>.</>} onCopy={handleCopy}/>
+                        <SnippetDisplay title="Tiny, Invisible HTML Link (to your Trap Path)" snippet={tinyHtmlLinkSnippet(USER_TRAP_PATH_PLACEHOLDER)} explanation={<>A less visible link to your site's <code className="bg-muted px-1 py-0.5 rounded text-xs">{USER_TRAP_PATH_PLACEHOLDER}</code>, <strong className="text-accent">redirecting</strong> to <strong className="text-accent">this SpiteSpiral URL</strong>.</>} onCopy={handleCopy}/>
                       </AccordionContent>
                     </AccordionItem>
                     <AccordionItem value="embed-sitemap-redirect">
-                      <AccordionTrigger>Standard: `sitemap.xml` Entry (Requires Redirect/Proxy)</AccordionTrigger>
+                      <AccordionTrigger>Standard: `sitemap.xml` Entry (Requires Redirect)</AccordionTrigger>
                       <AccordionContent className="space-y-2 pt-2">
-                        <p className="text-sm text-muted-foreground">Add to <code className="bg-muted px-1 py-0.5 rounded text-xs">sitemap.xml</code>, pointing to your "Trap Path" (e.g., <code className="bg-muted px-1 py-0.5 rounded text-xs">{USER_TRAP_PATH_PLACEHOLDER}</code>). Ensure this path is disallowed in `robots.txt` and redirects/proxies to <span className="font-semibold text-accent">this SpiteSpiral URL</span>.</p>
-                        <SnippetDisplay title="sitemap.xml Entry (for your Trap Path)" snippet={sitemapEntrySnippet(USER_TRAP_PATH_PLACEHOLDER)} explanation={<>Points to your site's <code className="bg-muted px-1 py-0.5 rounded text-xs">{USER_TRAP_PATH_PLACEHOLDER}</code>, which redirects/proxies to <strong className="text-accent">this SpiteSpiral URL</strong>.</>} onCopy={handleCopy}/>
+                        <p className="text-sm text-muted-foreground">Add to <code className="bg-muted px-1 py-0.5 rounded text-xs">sitemap.xml</code>, pointing to your "Trap Path" (e.g., <code className="bg-muted px-1 py-0.5 rounded text-xs">{USER_TRAP_PATH_PLACEHOLDER}</code>). Ensure this path is disallowed in `robots.txt` and your server <strong className="text-accent">redirects</strong> requests from this path to <span className="font-semibold text-accent">this SpiteSpiral URL</span>.</p>
+                        <SnippetDisplay title="sitemap.xml Entry (for your Trap Path)" snippet={sitemapEntrySnippet(USER_TRAP_PATH_PLACEHOLDER)} explanation={<>Points to your site's <code className="bg-muted px-1 py-0.5 rounded text-xs">{USER_TRAP_PATH_PLACEHOLDER}</code>, which <strong className="text-accent">redirects</strong> to <strong className="text-accent">this SpiteSpiral URL</strong>.</>} onCopy={handleCopy}/>
                       </AccordionContent>
                     </AccordionItem>
                   </Accordion>
@@ -484,7 +476,7 @@ export default function UrlList() {
                   <h3 className="text-lg font-semibold text-accent mt-6 mb-2">More Advanced Embedding Methods</h3>
                   <Accordion type="single" collapsible className="w-full">
                     <AccordionItem value="embed-css-hidden-direct">
-                        <AccordionTrigger>CSS-Hidden Links (Alternative, Direct to SpiteSpiral)</AccordionTrigger>
+                        <AccordionTrigger>CSS-Hidden Links (Alternative to Simplest, Direct to SpiteSpiral)</AccordionTrigger>
                         <AccordionContent className="space-y-2 pt-2">
                             <p className="text-sm text-muted-foreground">Present in HTML but CSS-hidden. Links *directly* to <span className="font-semibold text-accent">this SpiteSpiral URL</span>.</p>
                             <SnippetDisplay title="Link with CSS Class (Direct to SpiteSpiral)" snippet={getCssClassLinkSnippet(currentUrlForSetupGuide?.fullUrl || '')} explanation={<>Uses <strong className="text-accent">this SpiteSpiral URL</strong>.</>} onCopy={handleCopy} />
@@ -501,22 +493,22 @@ export default function UrlList() {
                     <AccordionItem value="embed-server-side-direct">
                         <AccordionTrigger>Server-Side Conditional Redirection (Most Powerful)</AccordionTrigger>
                         <AccordionContent className="space-y-2 pt-2">
-                            <p className="text-sm text-muted-foreground">Identify suspicious bots on your server. Once identified, your server issues an HTTP redirect, sending the bot *directly* to <span className="font-semibold text-accent">this SpiteSpiral URL</span> (<code className="text-xs bg-muted p-0.5 rounded text-accent break-all">{currentUrlForSetupGuide?.fullUrl}</code>).</p>
-                            <p className="text-sm text-muted-foreground mt-2"><span className="font-semibold text-primary">Future Enhancement with API:</span> The upcoming "API for Your Individual Tarpit Data" could allow your server to log suspicious IPs/User-Agents against this specific tarpit instance *before* redirecting, providing richer data in your SpiteSpiral dashboard.</p>
+                            <p className="text-sm text-muted-foreground">Identify suspicious bots on your server (e.g., based on IP reputation, user-agent patterns, or unusual behavior). Once identified, your server issues an HTTP <strong className="text-accent">redirect</strong> (e.g., 302 Found), sending the bot *directly* to <span className="font-semibold text-accent">this SpiteSpiral URL</span> (<code className="text-xs bg-muted p-0.5 rounded text-accent break-all">{currentUrlForSetupGuide?.fullUrl}</code>). This method is highly effective and avoids loading your own server if the bot is sent to SpiteSpiral early.</p>
+                            <p className="text-sm text-muted-foreground mt-2"><span className="font-semibold text-primary">Future Enhancement with API:</span> The upcoming "API for Your Individual Tarpit Data" (see "API Access" section) could allow your server to log suspicious IPs/User-Agents against this specific tarpit instance *before* redirecting. This would provide richer, contextualized data in your SpiteSpiral dashboard related to the bots you've actively diverted.</p>
+                            <p className="text-sm text-muted-foreground mt-2">Implementation is environment-specific (e.g., using `.htaccess` on Apache, Nginx configuration, or middleware in your web application framework).</p>
                         </AccordionContent>
                     </AccordionItem>
                   </Accordion>
                 </AccordionContent>
               </AccordionItem>
 
-              {/* STEP 4: Final Checks */}
               <AccordionItem value="step-4-final">
                 <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">Step 4: Final Review &amp; Go Live!</AccordionTrigger>
                 <AccordionContent className="space-y-3 pt-3">
                   <p className="text-sm text-muted-foreground">Quickly verify:</p>
                   <ul className="list-disc pl-5 space-y-1 text-sm text-foreground/80">
                     <li>Your `robots.txt` is updated (Step 1), disallowing your chosen path (e.g., <code className="text-xs bg-muted p-0.5 rounded">{USER_TRAP_PATH_PLACEHOLDER}</code>) for good bots.</li>
-                    <li>A link to <span className="font-semibold text-accent">this SpiteSpiral URL</span> (directly or via your site's path) is live on your website (Step 3).</li>
+                    <li>A link to <span className="font-semibold text-accent">this SpiteSpiral URL</span> (either directly, or via your site's path which <strong className="text-accent">redirects</strong> to it) is live on your website (Step 3).</li>
                   </ul>
                   <p className="text-sm text-muted-foreground mt-3">You're all set! Unauthorized bots finding this trap will get caught. Check your SpiteSpiral Dashboard for activity.</p>
                 </AccordionContent>
@@ -532,8 +524,7 @@ export default function UrlList() {
         </DialogContent>
       </Dialog>
 
-
-      {/* Edit Dialog (remains mostly unchanged) */}
+      {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-[425px] bg-card border-primary/30">
           <DialogHeader>
@@ -557,7 +548,7 @@ export default function UrlList() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Alert Dialog (remains unchanged) */}
+      {/* Delete Alert Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent className="bg-card border-destructive/50">
           <AlertDialogHeader>
@@ -577,3 +568,5 @@ export default function UrlList() {
     </>
   );
 }
+
+    
