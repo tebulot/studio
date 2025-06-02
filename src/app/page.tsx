@@ -181,6 +181,15 @@ export default function HomePage() {
                   <li><strong>Proactive Data Devaluation:</strong> By feeding AI scrapers our LLM-generated noise, we aim to degrade the quality of their training data, making their efforts not only costly but counterproductive.</li>
                   <li><strong>SEO-Conscious Design:</strong> Implemented correctly (we&apos;ll show you how!), SpiteSpiral targets *only* misbehaving bots, leaving your standing with legitimate search engines like Google unharmed.</li>
               </ul>
+              <div className="mt-4 pt-3 border-t border-border/50">
+                <h4 className="text-lg font-semibold text-primary mb-2">Beyond the Trap: Proactive Defense with API Access <span className="text-xs text-accent font-normal">(Coming Soon!)</span></h4>
+                <p className="text-foreground/80 mb-2">SpiteSpiral is evolving. Soon, you&apos;ll be able to:</p>
+                <ul className="list-disc pl-5 space-y-1 text-foreground/80">
+                  <li><strong>Access Your Tarpit Data Programmatically:</strong> Integrate detailed logs and statistics from your *own* tarpit instances directly into your security workflows.</li>
+                  <li><strong>Leverage Global Network Intelligence:</strong> Gain API access to anonymized, aggregated threat data from the *entire* SpiteSpiral network. Use this to proactively block known malicious actors *before* they even reach your site.</li>
+                </ul>
+                <p className="text-foreground/80 mt-2">This creates a powerful feedback loop: actively block known threats identified by the network, and use your SpiteSpiral tarpit to catch, analyze, and contribute new threats back to the collective intelligence. Stay ahead of the curve.</p>
+              </div>
             </CardContent>
           </Card>
 
@@ -238,8 +247,6 @@ export default function HomePage() {
           </Card>
         </div>
       </div>
-
-      {/* Demo Tracking Pixel Removed */}
 
       <footer className="py-6 md:px-8 md:py-0 border-t border-primary/10 bg-card/50 relative z-20">
         <div className="container flex flex-col items-center justify-center gap-2 md:h-20 text-center">
