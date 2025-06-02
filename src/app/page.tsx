@@ -106,7 +106,7 @@ export default function HomePage() {
   }, []);
 
   return (
-    <div className="relative flex flex-col items-center justify-center min-h-screen bg-background text-foreground font-mono p-8 selection:bg-primary selection:text-primary-foreground">
+    <div className="relative flex flex-col items-center justify-center min-h-screen bg-background text-foreground font-mono p-4 sm:p-6 md:p-8 selection:bg-primary selection:text-primary-foreground">
       {isMounted && (
           <div className="fixed inset-0 overflow-hidden z-0 flex items-center justify-center">
             <BrandLogoIcon
