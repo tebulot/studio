@@ -101,12 +101,12 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
           </Sidebar>
           {/* SidebarInset should not have its own opaque background */}
           <SidebarInset>
-            <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 border-b bg-background/80 backdrop-blur-sm px-4 md:px-6 md:hidden">
-              <NextLink href="/" className="flex items-center gap-2 text-lg font-semibold md:text-base">
-                <BrandLogoIcon className="h-8 w-8 text-primary" isPriority />
-                <span className="glitch-text text-primary">SpiteSpiral</span>
+            <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 border-b bg-background/80 backdrop-blur-sm px-4 md:hidden">
+              <NextLink href="/" className="flex items-center gap-2 text-base font-semibold min-w-0">
+                <BrandLogoIcon className="h-8 w-8 text-primary flex-shrink-0" isPriority />
+                <span className="glitch-text text-primary truncate">SpiteSpiral</span>
               </NextLink>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-shrink-0">
                 <BackgroundAnimationToggle />
                 <SidebarTrigger asChild>
                    <Button variant="outline" size="icon" className="shrink-0 md:hidden border-primary text-primary hover:bg-primary/10">
