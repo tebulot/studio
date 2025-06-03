@@ -8,9 +8,8 @@ import * as z from "zod";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Copy, Edit3, Loader2, Save, Settings2, HelpCircle, Code as CodeIcon } from "lucide-react"; // Added Settings2, HelpCircle, CodeIcon
+import { Trash2, Copy, Edit3, Loader2, Save, Settings2, HelpCircle, Code as CodeIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
@@ -26,6 +25,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { ScrollArea } from '@/components/ui/scroll-area'; // Keep for dialog if needed
 
 interface ManagedUrlFirestoreData {
   id: string;
@@ -300,44 +300,42 @@ export default function UrlList() {
 
   return (
     <>
-      <ScrollArea className="h-[250px] -mx-6 px-6">
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-          {urls.map((url) => (
-            <Card key={url.id} className="flex flex-col justify-between border-border hover:border-primary/50 transition-colors">
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <CardTitle className="text-lg text-primary break-all">{url.name}</CardTitle>
-                  <Badge variant={url.status === 'active' ? 'default' : 'secondary'} className={url.status === 'active' ? 'bg-accent text-accent-foreground' : 'bg-muted text-muted-foreground'}>
-                    {url.status}
-                  </Badge>
-                </div>
-                <CardDescription className="text-muted-foreground/80 pt-1">
-                  {url.description || "No description."}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex-grow">
-                <p className="text-xs text-muted-foreground">Instance ID: {url.instanceId || "N/A"}</p>
-                <p className="text-sm text-foreground/90 break-all mt-1">
-                  <span className="font-semibold text-muted-foreground">Full URL: </span>
-                  <a href={url.fullUrl} target="_blank" rel="noopener noreferrer" className="hover:underline text-accent">{url.fullUrl}</a>
-                </p>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Created: {url.createdAt ? new Date(url.createdAt.toDate()).toLocaleDateString() : 'N/A'}
-                  {url.updatedAt && (<span className="ml-2">| Updated: {new Date(url.updatedAt.toDate()).toLocaleDateString()}</span>)}
-                </p>
-              </CardContent>
-              <CardFooter className="flex justify-end gap-2 border-t border-border pt-4">
-                <Button variant="outline" size="sm" title="Setup & Embedding Guide" onClick={() => handleSetupGuideOpen(url)} className="text-primary border-primary hover:bg-primary/10 hover:text-primary-foreground">
-                  <Settings2 className="mr-2 h-4 w-4" /> Setup Guide
-                </Button>
-                <Button variant="ghost" size="icon" onClick={() => handleCopy(url.fullUrl, "URL")} title="Copy URL" className="text-muted-foreground hover:text-primary"><Copy className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" title="Edit URL" onClick={() => handleEditOpen(url)} className="text-muted-foreground hover:text-accent"><Edit3 className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" title="Delete URL" onClick={() => handleDeleteOpen(url)} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
-      </ScrollArea>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+        {urls.map((url) => (
+          <Card key={url.id} className="flex flex-col justify-between border-border hover:border-primary/50 transition-colors">
+            <CardHeader>
+              <div className="flex justify-between items-start">
+                <CardTitle className="text-lg text-primary break-all">{url.name}</CardTitle>
+                <Badge variant={url.status === 'active' ? 'default' : 'secondary'} className={url.status === 'active' ? 'bg-accent text-accent-foreground' : 'bg-muted text-muted-foreground'}>
+                  {url.status}
+                </Badge>
+              </div>
+              <CardDescription className="text-muted-foreground/80 pt-1">
+                {url.description || "No description."}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex-grow">
+              <p className="text-xs text-muted-foreground">Instance ID: {url.instanceId || "N/A"}</p>
+              <p className="text-sm text-foreground/90 break-all mt-1">
+                <span className="font-semibold text-muted-foreground">Full URL: </span>
+                <a href={url.fullUrl} target="_blank" rel="noopener noreferrer" className="hover:underline text-accent">{url.fullUrl}</a>
+              </p>
+              <p className="text-xs text-muted-foreground mt-2">
+                Created: {url.createdAt ? new Date(url.createdAt.toDate()).toLocaleDateString() : 'N/A'}
+                {url.updatedAt && (<span className="ml-2">| Updated: {new Date(url.updatedAt.toDate()).toLocaleDateString()}</span>)}
+              </p>
+            </CardContent>
+            <CardFooter className="flex justify-end gap-2 border-t border-border pt-4">
+              <Button variant="outline" size="sm" title="Setup & Embedding Guide" onClick={() => handleSetupGuideOpen(url)} className="text-primary border-primary hover:bg-primary/10 hover:text-primary-foreground">
+                <Settings2 className="mr-2 h-4 w-4" /> Setup Guide
+              </Button>
+              <Button variant="ghost" size="icon" onClick={() => handleCopy(url.fullUrl, "URL")} title="Copy URL" className="text-muted-foreground hover:text-primary"><Copy className="h-4 w-4" /></Button>
+              <Button variant="ghost" size="icon" title="Edit URL" onClick={() => handleEditOpen(url)} className="text-muted-foreground hover:text-accent"><Edit3 className="h-4 w-4" /></Button>
+              <Button variant="ghost" size="icon" title="Delete URL" onClick={() => handleDeleteOpen(url)} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
+            </CardFooter>
+          </Card>
+        ))}
+      </div>
 
       {/* Setup Guide Dialog */}
       <Dialog open={isSetupGuideOpen} onOpenChange={setIsSetupGuideOpen}>
@@ -394,10 +392,10 @@ export default function UrlList() {
 
               <AccordionItem value="step-2-configure">
                 <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">Step 2: Advanced Trap Settings (Informational)</AccordionTrigger>
-                <AccordionContent className="space-y-6 pt-3">
-                  <span className="text-sm text-muted-foreground font-normal mb-4 block">
-                    The current Managed URL (<code className="text-xs bg-muted p-0.5 rounded text-accent break-all">{currentUrlForSetupGuide?.fullUrl}</code>) is a SpiteSpiral (Nepenthes-based) tarpit instance. These use optimized default settings and do not currently support the advanced parameters below.
-                  </span>
+                 <AccordionContent className="space-y-6 pt-3">
+                   <span className="text-sm text-muted-foreground font-normal mb-4 block">
+                      Current tarpits are modified Nepenthes tarpits that, while functional, do not support these features yet.
+                   </span>
                   <p className="text-muted-foreground">
                     The following options demonstrate future capabilities for fine-tuning newer types of traps. The URL generated below is an *example* of how parameters *could* be appended to your current URL for such future trap types.
                   </p>
@@ -441,31 +439,31 @@ export default function UrlList() {
               </AccordionItem>
 
               <AccordionItem value="step-3-embed">
-                <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">Step 3: Place the Trap Link on Your Site</AccordionTrigger>
+                <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">Step 3: Embedding Strategies</AccordionTrigger>
                 <AccordionContent className="space-y-4 pt-3">
                   <p className="text-muted-foreground">
-                    You can link *directly* to this SpiteSpiral URL (<code className="text-xs bg-muted p-0.5 rounded text-accent break-all">{currentUrlForSetupGuide?.fullUrl}</code>) or, for a cleaner appearance on your site, link to a path you choose on your domain (e.g., <code className="bg-muted px-1 py-0.5 rounded text-xs">{USER_TRAP_PATH_PLACEHOLDER}</code>) and then configure your server to <strong className="text-accent">redirect</strong> requests from this path to your SpiteSpiral URL. Redirecting is generally recommended over proxying to avoid adding load to your own server.
+                    Choose a method to place the SpiteSpiral link on your site. You can link *directly* to your SpiteSpiral URL (<code className="text-xs bg-muted p-0.5 rounded text-accent break-all">{currentUrlForSetupGuide?.fullUrl}</code>) or use a path on your domain (e.g., <code className="bg-muted px-1 py-0.5 rounded text-xs">{USER_TRAP_PATH_PLACEHOLDER}</code>) that <strong className="text-accent">redirects</strong> to it. Direct linking or redirects are preferred to avoid load on your server.
                   </p>
                   
                   <h3 className="text-lg font-semibold text-accent mt-6 mb-2">Easy Embedding Methods</h3>
                   <Accordion type="single" collapsible className="w-full">
                     <AccordionItem value="embed-simplest-html-direct">
-                      <AccordionTrigger>Simplest: Hidden HTML Link (Direct to SpiteSpiral)</AccordionTrigger>
+                      <AccordionTrigger>Simplest HTML Link (Direct to SpiteSpiral)</AccordionTrigger>
                       <AccordionContent className="space-y-2 pt-2">
                         <p className="text-sm text-muted-foreground">Easiest method. Paste this HTML snippet into your website (e.g., footer). Links *directly* to <span className="font-semibold text-accent">this SpiteSpiral URL</span>. Invisible to users.</p>
                         <SnippetDisplay title="Simplest Hidden HTML Link (Direct to SpiteSpiral)" snippet={getExtremelyBasicLinkSnippet(currentUrlForSetupGuide?.fullUrl || '')} explanation={<>Uses <strong className="text-accent">this specific SpiteSpiral URL</strong>.</>} onCopy={handleCopy} />
                       </AccordionContent>
                     </AccordionItem>
                     <AccordionItem value="embed-standard-html-redirect">
-                      <AccordionTrigger>Standard: HTML Link on Your Site (Requires Redirect)</AccordionTrigger>
+                      <AccordionTrigger>HTML Link on Your Site (Requires Redirect)</AccordionTrigger>
                       <AccordionContent className="space-y-2 pt-2">
-                        <p className="text-sm text-muted-foreground">Place an HTML link on your site pointing to your chosen "Trap Path" (e.g., <code className="bg-muted px-1 py-0.5 rounded text-xs">{USER_TRAP_PATH_PLACEHOLDER}</code>). Your server *must* then <strong className="text-accent">redirect</strong> (e.g., with a 301 or 302 status code) requests from this path to <span className="font-semibold text-accent">this SpiteSpiral URL</span>. This method hides the direct SpiteSpiral URL from your site's source code. While proxying is also an option, redirecting is preferred to minimize load on your server.</p>
+                        <p className="text-sm text-muted-foreground">Place an HTML link on your site pointing to your chosen "Trap Path" (e.g., <code className="bg-muted px-1 py-0.5 rounded text-xs">{USER_TRAP_PATH_PLACEHOLDER}</code>). Your server *must* then <strong className="text-accent">redirect</strong> (e.g., with a 301 or 302 status code) requests from this path to <span className="font-semibold text-accent">this SpiteSpiral URL</span>. This method hides the direct SpiteSpiral URL from your site's source code and is generally recommended over proxying.</p>
                         <SnippetDisplay title="Visible HTML Link (to your Trap Path)" snippet={simpleHtmlLinkSnippet(USER_TRAP_PATH_PLACEHOLDER)} explanation={<>Links to your site's <code className="bg-muted px-1 py-0.5 rounded text-xs">{USER_TRAP_PATH_PLACEHOLDER}</code>, which <strong className="text-accent">redirects</strong> to <strong className="text-accent">this SpiteSpiral URL</strong>.</>} onCopy={handleCopy}/>
                         <SnippetDisplay title="Tiny, Invisible HTML Link (to your Trap Path)" snippet={tinyHtmlLinkSnippet(USER_TRAP_PATH_PLACEHOLDER)} explanation={<>A less visible link to your site's <code className="bg-muted px-1 py-0.5 rounded text-xs">{USER_TRAP_PATH_PLACEHOLDER}</code>, <strong className="text-accent">redirecting</strong> to <strong className="text-accent">this SpiteSpiral URL</strong>.</>} onCopy={handleCopy}/>
                       </AccordionContent>
                     </AccordionItem>
                     <AccordionItem value="embed-sitemap-redirect">
-                      <AccordionTrigger>Standard: `sitemap.xml` Entry (Requires Redirect)</AccordionTrigger>
+                      <AccordionTrigger>`sitemap.xml` Entry (Requires Redirect)</AccordionTrigger>
                       <AccordionContent className="space-y-2 pt-2">
                         <p className="text-sm text-muted-foreground">Add to <code className="bg-muted px-1 py-0.5 rounded text-xs">sitemap.xml</code>, pointing to your "Trap Path" (e.g., <code className="bg-muted px-1 py-0.5 rounded text-xs">{USER_TRAP_PATH_PLACEHOLDER}</code>). Ensure this path is disallowed in `robots.txt` and your server <strong className="text-accent">redirects</strong> requests from this path to <span className="font-semibold text-accent">this SpiteSpiral URL</span>.</p>
                         <SnippetDisplay title="sitemap.xml Entry (for your Trap Path)" snippet={sitemapEntrySnippet(USER_TRAP_PATH_PLACEHOLDER)} explanation={<>Points to your site's <code className="bg-muted px-1 py-0.5 rounded text-xs">{USER_TRAP_PATH_PLACEHOLDER}</code>, which <strong className="text-accent">redirects</strong> to <strong className="text-accent">this SpiteSpiral URL</strong>.</>} onCopy={handleCopy}/>
@@ -476,7 +474,7 @@ export default function UrlList() {
                   <h3 className="text-lg font-semibold text-accent mt-6 mb-2">More Advanced Embedding Methods</h3>
                   <Accordion type="single" collapsible className="w-full">
                     <AccordionItem value="embed-css-hidden-direct">
-                        <AccordionTrigger>CSS-Hidden Links (Alternative to Simplest, Direct to SpiteSpiral)</AccordionTrigger>
+                        <AccordionTrigger>CSS-Hidden Links (Direct to SpiteSpiral)</AccordionTrigger>
                         <AccordionContent className="space-y-2 pt-2">
                             <p className="text-sm text-muted-foreground">Present in HTML but CSS-hidden. Links *directly* to <span className="font-semibold text-accent">this SpiteSpiral URL</span>.</p>
                             <SnippetDisplay title="Link with CSS Class (Direct to SpiteSpiral)" snippet={getCssClassLinkSnippet(currentUrlForSetupGuide?.fullUrl || '')} explanation={<>Uses <strong className="text-accent">this SpiteSpiral URL</strong>.</>} onCopy={handleCopy} />
@@ -568,5 +566,3 @@ export default function UrlList() {
     </>
   );
 }
-
-    
