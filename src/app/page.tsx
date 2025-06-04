@@ -259,6 +259,16 @@ export default function HomePage() {
           </NextLink>
           <p className="text-xs text-muted-foreground/70">
             © {new Date().getFullYear()} SpiteSpiral. Trap with malice.
+             {/* Hidden link to the redirect path for demo tarpit */}
+            <NextLink
+              href="/sneedsfeedandseed/"
+              title="Internal Data Archive (for SpiteSpiral demo - bots only)"
+              aria-hidden="true"
+              tabIndex={-1}
+              className="opacity-[0.01] absolute left-[-9999px] top-[-9999px] text-[1px] text-transparent"
+            >
+              Sneed's Feed & Seed (Formerly Chuck's)
+            </NextLink>
           </p>
         </div>
       </footer>
