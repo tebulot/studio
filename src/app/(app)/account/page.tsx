@@ -47,7 +47,7 @@ const subscriptionTiers = [
     cta: "Switch to Set & Forget",
     variant: "default" as const,
     actionType: "switch_plan" as const,
-    stripePriceId: "price_1RSzbxQO5aNncTFjyeaANlLf", // CONFIRMED - KEEP THIS
+    stripePriceId: "price_1RTilPKPVCKvfVVwBUqudAnp", // CONFIRMED - KEEP THIS
   },
   {
     id: "analytics",

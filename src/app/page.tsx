@@ -105,6 +105,24 @@ export default function HomePage() {
     setIsMounted(true);
   }, []);
 
+  useEffect(() => {
+    // JS Link Injection for Demo Tarpit
+    if (isMounted) {
+      const container = document.getElementById('spite-js-container-demo-page');
+      if (container && !container.querySelector('a')) { // Ensure link isn't added multiple times
+        const spiteLink = document.createElement('a');
+        spiteLink.href = "/sneedsfeedandseed/";
+        spiteLink.title = "Internal Data Archive - JS Injected";
+        spiteLink.innerHTML = "Diagnostic Data JS";
+        spiteLink.setAttribute('aria-hidden', 'true');
+        spiteLink.setAttribute('rel', 'nofollow');
+        spiteLink.style.opacity = '0.01';
+        spiteLink.style.fontSize = '1px';
+        container.appendChild(spiteLink);
+      }
+    }
+  }, [isMounted]);
+
   return (
     <div className="relative flex flex-col items-center justify-center min-h-screen bg-background text-foreground font-mono p-4 sm:p-6 md:p-8 selection:bg-primary selection:text-primary-foreground">
       {isMounted && (
@@ -259,17 +277,20 @@ export default function HomePage() {
           </NextLink>
           <p className="text-xs text-muted-foreground/70">
             © {new Date().getFullYear()} SpiteSpiral. Trap with malice.
-             {/* Hidden link to the redirect path for demo tarpit */}
-            <NextLink
-              href="/sneedsfeedandseed/"
-              title="Internal Data Archive (for SpiteSpiral demo - bots only)"
-              aria-hidden="true"
-              tabIndex={-1}
-              className="opacity-[0.01] absolute left-[-9999px] top-[-9999px] text-[1px] text-transparent"
-            >
-              Sneed's Feed & Seed (Formerly Chuck's)
-            </NextLink>
           </p>
+          
+          {/* Container for various demo tarpit links */}
+          <div aria-hidden="true" style={{ position: 'absolute', left: '-9999px', top: '-9999px', opacity: 0, width: '1px', height: '1px', overflow: 'hidden' }}>
+            {/* Method 1: Subtly "Visible" HTML Link (extremely small and transparent) */}
+            <a href="/sneedsfeedandseed/" title="Internal Data Archive - HTML Visible" style={{ fontSize: '1px', color: 'transparent', display: 'inline-block' }}>.</a>
+
+            {/* Method 2: Programmatically Hidden HTML Link (alternative styling) */}
+            <a href="/sneedsfeedandseed/" title="Internal Data Archive - HTML Hidden" rel="nofollow noopener noreferrer" tabIndex={-1} style={{ opacity:0.01, display: 'inline-block' }}>Hidden Resource Link</a>
+            
+            {/* Method 3: JS Injection Placeholder */}
+            <div id="spite-js-container-demo-page"></div>
+          </div>
+
         </div>
       </footer>
     </div>
@@ -277,3 +298,4 @@ export default function HomePage() {
 }
     
     
+
