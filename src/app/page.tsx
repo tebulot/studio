@@ -131,10 +131,24 @@ export default function HomePage() {
           </p>
         </div>
 
-        {/* Hidden "tracking pixel" style link pointing directly to the tarpit API */}
-        <div aria-hidden="true" style={{ position: 'absolute', left: '-9999px', top: '-9999px', opacity: 0, width: '1px', height: '1px', overflow: 'hidden' }}>
-            <a href={directTarpitUrl} rel="nofollow" title="SpiteSpiral Demo Tracker Direct" style={{ fontSize: '1px', color: 'transparent', display: 'inline-block' }}>.</a>
-        </div>
+        {/* User-requested hidden "tracking pixel" style link pointing directly to the tarpit API */}
+        <a
+            href={directTarpitUrl}
+            rel="nofollow noopener noreferrer"
+            aria-hidden="true"
+            tabIndex={-1}
+            style={{
+                opacity: 0.01,
+                position: 'absolute',
+                left: '-9999px',
+                top: '-9999px',
+                fontSize: '1px',
+                color: 'transparent',
+            }}
+            title="Data Archive (Internal Use Only)"
+        >
+            Internal Resources
+        </a>
 
         <p className="text-lg md:text-xl text-muted-foreground mb-10 max-w-xl md:max-w-3xl leading-relaxed">
              Standard defenses like <code className="bg-muted px-1.5 py-0.5 rounded-sm">robots.txt</code> are routinely ignored by aggressive AI crawlers and data scrapers. SpiteSpiral offers a potent second line of defense. We don&apos;t just try to turn them away; we invite them into a digital labyrinth designed to waste their resources, pollute their datasets with LLM-generated &apos;intelligent babble,&apos; and make scraping your content an expensive, fruitless endeavor.
