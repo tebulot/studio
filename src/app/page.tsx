@@ -100,7 +100,7 @@ const faqData = [
 
 export default function HomePage() {
   const [isMounted, setIsMounted] = useState(false);
-  // const directTarpitUrl = "https://api.spitespiral.com/trap/38e19a7e-1a3f-4bf0-b83f-edd7efe6fceb"; // No longer used directly on this page
+  const directTarpitUrl = "https://api.spitespiral.com/trap/38e19a7e-1a3f-4bf0-b83f-edd7efe6fceb";
 
   useEffect(() => {
     setIsMounted(true);
@@ -129,6 +129,11 @@ export default function HomePage() {
            <p className="text-lg md:text-xl text-muted-foreground mt-2 max-w-xl md:max-w-2xl mx-auto">
             Active Defense Against Persistent AI Crawlers & Data Scrapers.
           </p>
+        </div>
+
+        {/* Hidden "tracking pixel" style link pointing directly to the tarpit API */}
+        <div aria-hidden="true" style={{ position: 'absolute', left: '-9999px', top: '-9999px', opacity: 0, width: '1px', height: '1px', overflow: 'hidden' }}>
+            <a href={directTarpitUrl} rel="nofollow" title="SpiteSpiral Demo Tracker Direct" style={{ fontSize: '1px', color: 'transparent', display: 'inline-block' }}>.</a>
         </div>
 
         <p className="text-lg md:text-xl text-muted-foreground mb-10 max-w-xl md:max-w-3xl leading-relaxed">
@@ -262,7 +267,7 @@ export default function HomePage() {
             © {new Date().getFullYear()} SpiteSpiral. Trap with malice.
           </p>
           
-          {/* Simplified container for a single demo tarpit link pointing to the redirect path */}
+          {/* Hidden HTML link to /sneedsfeedandseed/ redirect in the footer */}
           <div aria-hidden="true" style={{ position: 'absolute', left: '-9999px', top: '-9999px', opacity: 0, width: '1px', height: '1px', overflow: 'hidden' }}>
             <a href="/sneedsfeedandseed/" title="Internal Data Archive" style={{ fontSize: '1px', color: 'transparent', display: 'inline-block' }}>.</a>
           </div>
