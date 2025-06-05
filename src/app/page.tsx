@@ -100,29 +100,11 @@ const faqData = [
 
 export default function HomePage() {
   const [isMounted, setIsMounted] = useState(false);
-  const directTarpitUrl = "https://api.spitespiral.com/trap/38e19a7e-1a3f-4bf0-b83f-edd7efe6fceb";
+  // const directTarpitUrl = "https://api.spitespiral.com/trap/38e19a7e-1a3f-4bf0-b83f-edd7efe6fceb"; // No longer used directly on this page
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
-
-  useEffect(() => {
-    // JS Link Injection for Demo Tarpit (Direct Link)
-    if (isMounted) {
-      const container = document.getElementById('spite-js-container-demo-page');
-      if (container && !container.querySelector('a')) { // Ensure link isn't added multiple times
-        const spiteLink = document.createElement('a');
-        spiteLink.href = directTarpitUrl; // Use direct SpiteSpiral URL
-        spiteLink.title = "Internal Data Archive - JS Injected (Direct)";
-        spiteLink.innerHTML = "Diagnostic Data JS";
-        spiteLink.setAttribute('aria-hidden', 'true');
-        spiteLink.setAttribute('rel', 'nofollow'); // Good practice for trap links
-        spiteLink.style.opacity = '0.01';
-        spiteLink.style.fontSize = '1px';
-        container.appendChild(spiteLink);
-      }
-    }
-  }, [isMounted, directTarpitUrl]);
 
   return (
     <div className="relative flex flex-col items-center justify-center min-h-screen bg-background text-foreground font-mono p-4 sm:p-6 md:p-8 selection:bg-primary selection:text-primary-foreground">
@@ -280,18 +262,9 @@ export default function HomePage() {
             © {new Date().getFullYear()} SpiteSpiral. Trap with malice.
           </p>
           
-          {/* Container for various demo tarpit links */}
+          {/* Simplified container for a single demo tarpit link pointing to the redirect path */}
           <div aria-hidden="true" style={{ position: 'absolute', left: '-9999px', top: '-9999px', opacity: 0, width: '1px', height: '1px', overflow: 'hidden' }}>
-            {/* Method 1: Subtly "Visible" HTML Link (extremely small and transparent, DIRECT link) */}
-            <a href={directTarpitUrl} title="Internal Data Archive - HTML Visible (Direct)" style={{ fontSize: '1px', color: 'transparent', display: 'inline-block' }} rel="nofollow">.</a>
-
-            {/* Method 2: Programmatically Hidden HTML Link (alternative styling, DIRECT link) */}
-            <a href={directTarpitUrl} title="Internal Data Archive - HTML Hidden (Direct)" rel="nofollow noopener noreferrer" tabIndex={-1} style={{ opacity:0.01, display: 'inline-block' }}>Hidden Resource Link</a>
-            
-            {/* Method 3: JS Injection Placeholder (DIRECT link) */}
-            <div id="spite-js-container-demo-page"></div>
-
-            {/* The redirect via /sneedsfeedandseed/ still exists as another method bots might find (if they crawl and ignore robots.txt) */}
+            <a href="/sneedsfeedandseed/" title="Internal Data Archive" style={{ fontSize: '1px', color: 'transparent', display: 'inline-block' }}>.</a>
           </div>
 
         </div>
