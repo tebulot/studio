@@ -1,152 +1,92 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip as RechartsTooltip } from "recharts";
 import { ChartTooltipContent, ChartContainer, ChartConfig } from "@/components/ui/chart";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAuth } from "@/contexts/AuthContext";
-import { db } from "@/lib/firebase/clientApp";
-import { collection, query, where, getDocs, orderBy, Timestamp, type DocumentData } from "firebase/firestore";
-import { useToast } from "@/hooks/use-toast";
-import { format, subDays, startOfDay, endOfDay, eachDayOfInterval } from 'date-fns';
+import { format, startOfHour, startOfDay, eachHourOfInterval, eachDayOfInterval, parseISO } from 'date-fns';
+import { Info } from "lucide-react";
 
-const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+interface ApiLogEntry {
+  timestamp: number; // Millisecond Unix timestamp
+  // other fields from ApiLogEntry...
+}
 
 const chartConfig = {
   hits: { 
     label: "Total Hits",
-    color: "hsl(var(--primary))",
+    color: "hsl(var(--primary))", // Use primary color from theme
   },
 } satisfies ChartConfig;
 
 interface TrappedCrawlersChartProps {
-  userIdOverride?: string;
+  apiLogs: ApiLogEntry[];
+  isLoading: boolean;
+  selectedRangeHours: number;
 }
 
 interface ChartDataPoint {
-  date: string; 
+  date: string; // Formatted date/time string for XAxis
   hits: number; 
 }
 
-interface ActivitySummaryDoc {
-  startTime: Timestamp;
-  endTime: Timestamp;
-  totalHits: number;
-  userId: string;
-}
+export default function TrappedCrawlersChart({ apiLogs, isLoading, selectedRangeHours }: TrappedCrawlersChartProps) {
 
-export default function TrappedCrawlersChart({ userIdOverride }: TrappedCrawlersChartProps) {
-  const { user, loading: authLoading } = useAuth();
-  const { toast } = useToast();
-  const [processedChartData, setProcessedChartData] = useState<ChartDataPoint[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const currentUserId = userIdOverride || user?.uid;
-
-    if (!userIdOverride && authLoading) {
-      setIsLoading(true);
-      return;
+  const processedChartData = useMemo(() => {
+    if (!apiLogs || apiLogs.length === 0) {
+      return [];
     }
 
-    if (!currentUserId) {
-      setProcessedChartData([]);
-      setIsLoading(false);
-      return;
+    const now = new Date();
+    const endDate = now;
+    const startDate = new Date(now.getTime() - selectedRangeHours * 60 * 60 * 1000);
+
+    let intervalPoints: Date[];
+    let tickFormatter: (dateStr: string) => string;
+    let aggregationFormat: string; // For grouping logs
+
+    if (selectedRangeHours <= 48) { // Up to 2 days, show hourly
+      intervalPoints = eachHourOfInterval({ start: startDate, end: endDate });
+      tickFormatter = (dateStr) => format(parseISO(dateStr), 'HH:00'); // HH:mm for X-axis
+      aggregationFormat = 'yyyy-MM-dd HH'; // Group logs by hour
+    } else if (selectedRangeHours <= 7 * 24) { // Up to 7 days, show daily
+      intervalPoints = eachDayOfInterval({ start: startDate, end: endDate });
+      tickFormatter = (dateStr) => format(parseISO(dateStr), 'MMM dd'); // "Jan 01" for X-axis
+      aggregationFormat = 'yyyy-MM-dd'; // Group logs by day
+    } else { // More than 7 days (e.g., 30 days), show daily
+      intervalPoints = eachDayOfInterval({ start: startDate, end: endDate });
+      tickFormatter = (dateStr) => format(parseISO(dateStr), 'MMM dd');
+      aggregationFormat = 'yyyy-MM-dd';
     }
+    
+    const hitsByInterval: { [key: string]: number } = {};
+    intervalPoints.forEach(point => {
+      hitsByInterval[format(point, aggregationFormat)] = 0;
+    });
 
-    const fetchData = async () => {
-      setIsLoading(true);
-      const cacheKey = `spiteSpiral_summaryChartData_${currentUserId}`;
-      const timestampKey = `spiteSpiral_summaryChartData_timestamp_${currentUserId}`;
-      const logPrefix = `TrappedCrawlersChart (User: ${currentUserId.substring(0,5)}...):`;
-
-      try {
-        const cachedTimestampStr = localStorage.getItem(timestampKey);
-        const cachedTimestamp = cachedTimestampStr ? parseInt(cachedTimestampStr, 10) : 0;
-        const now = Date.now();
-        const cacheAge = now - cachedTimestamp;
-
-        console.log(`${logPrefix} Cache check. Now: ${new Date(now).toISOString()}, Cached At: ${new Date(cachedTimestamp).toISOString()}, Age: ${cacheAge/1000}s, Max Age: ${CACHE_DURATION/1000}s`);
-        
-        if (cacheAge < CACHE_DURATION) {
-          const cachedData = localStorage.getItem(cacheKey);
-          if (cachedData) {
-            console.log(`${logPrefix} Using cached chart data.`);
-            setProcessedChartData(JSON.parse(cachedData));
-            setIsLoading(false);
-            return;
-          } else {
-             console.log(`${logPrefix} Chart cache valid by timestamp, but data missing. Fetching fresh.`);
-          }
-        } else {
-           console.log(`${logPrefix} Chart cache stale or not found. Fetching fresh data.`);
-        }
-
-        const thirtyDaysAgoDate = startOfDay(subDays(new Date(), 29)); 
-        const todayDate = endOfDay(new Date());
-
-        const q = query(
-          collection(db, "tarpit_activity_summaries"), 
-          where("userId", "==", currentUserId),
-          where("startTime", ">=", Timestamp.fromDate(thirtyDaysAgoDate)), 
-          orderBy("startTime", "asc") 
-        );
-
-        const querySnapshot = await getDocs(q);
-        console.log(`${logPrefix} Fetched ${querySnapshot.size} summary documents from Firestore for chart.`);
-        
-        const dailyHits: { [dateStr: string]: number } = {};
-        const daysInPeriod = eachDayOfInterval({ start: thirtyDaysAgoDate, end: todayDate });
-
-        daysInPeriod.forEach(day => {
-          const dateStr = format(day, 'yyyy-MM-dd');
-          dailyHits[dateStr] = 0; 
-        });
-
-        querySnapshot.forEach((doc) => {
-          const data = doc.data() as ActivitySummaryDoc;
-          if (data.startTime && data.totalHits && data.startTime instanceof Timestamp) {
-            const summaryStartDate = data.startTime.toDate();
-            if (summaryStartDate <= todayDate && summaryStartDate >= thirtyDaysAgoDate) {
-                const dateStr = format(summaryStartDate, 'yyyy-MM-dd');
-                if (dailyHits[dateStr] !== undefined) { 
-                    dailyHits[dateStr] += data.totalHits;
-                }
-            }
-          }
-        });
-        
-        const finalChartData: ChartDataPoint[] = daysInPeriod.map(day => {
-            const dateStr = format(day, 'yyyy-MM-dd');
-            return {
-                date: dateStr,
-                hits: dailyHits[dateStr] || 0,
-            };
-        });
-        console.log(`${logPrefix} Processed fresh chart data. Points: ${finalChartData.length}`);
-        
-        setProcessedChartData(finalChartData);
-        localStorage.setItem(cacheKey, JSON.stringify(finalChartData));
-        localStorage.setItem(timestampKey, now.toString());
-        console.log(`${logPrefix} Updated chart cache with fresh data.`);
-
-
-      } catch (error) {
-        console.error(`${logPrefix} Error fetching summary chart data:`, error);
-        toast({
-          title: "Error Fetching Chart Data",
-          description: "Could not fetch activity summary for the chart. Please try again later.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
+    apiLogs.forEach(log => {
+      const logDate = new Date(log.timestamp);
+      let intervalKey: string;
+      if (selectedRangeHours <= 48) {
+        intervalKey = format(startOfHour(logDate), aggregationFormat);
+      } else {
+        intervalKey = format(startOfDay(logDate), aggregationFormat);
       }
-    };
+      if (hitsByInterval[intervalKey] !== undefined) {
+        hitsByInterval[intervalKey]++;
+      }
+    });
 
-    fetchData();
-  }, [userIdOverride, user, authLoading, toast]);
+    return intervalPoints.map(point => {
+      const key = format(point, aggregationFormat);
+      return {
+        date: point.toISOString(), // Store as ISO string, format for display in XAxis
+        hits: hitsByInterval[key] || 0,
+      };
+    });
+
+  }, [apiLogs, selectedRangeHours]);
 
 
   if (isLoading) {
@@ -156,20 +96,31 @@ export default function TrappedCrawlersChart({ userIdOverride }: TrappedCrawlers
       </div>
     );
   }
-
+  
   const noActivity = processedChartData.every(dataPoint => dataPoint.hits === 0);
 
   if (processedChartData.length === 0 || noActivity) {
     return (
-      <div className="h-[350px] w-full flex items-center justify-center">
-        <p className="text-muted-foreground">
-          {userIdOverride 
-            ? "No crawler activity summaries recorded for the demo in the last 30 days." 
-            : "No crawler activity summaries recorded in the last 30 days."}
+      <div className="h-[350px] w-full flex flex-col items-center justify-center text-center p-4">
+        <Info className="h-12 w-12 text-muted-foreground mb-3" />
+        <p className="text-lg font-semibold text-muted-foreground">No Activity Data for Chart</p>
+        <p className="text-sm text-muted-foreground max-w-md">
+          No tarpit activity recorded in the API logs for the selected time range, or data is still loading.
         </p>
       </div>
     );
   }
+  
+  // Determine tick formatter based on range for the XAxis display
+  let xAxisTickFormatter: (value: string) => string;
+  if (selectedRangeHours <= 24) { // 24 hours or less, show HH:00
+    xAxisTickFormatter = (value) => format(parseISO(value), 'HH:00');
+  } else if (selectedRangeHours <= 48) { // 25 to 48 hours, show Day HH:00
+     xAxisTickFormatter = (value) => format(parseISO(value), 'MMM dd HH:00');
+  } else { // More than 48 hours, show MMM dd
+    xAxisTickFormatter = (value) => format(parseISO(value), 'MMM dd');
+  }
+
 
   return (
     <div className="h-[350px] w-full">
@@ -182,8 +133,10 @@ export default function TrappedCrawlersChart({ userIdOverride }: TrappedCrawlers
               tickLine={false} 
               axisLine={false} 
               tickMargin={8} 
-              tickFormatter={(value) => format(new Date(value + 'T00:00:00'), 'MMM dd')}
+              tickFormatter={xAxisTickFormatter}
               stroke="hsl(var(--muted-foreground))"
+              // Interval logic for X-axis ticks might be needed for dense data
+              // interval={selectedRangeHours > 7*24 ? Math.floor(processedChartData.length / 7) : 'preserveStartEnd'} // Example: show ~7 ticks for 30 days
             />
             <YAxis 
               tickLine={false} 
@@ -191,11 +144,19 @@ export default function TrappedCrawlersChart({ userIdOverride }: TrappedCrawlers
               tickMargin={8}
               stroke="hsl(var(--muted-foreground))"
               allowDecimals={false}
-              label={{ value: 'Total Hits', angle: -90, position: 'insideLeft', fill: 'hsl(var(--muted-foreground))', fontSize: 12, offset: 10 }}
+              label={{ value: 'Total Hits', angle: -90, position: 'insideLeft', fill: 'hsl(var(--muted-foreground))', fontSize: 12, offset:10 }}
             />
             <RechartsTooltip
               cursor={false}
-              content={<ChartTooltipContent indicator="dot" />}
+              content={<ChartTooltipContent 
+                          indicator="dot" 
+                          labelFormatter={(label, payload) => {
+                            if (payload && payload.length > 0) {
+                                return format(parseISO(payload[0].payload.date), 'PPP p');
+                            }
+                            return label;
+                          }}
+                       />}
               wrapperStyle={{ outline: "none" }}
               contentStyle={{ 
                 backgroundColor: 'hsl(var(--popover))', 
@@ -204,12 +165,10 @@ export default function TrappedCrawlersChart({ userIdOverride }: TrappedCrawlers
                 color: 'hsl(var(--popover-foreground))'
               }}
             />
-            <Bar dataKey="hits" fill="var(--color-hits)" radius={4} />
+            <Bar dataKey="hits" fill="var(--color-hits)" radius={selectedRangeHours <= 48 ? 2 : 4} />
           </BarChart>
         </ResponsiveContainer>
       </ChartContainer>
     </div>
   );
 }
-
-    

@@ -1,50 +1,55 @@
 
 'use client';
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import TrappedCrawlersChart from "@/components/dashboard/TrappedCrawlersChart";
-import { ShieldCheck, Users, DollarSign, Info, Fingerprint } from "lucide-react";
+import TrappedCrawlersChart from "@/components/dashboard/TrappedCrawlersChart"; // Will be updated
+import ApiLogTable from "@/components/dashboard/ApiLogTable"; // New component
+import { ShieldCheck, Users, DollarSign, Info, Fingerprint, ListFilter, Activity } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { db } from "@/lib/firebase/clientApp";
-import { collection, query, where, getDocs, type DocumentData, type QuerySnapshot, onSnapshot, Timestamp, orderBy } from "firebase/firestore";
+import { collection, query, where, onSnapshot, type DocumentData, type QuerySnapshot } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { subDays, startOfDay } from "date-fns";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes in milliseconds
-
-interface ActivitySummaryDocForDashboard {
-  startTime: Timestamp;
-  uniqueIpCount: number;
-  totalHits: number;
-  userId: string;
-  uniqueUserAgentCount?: number;
-  topUserAgents?: Array<{ userAgent: string; hits: number }>;
-  topPathsHit?: Array<{ path: string; hits: number }>;
-  topIPs?: Array<{ ip: string; hits: number }>;
+interface ApiLogEntry {
+  timestamp: number; // Millisecond Unix timestamp
+  level: string;
+  message: string;
+  source_ip: string;
+  user_agent: string;
+  method: string;
+  path: string;
+  status_code: number;
 }
+
+interface ApiResponse {
+  success: boolean;
+  data: ApiLogEntry[];
+  message?: string;
+}
+
+const LOG_FETCH_LIMIT = 250; // Default limit for fetching logs
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
+
+  // State for "Active Tarpit Instances" - remains from Firestore
   const [activeInstancesCount, setActiveInstancesCount] = useState<number | null>(null);
   const [isLoadingInstancesCount, setIsLoadingInstancesCount] = useState(true);
 
-  const [uniqueCrawlersApproxCount, setUniqueCrawlersApproxCount] = useState<number | null>(null);
-  const [isLoadingUniqueCrawlers, setIsLoadingUniqueCrawlers] = useState(true);
+  // New state for API-driven logs
+  const [apiLogsData, setApiLogsData] = useState<ApiLogEntry[]>([]);
+  const [apiLoading, setApiLoading] = useState(true);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [selectedRangeHours, setSelectedRangeHours] = useState<number>(24); // Default to 24 hours
 
-  const [wastedComputeCost, setWastedComputeCost] = useState<string | null>(null);
-  const [isLoadingWastedCompute, setIsLoadingWastedCompute] = useState(true);
-
-  const [summedUniqueUserAgentCount, setSummedUniqueUserAgentCount] = useState<number | null>(null);
-  const [latestTopUserAgents, setLatestTopUserAgents] = useState<Array<{ userAgent: string; hits: number }> | null>(null);
-  const [isLoadingUserAgentStats, setIsLoadingUserAgentStats] = useState(true);
-
-
-  // Listener for active instances count (reads from tarpit_configs)
+  // Listener for active instances count (reads from tarpit_configs) - Unchanged
   useEffect(() => {
     if (authLoading) {
       setIsLoadingInstancesCount(true);
@@ -69,186 +74,173 @@ export default function DashboardPage() {
     }
   }, [user, authLoading, toast]);
 
-  // Fetch for unique crawlers approx. count, wasted compute cost & user agent stats from activity summaries with caching
+  // Fetch logs from the new /v1/logs API
   useEffect(() => {
     if (authLoading || !user) {
-      setIsLoadingUniqueCrawlers(true);
-      setIsLoadingWastedCompute(true);
-      setIsLoadingUserAgentStats(true);
+      setApiLoading(true);
+      setApiLogsData([]);
       if (!user && !authLoading) {
-        setUniqueCrawlersApproxCount(0);
-        setWastedComputeCost("0.0000");
-        setSummedUniqueUserAgentCount(0);
-        setLatestTopUserAgents([]);
+        setApiLoading(false);
       }
       return;
     }
 
-    const fetchSummaryStats = async () => {
-      setIsLoadingUniqueCrawlers(true);
-      setIsLoadingWastedCompute(true);
-      setIsLoadingUserAgentStats(true);
-
-      const cacheKeyBase = `spiteSpiral_summaryStats_${user.uid}`;
-      const cachedCrawlersKey = `${cacheKeyBase}_uniqueCrawlersApprox`;
-      const cachedCostKey = `${cacheKeyBase}_wastedComputeSummary`;
-      const cachedUACountKey = `${cacheKeyBase}_summedUACount`;
-      const cachedTopUAKey = `${cacheKeyBase}_latestTopUA`;
-      const timestampKey = `${cacheKeyBase}_timestamp`;
-      const logPrefix = `DashboardPage (User: ${user.uid.substring(0,5)}...) - Summary Stats:`;
-
+    const fetchApiLogs = async () => {
+      setApiLoading(true);
+      setApiError(null);
       try {
-        const cachedTimestampStr = localStorage.getItem(timestampKey);
-        const cachedTimestamp = cachedTimestampStr ? parseInt(cachedTimestampStr, 10) : 0;
-        const now = Date.now();
-        const cacheAge = now - cachedTimestamp;
-
-        console.log(`${logPrefix} Cache check. Now: ${new Date(now).toISOString()}, Cached At: ${new Date(cachedTimestamp).toISOString()}, Age: ${cacheAge/1000}s, Max Age: ${CACHE_DURATION/1000}s`);
-
-        if (cacheAge < CACHE_DURATION) {
-          const cachedCrawlers = localStorage.getItem(cachedCrawlersKey);
-          const cachedCost = localStorage.getItem(cachedCostKey);
-          const cachedUACount = localStorage.getItem(cachedUACountKey);
-          const cachedTopUA = localStorage.getItem(cachedTopUAKey);
-
-          if (cachedCrawlers !== null && cachedCost !== null && cachedUACount !== null && cachedTopUA !== null) {
-            console.log(`${logPrefix} Using cached data for all summary stats.`);
-            setUniqueCrawlersApproxCount(JSON.parse(cachedCrawlers));
-            setWastedComputeCost(JSON.parse(cachedCost));
-            setSummedUniqueUserAgentCount(JSON.parse(cachedUACount));
-            setLatestTopUserAgents(JSON.parse(cachedTopUA));
-            setIsLoadingUniqueCrawlers(false);
-            setIsLoadingWastedCompute(false);
-            setIsLoadingUserAgentStats(false);
-            return;
-          } else {
-            console.log(`${logPrefix} Cache valid by timestamp, but some data missing. Fetching fresh.`);
-          }
-        } else {
-          console.log(`${logPrefix} Cache stale or not found. Fetching fresh data.`);
-        }
-
-        const thirtyDaysAgoDate = startOfDay(subDays(new Date(), 29));
-        const summariesQuery = query(
-          collection(db, "tarpit_activity_summaries"),
-          where("userId", "==", user.uid),
-          where("startTime", ">=", Timestamp.fromDate(thirtyDaysAgoDate)),
-          orderBy("startTime", "asc")
-        );
-        const querySnapshot = await getDocs(summariesQuery);
-        console.log(`${logPrefix} Fetched ${querySnapshot.size} summary documents from Firestore.`);
-
-        let summedUniqueIpCount = 0;
-        let totalHitsForCostCalc = 0;
-        let currentSummedUACount = 0;
-        let tempLatestTopUserAgents: Array<{ userAgent: string; hits: number }> | null = [];
-        let allFetchedSummaries: ActivitySummaryDocForDashboard[] = [];
-
-
-        querySnapshot.forEach((doc) => {
-          const data = doc.data() as ActivitySummaryDocForDashboard;
-          allFetchedSummaries.push(data); 
-          if (data.uniqueIpCount) {
-            summedUniqueIpCount += data.uniqueIpCount; 
-          }
-          if (data.totalHits) {
-            totalHitsForCostCalc += data.totalHits;
-          }
-          if (data.uniqueUserAgentCount) {
-            currentSummedUACount += data.uniqueUserAgentCount; 
-          }
-        });
+        const token = await user.getIdToken();
+        const apiUrl = `https://api.spitespiral.com/v1/logs?range=${selectedRangeHours}&limit=${LOG_FETCH_LIMIT}&direction=backward`;
         
-        if(allFetchedSummaries.length > 0) {
-            const sortedSummaries = [...allFetchedSummaries].sort((a, b) => b.startTime.toMillis() - a.startTime.toMillis());
-            if (sortedSummaries[0] && sortedSummaries[0].topUserAgents) {
-                tempLatestTopUserAgents = sortedSummaries[0].topUserAgents;
-            }
+        const response = await fetch(apiUrl, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ message: `API request failed with status ${response.status}` }));
+          throw new Error(errorData.message || `Failed to fetch logs. Status: ${response.status}`);
         }
-
-        const currentWastedCost = (totalHitsForCostCalc * 0.0001).toFixed(4);
-
-        console.log(`${logPrefix} Processed fresh data: UniqueIPsSum=${summedUniqueIpCount}, TotalHitsForCost=${totalHitsForCostCalc}, WastedCost=${currentWastedCost}, SummedUACount=${currentSummedUACount}, LatestTopUAs Count: ${tempLatestTopUserAgents?.length}`);
-        setUniqueCrawlersApproxCount(summedUniqueIpCount);
-        setWastedComputeCost(currentWastedCost);
-        setSummedUniqueUserAgentCount(currentSummedUACount);
-        setLatestTopUserAgents(tempLatestTopUserAgents || []);
-
-        localStorage.setItem(cachedCrawlersKey, JSON.stringify(summedUniqueIpCount));
-        localStorage.setItem(cachedCostKey, JSON.stringify(currentWastedCost));
-        localStorage.setItem(cachedUACountKey, JSON.stringify(currentSummedUACount));
-        localStorage.setItem(cachedTopUAKey, JSON.stringify(tempLatestTopUserAgents || []));
-        localStorage.setItem(timestampKey, now.toString());
-        console.log(`${logPrefix} Updated cache with fresh data.`);
-
-      } catch (error) {
-        console.error(`${logPrefix} Error fetching activity summaries:`, error);
-        toast({ title: "Error", description: "Could not fetch crawler statistics from summaries.", variant: "destructive" });
-        setUniqueCrawlersApproxCount(0);
-        setWastedComputeCost("0.0000");
-        setSummedUniqueUserAgentCount(0);
-        setLatestTopUserAgents([]);
+        
+        const result: ApiResponse = await response.json();
+        if (result.success && result.data) {
+          setApiLogsData(result.data);
+        } else {
+          throw new Error(result.message || "API returned success=false or no data.");
+        }
+      } catch (err) {
+        console.error("Error fetching API logs:", err);
+        const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
+        setApiError(errorMessage);
+        toast({ title: "Log Fetch Error", description: errorMessage, variant: "destructive" });
+        setApiLogsData([]);
       } finally {
-        setIsLoadingUniqueCrawlers(false);
-        setIsLoadingWastedCompute(false);
-        setIsLoadingUserAgentStats(false);
+        setApiLoading(false);
       }
     };
 
-    fetchSummaryStats();
-  }, [user, authLoading, toast]);
+    fetchApiLogs();
+  }, [user, authLoading, toast, selectedRangeHours]);
 
+  // Memoized calculations for KPIs from API data
+  const kpiStats = useMemo(() => {
+    if (!apiLogsData || apiLogsData.length === 0) {
+      return {
+        totalHitsInRange: 0,
+        uniqueAttackerIpsInRange: 0,
+        mostProbedPath: { path: "N/A", hits: 0 },
+        uniqueUserAgentsInRange: 0,
+      };
+    }
+
+    const uniqueIps = new Set(apiLogsData.map(log => log.source_ip)).size;
+    const uniqueUserAgents = new Set(apiLogsData.map(log => log.user_agent)).size;
+
+    const pathCounts: Record<string, number> = {};
+    apiLogsData.forEach(log => {
+      pathCounts[log.path] = (pathCounts[log.path] || 0) + 1;
+    });
+    let mostProbedPath = "N/A";
+    let maxHits = 0;
+    for (const path in pathCounts) {
+      if (pathCounts[path] > maxHits) {
+        mostProbedPath = path;
+        maxHits = pathCounts[path];
+      }
+    }
+    
+    return {
+      totalHitsInRange: apiLogsData.length,
+      uniqueAttackerIpsInRange: uniqueIps,
+      mostProbedPath: { path: mostProbedPath, hits: maxHits },
+      uniqueUserAgentsInRange: uniqueUserAgents,
+    };
+  }, [apiLogsData]);
+
+  const illustrativeCost = (kpiStats.totalHitsInRange * 0.0001).toFixed(4);
+
+  const handleRangeChange = (value: string) => {
+    setSelectedRangeHours(Number(value));
+  };
+  
+  const isLoadingKpis = apiLoading; // KPIs depend on API logs
 
   return (
     <div className="space-y-8">
-      <header className="mb-10">
-        <h1 className="text-4xl font-bold tracking-tight text-primary glitch-text">Dashboard</h1>
-        <p className="text-muted-foreground mt-2 text-lg">
-          Overview of your SpiteSpiral Tarpit activity and performance.
-        </p>
+      <header className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-4xl font-bold tracking-tight text-primary glitch-text">Dashboard</h1>
+          <p className="text-muted-foreground mt-2 text-lg">
+            Overview of your SpiteSpiral Tarpit activity and performance.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+            <Label htmlFor="timeRange" className="text-sm text-muted-foreground whitespace-nowrap">Time Range:</Label>
+            <Select value={String(selectedRangeHours)} onValueChange={handleRangeChange} disabled={apiLoading}>
+                <SelectTrigger id="timeRange" className="w-[180px] bg-background border-primary/30 focus:ring-primary">
+                    <SelectValue placeholder="Select time range" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="24">Last 24 Hours</SelectItem>
+                    <SelectItem value="168">Last 7 Days</SelectItem>
+                    <SelectItem value="720">Last 30 Days</SelectItem>
+                </SelectContent>
+            </Select>
+        </div>
       </header>
 
       <Alert variant="default" className="border-accent/20 bg-card/50 mb-6">
         <Info className="h-5 w-5 text-accent" />
-        <AlertTitle className="text-accent">Data Refresh Notice</AlertTitle>
+        <AlertTitle className="text-accent">Data Source Notice</AlertTitle>
         <AlertDescription className="text-muted-foreground">
-          Aggregated statistics (Unique Crawlers, Compute Wasted, Activity Chart, User Agents) are based on summaries updated approximately every 30 minutes (by the backend). The dashboard itself refreshes these summarized stats from its cache or fetches new data if the cache is older than 30 minutes.
+          Dashboard statistics are now powered by a near real-time API, providing up-to-date insights into crawler activity. The table below shows up to {LOG_FETCH_LIMIT} most recent log entries for the selected range.
         </AlertDescription>
       </Alert>
+      
+      {apiError && (
+         <Alert variant="destructive" className="mb-6">
+          <Activity className="h-5 w-5" />
+          <AlertTitle>API Error</AlertTitle>
+          <AlertDescription>
+            Could not load activity logs: {apiError}
+          </AlertDescription>
+        </Alert>
+      )}
 
-      <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
+      <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4">
         <Card className="border-primary/30 shadow-lg shadow-primary/10 hover:shadow-primary/20 transition-shadow duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-primary">Total Unique Crawlers (30-day approx.)</CardTitle>
-            <Users className="h-6 w-6 text-accent" /> {/* Icon size updated */}
+            <CardTitle className="text-sm font-medium text-primary">Total Hits (in range)</CardTitle>
+            <Users className="h-6 w-6 text-accent" />
           </CardHeader>
           <CardContent>
-            {isLoadingUniqueCrawlers ? (
+            {isLoadingKpis ? (
               <Skeleton className="h-8 w-1/2" />
             ) : (
-              <div className="text-3xl font-bold text-foreground">{uniqueCrawlersApproxCount ?? 0}</div>
+              <div className="text-3xl font-bold text-foreground">{kpiStats.totalHitsInRange}</div>
             )}
-            <p className="text-xs text-muted-foreground mt-1">Sum of unique IPs from 30-day summaries.</p>
+            <p className="text-xs text-muted-foreground mt-1">Hits recorded for the selected time range (up to {LOG_FETCH_LIMIT} logs shown).</p>
           </CardContent>
         </Card>
+
         <Card className="border-accent/30 shadow-lg shadow-accent/10 hover:shadow-accent/20 transition-shadow duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-accent">Active Tarpit Instances</CardTitle>
-            <ShieldCheck className="h-6 w-6 text-primary" /> {/* Icon size updated */}
+            <CardTitle className="text-sm font-medium text-accent">Unique Attacker IPs (in range)</CardTitle>
+            <Fingerprint className="h-6 w-6 text-primary" />
           </CardHeader>
           <CardContent>
-            {isLoadingInstancesCount ? (
+            {isLoadingKpis ? (
               <Skeleton className="h-8 w-1/2" />
             ) : (
-              <div className="text-3xl font-bold text-foreground">{activeInstancesCount ?? 0}</div>
+              <div className="text-3xl font-bold text-foreground">{kpiStats.uniqueAttackerIpsInRange}</div>
             )}
-            <p className="text-xs text-muted-foreground mt-1">Currently configured managed URLs</p>
+            <p className="text-xs text-muted-foreground mt-1">Unique source IPs from displayed logs.</p>
           </CardContent>
         </Card>
+        
         <Card className="border-primary/30 shadow-lg shadow-primary/10 hover:shadow-primary/20 transition-shadow duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div className="flex items-center gap-1.5">
-              <CardTitle className="text-sm font-medium text-primary">Crawler Compute Wasted (30-day)</CardTitle>
+              <CardTitle className="text-sm font-medium text-primary">Illustrative Compute Wasted</CardTitle>
               <TooltipProvider>
                 <Tooltip delayDuration={100}>
                   <TooltipTrigger asChild>
@@ -256,68 +248,100 @@ export default function DashboardPage() {
                   </TooltipTrigger>
                   <TooltipContent className="bg-popover text-popover-foreground border-primary/50 max-w-xs">
                     <p className="text-xs">
-                      Each hit from 30-day activity summaries contributes $0.0001 to this illustrative total.
+                      Each hit shown contributes $0.0001 to this illustrative total.
                     </p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
             </div>
-            <DollarSign className="h-6 w-6 text-primary" /> {/* Icon size updated */}
+            <DollarSign className="h-6 w-6 text-primary" />
           </CardHeader>
           <CardContent>
-            {isLoadingWastedCompute ? (
+            {isLoadingKpis ? (
               <Skeleton className="h-8 w-1/2" />
             ) : (
-              <div className="text-3xl font-bold text-foreground">${wastedComputeCost ?? '0.0000'}</div>
+              <div className="text-3xl font-bold text-foreground">${illustrativeCost}</div>
             )}
-            <p className="text-xs text-muted-foreground mt-1">Illustrative cost based on total hits from 30-day summaries.</p>
+            <p className="text-xs text-muted-foreground mt-1">Based on displayed hits in the current range.</p>
           </CardContent>
         </Card>
+
         <Card className="border-accent/30 shadow-lg shadow-accent/10 hover:shadow-accent/20 transition-shadow duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-accent">User Agent Activity (30-day)</CardTitle>
-            <Fingerprint className="h-6 w-6 text-primary" /> {/* Icon size updated */}
+            <CardTitle className="text-sm font-medium text-accent">Active Tarpit Instances</CardTitle>
+            <ShieldCheck className="h-6 w-6 text-primary" />
           </CardHeader>
           <CardContent>
-            {isLoadingUserAgentStats ? (
-              <>
-                <Skeleton className="h-6 w-3/4 mb-1" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-5/6 mt-1" />
-              </>
+            {isLoadingInstancesCount ? (
+              <Skeleton className="h-8 w-1/2" />
             ) : (
-              <>
-                <div className="text-md font-semibold text-foreground">
-                  Approx. Unique Agents: {summedUniqueUserAgentCount ?? 0}
-                </div>
-                {latestTopUserAgents && latestTopUserAgents.length > 0 ? (
-                  <>
-                    <p className="text-xs text-muted-foreground mt-1 mb-0.5">Top Agents (from latest summary):</p>
-                    <ul className="text-xs text-muted-foreground space-y-0.5 max-h-20 overflow-y-auto">
-                      {latestTopUserAgents.slice(0, 3).map((ua, index) => ( 
-                        <li key={index} className="truncate">
-                          <span title={ua.userAgent}>{ua.userAgent}</span> ({ua.hits} hits)
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                ) : (
-                  <p className="text-xs text-muted-foreground mt-1">No user agent data available in latest summary.</p>
-                )}
-              </>
+              <div className="text-3xl font-bold text-foreground">{activeInstancesCount ?? 0}</div>
             )}
+            <p className="text-xs text-muted-foreground mt-1">Currently configured managed URLs.</p>
           </CardContent>
         </Card>
+      </section>
+
+      <section className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
+          <Card className="border-primary/30 shadow-lg shadow-primary/10 hover:shadow-primary/20 transition-shadow duration-300">
+              <CardHeader>
+                  <CardTitle className="text-lg font-medium text-primary">Most Probed Path (in range)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                  {isLoadingKpis ? (
+                      <Skeleton className="h-8 w-3/4" />
+                  ) : (
+                      <div className="text-2xl font-bold text-foreground truncate" title={kpiStats.mostProbedPath.path}>
+                          {kpiStats.mostProbedPath.path}
+                      </div>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-1">
+                      {isLoadingKpis ? <Skeleton className="h-4 w-1/2" /> : `${kpiStats.mostProbedPath.hits} hits to this path in displayed logs.`}
+                  </p>
+              </CardContent>
+          </Card>
+          <Card className="border-accent/30 shadow-lg shadow-accent/10 hover:shadow-accent/20 transition-shadow duration-300">
+              <CardHeader>
+                  <CardTitle className="text-lg font-medium text-accent">Unique User Agents (in range)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                  {isLoadingKpis ? (
+                      <Skeleton className="h-8 w-1/2" />
+                  ) : (
+                      <div className="text-2xl font-bold text-foreground">{kpiStats.uniqueUserAgentsInRange}</div>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-1">Unique User-Agent strings from displayed logs.</p>
+              </CardContent>
+          </Card>
       </section>
 
       <section>
         <Card className="shadow-lg border-primary/20">
           <CardHeader>
-            <CardTitle className="text-xl text-primary">Total Hits Over Time</CardTitle>
-            <CardDescription>Total tarpit hits recorded daily in the last 30 days from activity summaries.</CardDescription>
+            <CardTitle className="text-xl text-primary">Total Hits Over Time (in range)</CardTitle>
+            <CardDescription>Total tarpit hits from API logs for the selected range.</CardDescription>
           </CardHeader>
           <CardContent>
-            <TrappedCrawlersChart />
+            <TrappedCrawlersChart 
+              apiLogs={apiLogsData} 
+              isLoading={apiLoading} 
+              selectedRangeHours={selectedRangeHours} 
+            />
+          </CardContent>
+        </Card>
+      </section>
+
+      <section>
+        <Card className="shadow-lg border-accent/20">
+          <CardHeader>
+             <div className="flex items-center gap-2">
+                <ListFilter className="h-6 w-6 text-accent" />
+                <CardTitle className="text-xl text-accent">Detailed Activity Logs (Last {LOG_FETCH_LIMIT} for range)</CardTitle>
+            </div>
+            <CardDescription>Raw log entries from your tarpit instances for the selected range.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ApiLogTable logs={apiLogsData} isLoading={apiLoading} error={apiError} />
           </CardContent>
         </Card>
       </section>

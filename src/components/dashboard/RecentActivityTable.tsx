@@ -1,6 +1,11 @@
 
 "use client";
 
+// This component is being deprecated in favor of ApiLogTable.tsx
+// which uses the new /v1/logs API endpoint.
+// Keeping the file for now in case of rollback or reference,
+// but it's no longer used on the main dashboard.
+
 import { useState, useEffect } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -52,18 +57,18 @@ export default function RecentActivityTable({ userIdOverride }: RecentActivityTa
     }
 
     setIsLoading(true);
+    // console.log(`RecentActivityTable: Fetching for user ID: ${currentUserId}`);
     const q = query(
-      collection(db, "tarpit_logs"),
+      collection(db, "tarpit_logs"), // This collection might be phased out
       where("userId", "==", currentUserId),
       orderBy("timestamp", "desc"),
-      limit(10) // Keep the limit for the dashboard summary
+      limit(10) 
     );
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const fetchedLogs: ActivityLogEntry[] = [];
       querySnapshot.forEach((docSnap: QueryDocumentSnapshot<DocumentData>) => {
         const data = docSnap.data();
-        // Ensure core fields are present
         if (data.timestamp && data.trappedBotIp && data.userAgent && data.managedUrlPath && data.userId) {
           fetchedLogs.push({
             id: docSnap.id,
@@ -75,17 +80,15 @@ export default function RecentActivityTable({ userIdOverride }: RecentActivityTa
             recursionDepth: data.recursionDepth as number | undefined,
             userId: data.userId as string,
           });
-        } else {
-            // console.warn("Skipping malformed recent activity log entry:", docSnap.id, data);
         }
       });
       setActivityLogs(fetchedLogs);
       setIsLoading(false);
     }, (error) => {
-      console.error("Error fetching recent activity logs:", error);
+      console.error("Error fetching recent activity logs (deprecated table):", error);
       toast({
-        title: "Error Fetching Activity",
-        description: "Could not fetch recent activity. Check console for details.",
+        title: "Error Fetching Old Activity",
+        description: "Could not fetch recent activity from old source.",
         variant: "destructive",
       });
       setIsLoading(false);
@@ -96,88 +99,67 @@ export default function RecentActivityTable({ userIdOverride }: RecentActivityTa
 
   if (isLoading) {
     return (
-      <ScrollArea className="h-[400px] rounded-md border border-border">
-        <Table>
-          <TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
-            <TableRow>
-              <TableHead className="text-accent w-[180px]">Timestamp</TableHead>
-              <TableHead className="text-accent w-[130px]">Trapped Bot IP</TableHead>
-              <TableHead className="text-accent">User Agent</TableHead>
-              <TableHead className="text-accent">Managed URL Hit</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {[...Array(5)].map((_, index) => (
-              <TableRow key={index}>
-                <TableCell><Skeleton className="h-5 w-36" /></TableCell>
-                <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                <TableCell><Skeleton className="h-5 w-48" /></TableCell>
-                <TableCell><Skeleton className="h-5 w-40" /></TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </ScrollArea>
+      <p className="text-muted-foreground text-center py-4">Loading legacy activity (if any)...</p>
     );
   }
 
-  if (activityLogs.length === 0) {
-    return <p className="text-muted-foreground text-center py-4">
-      {userIdOverride 
-        ? "No recent demo activity found. Once the demo tarpit is active and interacts with crawlers, logs will appear here." 
-        : "No recent activity logged yet. Once your tarpits are active and interacting with crawlers, logs will appear here."}
-    </p>;
-  }
 
   return (
-    <TooltipProvider>
-      <ScrollArea className="h-[400px] rounded-md border border-border">
-        <Table>
-          <TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
-            <TableRow>
-              <TableHead className="text-accent w-[180px]">Timestamp</TableHead>
-              <TableHead className="text-accent w-[130px]">Trapped Bot IP</TableHead>
-              <TableHead className="text-accent">User Agent</TableHead>
-              <TableHead className="text-accent">Managed URL Hit</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {activityLogs.map((log) => (
-              <TableRow key={log.id} className="hover:bg-muted/30">
-                <TableCell className="text-xs text-muted-foreground">
-                  {log.timestamp ? new Date(log.timestamp.toDate()).toLocaleString() : 'N/A'}
-                </TableCell>
-                <TableCell className="font-medium text-foreground/90">{log.trappedBotIp}</TableCell>
-                <TableCell className="text-xs text-muted-foreground max-w-xs truncate">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="truncate block max-w-[250px] cursor-help">{log.userAgent}</span>
-                    </TooltipTrigger>
-                    <TooltipContent className="bg-popover text-popover-foreground border-primary/50 max-w-lg">
-                      <p>{log.userAgent}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TableCell>
-                <TableCell className="text-sm text-primary/90 break-all">
-                   <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="truncate block max-w-[250px] hover:underline cursor-pointer">
-                        {log.managedUrlPath}
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent className="bg-popover text-popover-foreground border-primary/50 max-w-lg">
-                      <p>Managed URL: {log.managedUrlPath}</p>
-                      {log.requestPath && <p>Internal Path: {log.requestPath}</p>}
-                    </TooltipContent>
-                  </Tooltip>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </ScrollArea>
-    </TooltipProvider>
+    <div className="p-4 border border-dashed border-muted-foreground/30 rounded-md bg-muted/10 my-6">
+        <h3 className="text-sm font-semibold text-muted-foreground mb-2">Legacy Recent Activity (from `tarpit_logs` Firestore - Deprecated View)</h3>
+        {activityLogs.length === 0 ? (
+             <p className="text-muted-foreground text-center py-4">
+                No legacy activity found in `tarpit_logs`. Dashboard now uses new API.
+            </p>
+        ) : (
+            <TooltipProvider>
+            <ScrollArea className="h-[200px] rounded-md border border-border">
+                <Table>
+                <TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
+                    <TableRow>
+                    <TableHead className="text-accent w-[180px]">Timestamp</TableHead>
+                    <TableHead className="text-accent w-[130px]">Trapped Bot IP</TableHead>
+                    <TableHead className="text-accent">User Agent</TableHead>
+                    <TableHead className="text-accent">Managed URL Hit</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {activityLogs.map((log) => (
+                    <TableRow key={log.id} className="hover:bg-muted/30">
+                        <TableCell className="text-xs text-muted-foreground">
+                        {log.timestamp ? new Date(log.timestamp.toDate()).toLocaleString() : 'N/A'}
+                        </TableCell>
+                        <TableCell className="font-medium text-foreground/90">{log.trappedBotIp}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground max-w-xs truncate">
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                            <span className="truncate block max-w-[250px] cursor-help">{log.userAgent}</span>
+                            </TooltipTrigger>
+                            <TooltipContent className="bg-popover text-popover-foreground border-primary/50 max-w-lg">
+                            <p>{log.userAgent}</p>
+                            </TooltipContent>
+                        </Tooltip>
+                        </TableCell>
+                        <TableCell className="text-sm text-primary/90 break-all">
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                            <span className="truncate block max-w-[250px] hover:underline cursor-pointer">
+                                {log.managedUrlPath}
+                            </span>
+                            </TooltipTrigger>
+                            <TooltipContent className="bg-popover text-popover-foreground border-primary/50 max-w-lg">
+                            <p>Managed URL: {log.managedUrlPath}</p>
+                            {log.requestPath && <p>Internal Path: {log.requestPath}</p>}
+                            </TooltipContent>
+                        </Tooltip>
+                        </TableCell>
+                    </TableRow>
+                    ))}
+                </TableBody>
+                </Table>
+            </ScrollArea>
+            </TooltipProvider>
+        )}
+    </div>
   );
 }
-
-    
