@@ -107,183 +107,190 @@ export default function HomePage() {
   }, []);
 
   return (
-    <div className="relative flex flex-col items-center justify-center min-h-screen bg-background text-foreground font-mono p-4 sm:p-6 md:p-8 selection:bg-primary selection:text-primary-foreground">
-      {isMounted && (
-          <div className="fixed inset-0 overflow-hidden z-0 flex items-center justify-center">
-            <BrandLogoIcon
-                className="w-[500vw] h-[500vh] opacity-5 animate-spin-slow"
-                isPriority={false}
-            />
+    <>
+      {/* Invisible direct tarpit link for header area */}
+      <a
+        href={directTarpitUrl}
+        rel="nofollow noopener noreferrer"
+        aria-hidden="true"
+        tabIndex={-1}
+        style={{
+          opacity: 0.01,
+          position: 'absolute',
+          left: '-9999px',
+          top: '-9999px',
+          fontSize: '1px',
+          color: 'transparent',
+          width: '1px',
+          height: '1px',
+          overflow: 'hidden',
+        }}
+        title="SpiteSpiral Internal Data - Homepage"
+      >
+        .
+      </a>
+      <div className="relative flex flex-col items-center justify-center min-h-screen bg-background text-foreground font-mono p-4 sm:p-6 md:p-8 selection:bg-primary selection:text-primary-foreground">
+        {isMounted && (
+            <div className="fixed inset-0 overflow-hidden z-0 flex items-center justify-center">
+              <BrandLogoIcon
+                  className="w-[500vw] h-[500vh] opacity-5 animate-spin-slow"
+                  isPriority={false}
+              />
+            </div>
+        )}
+
+        <div className="relative z-10 text-center flex flex-col items-center w-full flex-grow">
+          <div className="mb-4 transform transition-transform hover:scale-110 active:scale-95">
+            <BrandLogoIcon className="w-56 h-56 md:w-72 md:h-72" isPriority={true} />
           </div>
-      )}
+          
+          <div className="mb-10">
+             <h1 className="text-5xl md:text-7xl font-black font-sans glitch-text tracking-wider">
+              <span className="text-primary-foreground">Spite</span><span className="text-primary">Spiral</span>
+            </h1>
+             <p className="text-lg md:text-xl text-muted-foreground mt-2 max-w-xl md:max-w-2xl mx-auto">
+              Active Defense Against Persistent AI Crawlers & Data Scrapers.
+            </p>
+          </div>
 
-      <div className="relative z-10 text-center flex flex-col items-center w-full flex-grow">
-        <div className="mb-4 transform transition-transform hover:scale-110 active:scale-95">
-          <BrandLogoIcon className="w-56 h-56 md:w-72 md:h-72" isPriority={true} />
-        </div>
-        
-        <div className="mb-10">
-           <h1 className="text-5xl md:text-7xl font-black font-sans glitch-text tracking-wider">
-            <span className="text-primary-foreground">Spite</span><span className="text-primary">Spiral</span>
-          </h1>
-           <p className="text-lg md:text-xl text-muted-foreground mt-2 max-w-xl md:max-w-2xl mx-auto">
-            Active Defense Against Persistent AI Crawlers & Data Scrapers.
+          <p className="text-lg md:text-xl text-muted-foreground mb-10 max-w-xl md:max-w-3xl leading-relaxed">
+               Standard defenses like <code className="bg-muted px-1.5 py-0.5 rounded-sm">robots.txt</code> are routinely ignored by aggressive AI crawlers and data scrapers. SpiteSpiral offers a potent second line of defense. We don&apos;t just try to turn them away; we invite them into a digital labyrinth designed to waste their resources, pollute their datasets with LLM-generated &apos;intelligent babble,&apos; and make scraping your content an expensive, fruitless endeavor.
           </p>
-        </div>
+          <div className="flex flex-col sm:flex-row gap-4 mb-10">
+              <Button
+                asChild
+                size="lg"
+                variant="outline"
+                className="px-10 py-6 text-lg text-accent border-accent hover:text-accent-foreground hover:bg-accent/90 transition-all duration-100 ease-in-out shadow-[0_0_15px_hsl(var(--accent)/0.5),_0_0_30px_hsl(var(--accent)/0.3)] hover:shadow-[0_0_20px_hsl(var(--accent)),_0_0_40px_hsl(var(--accent)/0.7)] rounded-lg border-b-4 border-accent/60 active:translate-y-0.5 active:border-b-2 active:[box-shadow:inset_0_3px_5px_rgba(0,0,0,0.3)] active:brightness-90"
+              >
+                <NextLink href="/login">Deploy Your Trap</NextLink>
+              </Button>
+              <Button
+                asChild
+                size="lg"
+                variant="outline"
+                className="px-10 py-6 text-lg text-accent border-accent hover:text-accent-foreground hover:bg-accent/90 transition-all duration-100 ease-in-out shadow-[0_0_15px_hsl(var(--accent)/0.5),_0_0_30px_hsl(var(--accent)/0.3)] hover:shadow-[0_0_20px_hsl(var(--accent)),_0_0_40px_hsl(var(--accent)/0.7)] rounded-lg border-b-4 border-accent/60 active:translate-y-0.5 active:border-b-2 active:[box-shadow:inset_0_3px_5px_rgba(0,0,0,0.3)] active:brightness-90"
+              >
+                <NextLink href="/demo/dashboard">View Live Demo</NextLink>
+              </Button>
+          </div>
 
-        {/* User-requested HTML snippet for the "pixel" style direct link */}
-        <a
-          href={directTarpitUrl}
-          rel="nofollow noopener noreferrer"
-          aria-hidden="true"
-          tabIndex={-1}
-          style={{
-            opacity: 0.01,
-            position: 'absolute',
-            left: '-9999px',
-            top: '-9999px',
-            fontSize: '1px',
-            color: 'transparent',
-          }}
-          title="Data Archive (Internal Use Only)"
-        >
-          Internal Resources
-        </a>
+          {/* Informational Cards Section - Now 2x2 Grid */}
+          <div className="mt-10 mb-20 w-full max-w-5xl px-4 grid md:grid-cols-2 gap-6 text-left">
+            <Card className="border-primary/30 shadow-lg shadow-primary/10 bg-card/80 backdrop-blur-sm flex flex-col h-full">
+              <CardHeader className="p-6 flex items-center">
+                <CardTitle className="text-2xl text-accent glitch-text min-h-12 flex items-center">The Problem: When Scrapers Ignore the Rules</CardTitle>
+              </CardHeader>
+              <CardContent className="text-foreground/80 space-y-3 flex-grow">
+                  <p>Your valuable content, data, and intellectual property are prime targets for automated bots. Many of these scrapers brazenly ignore <code className="bg-muted px-1.5 py-0.5 rounded-sm text-xs">robots.txt</code> and bypass conventional blocking techniques, constantly draining your server resources and stealing your work for AI training models or competitive analysis. Simply blocking isn&apos;t enough for these persistent threats.</p>
+                   <ul className="list-disc pl-5 space-y-2 mt-2 text-foreground/80">
+                      <li><strong>Brazen Disregard for Rules:</strong> These scrapers frequently ignore <code className="bg-muted px-1.5 py-0.5 rounded-sm text-xs">robots.txt</code> directives, the established standard for bot etiquette. They are engineered to bypass common blocking techniques, making traditional defenses feel like sieves.</li>
+                      <li><strong>Relentless Resource Drain:</strong> Unchecked scraping can overwhelm your server, consuming excessive bandwidth, CPU, and memory. This can lead to slower site performance for legitimate users, increased hosting costs, and even potential downtime.</li>
+                      <li><strong>Theft for AI & Competitive Exploitation:</strong> Your original work, articles, images, product information, and pricing data are prime targets. This stolen information is then often fed into large AI training models without consent or used by competitors to gain an unfair advantage, diluting your brand and devaluing your efforts.</li>
+                      <li><strong>Conventional Blocking is Often Insufficient:</strong> Static IP blocks, basic firewall rules, or simple rate limiting are often outmaneuvered by sophisticated scraping operations that use distributed networks and constantly changing identities. These persistent threats require a more dynamic and active countermeasure.</li>
+                  </ul>
+              </CardContent>
+            </Card>
 
-
-        <p className="text-lg md:text-xl text-muted-foreground mb-10 max-w-xl md:max-w-3xl leading-relaxed">
-             Standard defenses like <code className="bg-muted px-1.5 py-0.5 rounded-sm">robots.txt</code> are routinely ignored by aggressive AI crawlers and data scrapers. SpiteSpiral offers a potent second line of defense. We don&apos;t just try to turn them away; we invite them into a digital labyrinth designed to waste their resources, pollute their datasets with LLM-generated &apos;intelligent babble,&apos; and make scraping your content an expensive, fruitless endeavor.
-        </p>
-        <div className="flex flex-col sm:flex-row gap-4 mb-10">
-            <Button
-              asChild
-              size="lg"
-              variant="outline"
-              className="px-10 py-6 text-lg text-accent border-accent hover:text-accent-foreground hover:bg-accent/90 transition-all duration-100 ease-in-out shadow-[0_0_15px_hsl(var(--accent)/0.5),_0_0_30px_hsl(var(--accent)/0.3)] hover:shadow-[0_0_20px_hsl(var(--accent)),_0_0_40px_hsl(var(--accent)/0.7)] rounded-lg border-b-4 border-accent/60 active:translate-y-0.5 active:border-b-2 active:[box-shadow:inset_0_3px_5px_rgba(0,0,0,0.3)] active:brightness-90"
-            >
-              <NextLink href="/login">Deploy Your Trap</NextLink>
-            </Button>
-            <Button
-              asChild
-              size="lg"
-              variant="outline"
-              className="px-10 py-6 text-lg text-accent border-accent hover:text-accent-foreground hover:bg-accent/90 transition-all duration-100 ease-in-out shadow-[0_0_15px_hsl(var(--accent)/0.5),_0_0_30px_hsl(var(--accent)/0.3)] hover:shadow-[0_0_20px_hsl(var(--accent)),_0_0_40px_hsl(var(--accent)/0.7)] rounded-lg border-b-4 border-accent/60 active:translate-y-0.5 active:border-b-2 active:[box-shadow:inset_0_3px_5px_rgba(0,0,0,0.3)] active:brightness-90"
-            >
-              <NextLink href="/demo/dashboard">View Live Demo</NextLink>
-            </Button>
-        </div>
-
-        {/* Informational Cards Section - Now 2x2 Grid */}
-        <div className="mt-10 mb-20 w-full max-w-5xl px-4 grid md:grid-cols-2 gap-6 text-left">
-          <Card className="border-primary/30 shadow-lg shadow-primary/10 bg-card/80 backdrop-blur-sm flex flex-col h-full">
-            <CardHeader className="p-6 flex items-center">
-              <CardTitle className="text-2xl text-accent glitch-text min-h-12 flex items-center">The Problem: When Scrapers Ignore the Rules</CardTitle>
-            </CardHeader>
-            <CardContent className="text-foreground/80 space-y-3 flex-grow">
-                <p>Your valuable content, data, and intellectual property are prime targets for automated bots. Many of these scrapers brazenly ignore <code className="bg-muted px-1.5 py-0.5 rounded-sm text-xs">robots.txt</code> and bypass conventional blocking techniques, constantly draining your server resources and stealing your work for AI training models or competitive analysis. Simply blocking isn&apos;t enough for these persistent threats.</p>
-                 <ul className="list-disc pl-5 space-y-2 mt-2 text-foreground/80">
-                    <li><strong>Brazen Disregard for Rules:</strong> These scrapers frequently ignore <code className="bg-muted px-1.5 py-0.5 rounded-sm text-xs">robots.txt</code> directives, the established standard for bot etiquette. They are engineered to bypass common blocking techniques, making traditional defenses feel like sieves.</li>
-                    <li><strong>Relentless Resource Drain:</strong> Unchecked scraping can overwhelm your server, consuming excessive bandwidth, CPU, and memory. This can lead to slower site performance for legitimate users, increased hosting costs, and even potential downtime.</li>
-                    <li><strong>Theft for AI & Competitive Exploitation:</strong> Your original work, articles, images, product information, and pricing data are prime targets. This stolen information is then often fed into large AI training models without consent or used by competitors to gain an unfair advantage, diluting your brand and devaluing your efforts.</li>
-                    <li><strong>Conventional Blocking is Often Insufficient:</strong> Static IP blocks, basic firewall rules, or simple rate limiting are often outmaneuvered by sophisticated scraping operations that use distributed networks and constantly changing identities. These persistent threats require a more dynamic and active countermeasure.</li>
+            <Card className="border-accent/30 shadow-lg shadow-accent/10 bg-card/80 backdrop-blur-sm flex flex-col h-full">
+              <CardHeader className="p-6 flex items-center">
+                <CardTitle className="text-2xl text-accent glitch-text min-h-12 flex items-center">The SpiteSpiral Solution: Active Deterrence & Data Devaluation</CardTitle>
+              </CardHeader>
+              <CardContent className="text-foreground/80 space-y-3 flex-grow">
+                <p>SpiteSpiral isn&apos;t a passive shield; it&s an active trap. By strategically embedding a SpiteSpiral link, you redirect these rule-ignoring bots into a carefully constructed digital maze:</p>
+                <ul className="list-disc pl-5 space-y-2 text-foreground/80">
+                    <li><strong>LLM-Powered Deception:</strong> Our core uses advanced, small language models (like DistilGPT-2) to generate vast quantities of unique, contextually plausible (yet ultimately nonsensical) content. This &apos;intelligent babble&apos; is far more convincing than simple repeated text, making it harder for scrapers to detect the trap and more likely to be ingested into their datasets.</li>
+                    <li><strong>Strategic Resource Drain:</strong> Each interaction is designed to be slow and demanding for the bot, consuming its CPU cycles, bandwidth, and time with an endless stream of unique pages and deep, recursive links.</li>
+                    <li><strong>Proactive Data Devaluation:</strong> By feeding AI scrapers our LLM-generated noise, we aim to degrade the quality of their training data, making their efforts not only costly but counterproductive.</li>
+                    <li><strong>SEO-Conscious Design:</strong> Implemented correctly (we&apos;ll show you how!), SpiteSpiral targets *only* misbehaving bots, leaving your standing with legitimate search engines like Google unharmed.</li>
                 </ul>
-            </CardContent>
-          </Card>
+                <div className="mt-4 pt-3 border-t border-border/50">
+                  <h4 className="text-lg font-semibold text-primary mb-2">Beyond the Trap: Proactive Defense with API Access <span className="text-xs text-accent font-normal">(Coming Soon!)</span></h4>
+                  <p className="text-foreground/80 mb-2">SpiteSpiral is evolving. Soon, you&apos;ll be able to:</p>
+                  <ul className="list-disc pl-5 space-y-1 text-foreground/80">
+                    <li><strong>Access Your Tarpit Data Programmatically:</strong> Integrate detailed logs and statistics from your *own* tarpit instances directly into your security workflows.</li>
+                    <li><strong>Leverage Global Network Intelligence:</strong> Gain API access to anonymized, aggregated threat data from the *entire* SpiteSpiral network. Use this to proactively block known malicious actors *before* they even reach your site.</li>
+                  </ul>
+                  <p className="text-foreground/80 mt-2">This creates a powerful feedback loop: actively block known threats identified by the network, and use your SpiteSpiral tarpit to catch, analyze, and contribute new threats back to the collective intelligence. Stay ahead of the curve.</p>
+                </div>
+              </CardContent>
+            </Card>
 
-          <Card className="border-accent/30 shadow-lg shadow-accent/10 bg-card/80 backdrop-blur-sm flex flex-col h-full">
-            <CardHeader className="p-6 flex items-center">
-              <CardTitle className="text-2xl text-accent glitch-text min-h-12 flex items-center">The SpiteSpiral Solution: Active Deterrence & Data Devaluation</CardTitle>
-            </CardHeader>
-            <CardContent className="text-foreground/80 space-y-3 flex-grow">
-              <p>SpiteSpiral isn&apos;t a passive shield; it&s an active trap. By strategically embedding a SpiteSpiral link, you redirect these rule-ignoring bots into a carefully constructed digital maze:</p>
-              <ul className="list-disc pl-5 space-y-2 text-foreground/80">
-                  <li><strong>LLM-Powered Deception:</strong> Our core uses advanced, small language models (like DistilGPT-2) to generate vast quantities of unique, contextually plausible (yet ultimately nonsensical) content. This &apos;intelligent babble&apos; is far more convincing than simple repeated text, making it harder for scrapers to detect the trap and more likely to be ingested into their datasets.</li>
-                  <li><strong>Strategic Resource Drain:</strong> Each interaction is designed to be slow and demanding for the bot, consuming its CPU cycles, bandwidth, and time with an endless stream of unique pages and deep, recursive links.</li>
-                  <li><strong>Proactive Data Devaluation:</strong> By feeding AI scrapers our LLM-generated noise, we aim to degrade the quality of their training data, making their efforts not only costly but counterproductive.</li>
-                  <li><strong>SEO-Conscious Design:</strong> Implemented correctly (we&apos;ll show you how!), SpiteSpiral targets *only* misbehaving bots, leaving your standing with legitimate search engines like Google unharmed.</li>
-              </ul>
-              <div className="mt-4 pt-3 border-t border-border/50">
-                <h4 className="text-lg font-semibold text-primary mb-2">Beyond the Trap: Proactive Defense with API Access <span className="text-xs text-accent font-normal">(Coming Soon!)</span></h4>
-                <p className="text-foreground/80 mb-2">SpiteSpiral is evolving. Soon, you&apos;ll be able to:</p>
-                <ul className="list-disc pl-5 space-y-1 text-foreground/80">
-                  <li><strong>Access Your Tarpit Data Programmatically:</strong> Integrate detailed logs and statistics from your *own* tarpit instances directly into your security workflows.</li>
-                  <li><strong>Leverage Global Network Intelligence:</strong> Gain API access to anonymized, aggregated threat data from the *entire* SpiteSpiral network. Use this to proactively block known malicious actors *before* they even reach your site.</li>
+            <Card className="border-primary/30 shadow-lg shadow-primary/10 bg-card/80 backdrop-blur-sm flex flex-col h-full">
+              <CardHeader className="p-6 flex items-center">
+                <CardTitle className="text-2xl text-accent glitch-text min-h-12 flex items-center">Why SpiteSpiral? Our Unique Approach</CardTitle>
+              </CardHeader>
+              <CardContent className="text-foreground/80 space-y-3 flex-grow">
+                <p>Most bot solutions focus on *blocking*. SpiteSpiral focuses on **active engagement and consequence** for those that slip through or deliberately ignore your rules.</p>
+                <ul className="list-disc pl-5 space-y-2 text-foreground/80">
+                    <li><strong>Unique Trap-and-Drain Methodology:</strong> We turn your site into a sticky web for unwanted crawlers.</li>
+                    <li><strong>Sophisticated LLM Content Generation:</strong> Makes our traps more believable and our data pollution more effective.</li>
+                    <li><strong>Cost-Amplification for Scrapers:</strong> We make scraping your data an expensive mistake.</li>
+                    <li><strong>Aimed at Rule-Breakers:</strong> Designed for the bots that other systems miss or can&apos;t effectively stop without impacting legitimate traffic.</li>
                 </ul>
-                <p className="text-foreground/80 mt-2">This creates a powerful feedback loop: actively block known threats identified by the network, and use your SpiteSpiral tarpit to catch, analyze, and contribute new threats back to the collective intelligence. Stay ahead of the curve.</p>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          <Card className="border-primary/30 shadow-lg shadow-primary/10 bg-card/80 backdrop-blur-sm flex flex-col h-full">
-            <CardHeader className="p-6 flex items-center">
-              <CardTitle className="text-2xl text-accent glitch-text min-h-12 flex items-center">Why SpiteSpiral? Our Unique Approach</CardTitle>
-            </CardHeader>
-            <CardContent className="text-foreground/80 space-y-3 flex-grow">
-              <p>Most bot solutions focus on *blocking*. SpiteSpiral focuses on **active engagement and consequence** for those that slip through or deliberately ignore your rules.</p>
-              <ul className="list-disc pl-5 space-y-2 text-foreground/80">
-                  <li><strong>Unique Trap-and-Drain Methodology:</strong> We turn your site into a sticky web for unwanted crawlers.</li>
-                  <li><strong>Sophisticated LLM Content Generation:</strong> Makes our traps more believable and our data pollution more effective.</li>
-                  <li><strong>Cost-Amplification for Scrapers:</strong> We make scraping your data an expensive mistake.</li>
-                  <li><strong>Aimed at Rule-Breakers:</strong> Designed for the bots that other systems miss or can&apos;t effectively stop without impacting legitimate traffic.</li>
-              </ul>
-            </CardContent>
-          </Card>
+            <Card className="border-accent/30 shadow-lg shadow-accent/10 bg-card/80 backdrop-blur-sm flex flex-col h-full">
+              <CardHeader className="p-6 flex items-center">
+                <CardTitle className="text-2xl text-accent glitch-text min-h-12 flex items-center">Who Needs SpiteSpiral?</CardTitle>
+              </CardHeader>
+              <CardContent className="text-foreground/80 space-y-3 flex-grow">
+                <p>SpiteSpiral is for anyone tired of their content being exploited by aggressive, unauthorized scrapers:</p>
+                <ul className="list-disc pl-5 space-y-2 text-foreground/80">
+                    <li><strong>Businesses:</strong> Protect proprietary data, pricing strategies, and unique content. Prevent competitors from easily training AI models on your information.</li>
+                    <li><strong>Creators & Artists:</strong> Safeguard your intellectual property and make it costly for AI to train on your original work without permission.</li>
+                    <li><strong>Developers & Site Owners:</strong> Add a potent layer of defense against resource-draining bots that ignore common courtesies.</li>
+                </ul>
+              </CardContent>
+            </Card>
+          </div>
 
-          <Card className="border-accent/30 shadow-lg shadow-accent/10 bg-card/80 backdrop-blur-sm flex flex-col h-full">
-            <CardHeader className="p-6 flex items-center">
-              <CardTitle className="text-2xl text-accent glitch-text min-h-12 flex items-center">Who Needs SpiteSpiral?</CardTitle>
-            </CardHeader>
-            <CardContent className="text-foreground/80 space-y-3 flex-grow">
-              <p>SpiteSpiral is for anyone tired of their content being exploited by aggressive, unauthorized scrapers:</p>
-              <ul className="list-disc pl-5 space-y-2 text-foreground/80">
-                  <li><strong>Businesses:</strong> Protect proprietary data, pricing strategies, and unique content. Prevent competitors from easily training AI models on your information.</li>
-                  <li><strong>Creators & Artists:</strong> Safeguard your intellectual property and make it costly for AI to train on your original work without permission.</li>
-                  <li><strong>Developers & Site Owners:</strong> Add a potent layer of defense against resource-draining bots that ignore common courtesies.</li>
-              </ul>
-            </CardContent>
-          </Card>
+          {/* FAQ Section */}
+          <div className="mt-10 mb-20 w-full max-w-4xl px-4">
+            <Card className="border-primary/30 shadow-lg shadow-primary/10 bg-card/80 backdrop-blur-sm">
+              <CardHeader className="p-6 text-center">
+                <CardTitle className="text-4xl text-primary glitch-text">Frequently Asked Questions</CardTitle>
+                <CardDescription className="text-muted-foreground mt-2">The Honest Truth</CardDescription>
+              </CardHeader>
+              <CardContent className="text-left text-foreground/80">
+                <Accordion type="single" collapsible className="w-full">
+                  {faqData.map((item, index) => (
+                    <AccordionItem value={`item-${index + 1}`} key={index} className="border-primary/20">
+                      <AccordionTrigger className="text-lg text-accent hover:text-primary hover:no-underline text-left py-5">
+                        {item.question}
+                      </AccordionTrigger>
+                      <AccordionContent className="pb-4 pt-2 text-base leading-relaxed">
+                        {typeof item.answer === 'string' ? <p>{item.answer}</p> : item.answer}
+                      </AccordionContent>
+                    </AccordionItem>
+                  ))}
+                </Accordion>
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
-        {/* FAQ Section */}
-        <div className="mt-10 mb-20 w-full max-w-4xl px-4">
-          <Card className="border-primary/30 shadow-lg shadow-primary/10 bg-card/80 backdrop-blur-sm">
-            <CardHeader className="p-6 text-center">
-              <CardTitle className="text-4xl text-primary glitch-text">Frequently Asked Questions</CardTitle>
-              <CardDescription className="text-muted-foreground mt-2">The Honest Truth</CardDescription>
-            </CardHeader>
-            <CardContent className="text-left text-foreground/80">
-              <Accordion type="single" collapsible className="w-full">
-                {faqData.map((item, index) => (
-                  <AccordionItem value={`item-${index + 1}`} key={index} className="border-primary/20">
-                    <AccordionTrigger className="text-lg text-accent hover:text-primary hover:no-underline text-left py-5">
-                      {item.question}
-                    </AccordionTrigger>
-                    <AccordionContent className="pb-4 pt-2 text-base leading-relaxed">
-                      {typeof item.answer === 'string' ? <p>{item.answer}</p> : item.answer}
-                    </AccordionContent>
-                  </AccordionItem>
-                ))}
-              </Accordion>
-            </CardContent>
-          </Card>
-        </div>
+        <footer className="py-6 md:px-8 md:py-0 border-t border-primary/10 bg-card/50 relative z-20">
+          <div className="container flex flex-col items-center justify-center gap-2 md:h-20 text-center">
+            <NextLink href="/" className="flex items-center gap-2 group mb-2">
+              <BrandLogoIcon className="h-8 w-8 text-primary" />
+              <span className="text-sm font-semibold text-primary">SpiteSpiral</span>
+            </NextLink>
+            <NextLink href="/legal/licenses" className="text-xs text-muted-foreground/70 hover:text-accent animate-link-glow">
+              Licenses &amp; Acknowledgements
+            </NextLink>
+            <p className="text-xs text-muted-foreground/70">
+              © {new Date().getFullYear()} SpiteSpiral. Trap with malice.
+            </p>
+          </div>
+           {/* Invisible redirect tarpit link for footer area */}
+           <div aria-hidden="true" style={{ position: 'absolute', left: '-9999px', top: '-9999px', opacity: 0, width: '1px', height: '1px', overflow: 'hidden' }}>
+            <a href="/sneedsfeedandseed/" title="Internal Archive Redirect - Homepage" style={{ fontSize: '1px', color: 'transparent', display: 'inline-block' }}>.</a>
+          </div>
+        </footer>
       </div>
-
-      <footer className="py-6 md:px-8 md:py-0 border-t border-primary/10 bg-card/50 relative z-20">
-        <div className="container flex flex-col items-center justify-center gap-2 md:h-20 text-center">
-          <NextLink href="/" className="flex items-center gap-2 group mb-2">
-            <BrandLogoIcon className="h-8 w-8 text-primary" />
-            <span className="text-sm font-semibold text-primary">SpiteSpiral</span>
-          </NextLink>
-          <NextLink href="/legal/licenses" className="text-xs text-muted-foreground/70 hover:text-accent animate-link-glow">
-            Licenses &amp; Acknowledgements
-          </NextLink>
-          <p className="text-xs text-muted-foreground/70">
-            © {new Date().getFullYear()} SpiteSpiral. Trap with malice.
-          </p>
-        </div>
-      </footer>
-    </div>
+    </>
   );
 }
     

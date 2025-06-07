@@ -1,37 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://[YOUR_SITE_URL]/</loc>
+    <loc>https://spitespiral.com/</loc>
     <lastmod>2024-07-26</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://[YOUR_SITE_URL]/login</loc>
+    <loc>https:///spitespiral.com/login</loc>
     <lastmod>2024-07-26</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://[YOUR_SITE_URL]/demo/dashboard</loc>
+    <loc>https:///spitespiral.com/demo/dashboard</loc>
     <lastmod>2024-07-26</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://[YOUR_SITE_URL]/demo/logs</loc>
+    <loc>https:///spitespiral.com/demo/logs</loc>
     <lastmod>2024-07-26</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://[YOUR_SITE_URL]/legal/licenses</loc>
+    <loc>https:///spitespiral.com/legal/licenses</loc>
     <lastmod>2024-07-26</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://[YOUR_SITE_URL]/sneedsfeedandseed/</loc>
+    <loc>https:///spitespiral.com/sneedsfeedandseed/</loc>
     <lastmod>2024-07-26</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.1</priority>

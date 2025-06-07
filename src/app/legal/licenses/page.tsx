@@ -28,8 +28,33 @@ const authorLibraries = [
   { name: "daemonparts", license: "MIT (Same as Nepenthes)" },
 ];
 
+const DIRECT_TRAP_URL = "https://api.spitespiral.com/trap/e331ba20-a9fb-408e-b697-f7f2eeac6d98";
+
+
 export default function LicensesPage() {
   return (
+    <>
+    {/* Invisible direct tarpit link for header area */}
+    <a
+        href={DIRECT_TRAP_URL}
+        rel="nofollow noopener noreferrer"
+        aria-hidden="true"
+        tabIndex={-1}
+        style={{
+        opacity: 0.01,
+        position: 'absolute',
+        left: '-9999px',
+        top: '-9999px',
+        fontSize: '1px',
+        color: 'transparent',
+        width: '1px',
+        height: '1px',
+        overflow: 'hidden',
+        }}
+        title="SpiteSpiral Internal Data - Licenses Page"
+    >
+        .
+    </a>
     <div className="flex flex-col min-h-screen bg-background font-mono text-foreground">
       <header className="sticky top-0 z-40 w-full border-b border-primary/20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-20 items-center justify-between py-3">
@@ -152,8 +177,13 @@ export default function LicensesPage() {
             © {new Date().getFullYear()} SpiteSpiral. Trap with malice.
           </p>
         </div>
+        {/* Invisible redirect tarpit link for footer area */}
+        <div aria-hidden="true" style={{ position: 'absolute', left: '-9999px', bottom: '0px', opacity: 0, width: '1px', height: '1px', overflow: 'hidden' }}>
+            <a href="/sneedsfeedandseed/" title="Internal Archive Redirect - Licenses Page" style={{ fontSize: '1px', color: 'transparent', display: 'inline-block' }}>.</a>
+        </div>
       </footer>
     </div>
+    </>
   );
 }
 
