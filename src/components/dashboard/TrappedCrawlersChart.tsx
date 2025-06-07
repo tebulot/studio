@@ -1,95 +1,82 @@
 
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip as RechartsTooltip } from "recharts";
 import { ChartTooltipContent, ChartContainer, ChartConfig } from "@/components/ui/chart";
 import { Skeleton } from "@/components/ui/skeleton";
-import { format, startOfHour, startOfDay, eachHourOfInterval, eachDayOfInterval, parseISO } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { Info } from "lucide-react";
 
 interface ApiLogEntry {
   timestamp: number; // Millisecond Unix timestamp
-  // other fields from ApiLogEntry...
+}
+
+interface SummaryDataPoint {
+    date: string; // ISO string
+    hits: number;
 }
 
 const chartConfig = {
   hits: { 
     label: "Total Hits",
-    color: "hsl(var(--primary))", // Use primary color from theme
+    color: "hsl(var(--primary))",
   },
 } satisfies ChartConfig;
 
 interface TrappedCrawlersChartProps {
   apiLogs: ApiLogEntry[];
+  summaryHitsOverTime?: SummaryDataPoint[];
   isLoading: boolean;
   selectedRangeHours: number;
+  tier: 'window' | 'setforget' | 'analytics';
 }
 
-interface ChartDataPoint {
-  date: string; // Formatted date/time string for XAxis
-  hits: number; 
-}
-
-export default function TrappedCrawlersChart({ apiLogs, isLoading, selectedRangeHours }: TrappedCrawlersChartProps) {
+export default function TrappedCrawlersChart({ apiLogs, summaryHitsOverTime, isLoading, selectedRangeHours, tier }: TrappedCrawlersChartProps) {
 
   const processedChartData = useMemo(() => {
-    if (!apiLogs || apiLogs.length === 0) {
-      return [];
+    let dataToProcess: Array<{ date: string; hits: number }> = [];
+
+    if (tier === 'analytics' && apiLogs && apiLogs.length > 0) {
+        // Process apiLogs for Analytics tier
+        const now = new Date();
+        const endDate = now;
+        const startDate = new Date(now.getTime() - selectedRangeHours * 60 * 60 * 1000);
+        let intervalPoints: Date[];
+        let aggregationFormat: string;
+
+        if (selectedRangeHours <= 48) {
+            intervalPoints = eachHourOfInterval({ start: startDate, end: endDate });
+            aggregationFormat = 'yyyy-MM-dd HH';
+        } else {
+            intervalPoints = eachDayOfInterval({ start: startDate, end: endDate });
+            aggregationFormat = 'yyyy-MM-dd';
+        }
+        
+        const hitsByInterval: { [key: string]: number } = {};
+        intervalPoints.forEach(point => { hitsByInterval[format(point, aggregationFormat)] = 0; });
+
+        apiLogs.forEach(log => {
+            const logDate = new Date(log.timestamp);
+            let intervalKey: string;
+            if (selectedRangeHours <= 48) { intervalKey = format(startOfHour(logDate), aggregationFormat); } 
+            else { intervalKey = format(startOfDay(logDate), aggregationFormat); }
+            if (hitsByInterval[intervalKey] !== undefined) { hitsByInterval[intervalKey]++; }
+        });
+        dataToProcess = intervalPoints.map(point => ({ date: point.toISOString(), hits: hitsByInterval[format(point, aggregationFormat)] || 0 }));
+
+    } else if ((tier === 'setforget' || tier === 'window') && summaryHitsOverTime && summaryHitsOverTime.length > 0) {
+        // Use pre-aggregated summaryHitsOverTime for Set & Forget or Window Shopping
+        dataToProcess = summaryHitsOverTime;
+    } else {
+        return [];
     }
+    return dataToProcess;
 
-    const now = new Date();
-    const endDate = now;
-    const startDate = new Date(now.getTime() - selectedRangeHours * 60 * 60 * 1000);
-
-    let intervalPoints: Date[];
-    let tickFormatter: (dateStr: string) => string;
-    let aggregationFormat: string; // For grouping logs
-
-    if (selectedRangeHours <= 48) { // Up to 2 days, show hourly
-      intervalPoints = eachHourOfInterval({ start: startDate, end: endDate });
-      tickFormatter = (dateStr) => format(parseISO(dateStr), 'HH:00'); // HH:mm for X-axis
-      aggregationFormat = 'yyyy-MM-dd HH'; // Group logs by hour
-    } else if (selectedRangeHours <= 7 * 24) { // Up to 7 days, show daily
-      intervalPoints = eachDayOfInterval({ start: startDate, end: endDate });
-      tickFormatter = (dateStr) => format(parseISO(dateStr), 'MMM dd'); // "Jan 01" for X-axis
-      aggregationFormat = 'yyyy-MM-dd'; // Group logs by day
-    } else { // More than 7 days (e.g., 30 days), show daily
-      intervalPoints = eachDayOfInterval({ start: startDate, end: endDate });
-      tickFormatter = (dateStr) => format(parseISO(dateStr), 'MMM dd');
-      aggregationFormat = 'yyyy-MM-dd';
-    }
-    
-    const hitsByInterval: { [key: string]: number } = {};
-    intervalPoints.forEach(point => {
-      hitsByInterval[format(point, aggregationFormat)] = 0;
-    });
-
-    apiLogs.forEach(log => {
-      const logDate = new Date(log.timestamp);
-      let intervalKey: string;
-      if (selectedRangeHours <= 48) {
-        intervalKey = format(startOfHour(logDate), aggregationFormat);
-      } else {
-        intervalKey = format(startOfDay(logDate), aggregationFormat);
-      }
-      if (hitsByInterval[intervalKey] !== undefined) {
-        hitsByInterval[intervalKey]++;
-      }
-    });
-
-    return intervalPoints.map(point => {
-      const key = format(point, aggregationFormat);
-      return {
-        date: point.toISOString(), // Store as ISO string, format for display in XAxis
-        hits: hitsByInterval[key] || 0,
-      };
-    });
-
-  }, [apiLogs, selectedRangeHours]);
+  }, [apiLogs, summaryHitsOverTime, selectedRangeHours, tier]);
 
 
-  if (isLoading) {
+  if (isLoading && tier !== 'window') { // Window shopping uses static data, no loading skeleton needed for chart if data is present
     return (
       <div className="h-[350px] w-full flex items-center justify-center">
         <Skeleton className="h-full w-full" />
@@ -105,22 +92,21 @@ export default function TrappedCrawlersChart({ apiLogs, isLoading, selectedRange
         <Info className="h-12 w-12 text-muted-foreground mb-3" />
         <p className="text-lg font-semibold text-muted-foreground">No Activity Data for Chart</p>
         <p className="text-sm text-muted-foreground max-w-md">
-          No tarpit activity recorded in the API logs for the selected time range, or data is still loading.
+          No tarpit activity recorded for the selected time range, or data is still loading.
+          {tier === 'window' && " (This is demo data)"}
         </p>
       </div>
     );
   }
   
-  // Determine tick formatter based on range for the XAxis display
   let xAxisTickFormatter: (value: string) => string;
-  if (selectedRangeHours <= 24) { // 24 hours or less, show HH:00
+  if (selectedRangeHours <= 24) { 
     xAxisTickFormatter = (value) => format(parseISO(value), 'HH:00');
-  } else if (selectedRangeHours <= 48) { // 25 to 48 hours, show Day HH:00
+  } else if (selectedRangeHours <= 48) {
      xAxisTickFormatter = (value) => format(parseISO(value), 'MMM dd HH:00');
-  } else { // More than 48 hours, show MMM dd
+  } else { 
     xAxisTickFormatter = (value) => format(parseISO(value), 'MMM dd');
   }
-
 
   return (
     <div className="h-[350px] w-full">
@@ -135,8 +121,6 @@ export default function TrappedCrawlersChart({ apiLogs, isLoading, selectedRange
               tickMargin={8} 
               tickFormatter={xAxisTickFormatter}
               stroke="hsl(var(--muted-foreground))"
-              // Interval logic for X-axis ticks might be needed for dense data
-              // interval={selectedRangeHours > 7*24 ? Math.floor(processedChartData.length / 7) : 'preserveStartEnd'} // Example: show ~7 ticks for 30 days
             />
             <YAxis 
               tickLine={false} 
@@ -151,7 +135,7 @@ export default function TrappedCrawlersChart({ apiLogs, isLoading, selectedRange
               content={<ChartTooltipContent 
                           indicator="dot" 
                           labelFormatter={(label, payload) => {
-                            if (payload && payload.length > 0) {
+                            if (payload && payload.length > 0 && payload[0].payload.date) {
                                 return format(parseISO(payload[0].payload.date), 'PPP p');
                             }
                             return label;
@@ -172,3 +156,5 @@ export default function TrappedCrawlersChart({ apiLogs, isLoading, selectedRange
     </div>
   );
 }
+
+

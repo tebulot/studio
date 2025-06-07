@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import TrappedCrawlersChart from "@/components/dashboard/TrappedCrawlersChart";
 import ApiLogTable from "@/components/dashboard/ApiLogTable";
-import { ShieldCheck, Users, DollarSign, Info, Fingerprint, ListFilter, Activity, Globe, Server, FileText, BarChart3, AlertCircle } from "lucide-react";
+import { ShieldCheck, Users, DollarSign, Info, Fingerprint, ListFilter, Activity, Globe, Server, FileText, BarChart3, AlertCircle, Eye, Lock } from "lucide-react";
 import { useAuth, type UserProfile } from "@/contexts/AuthContext";
 import { db } from "@/lib/firebase/clientApp";
 import { collection, query, where, onSnapshot, type DocumentData, type QuerySnapshot, Timestamp, getDocs } from "firebase/firestore";
@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip as RechartsTooltip } from "recharts";
+import { eachDayOfInterval, eachHourOfInterval, format, startOfDay, startOfHour, parseISO } from 'date-fns';
 
 interface ApiLogEntry {
   timestamp: number; // Millisecond Unix timestamp
@@ -59,9 +60,48 @@ interface AggregatedAnalyticsData {
   topPaths: Array<{ path: string; hits: number }>;
   methodDistribution: Record<string, number>;
   statusDistribution: Record<string, number>;
+  // For Set & Forget chart
+  summaryHitsOverTime?: Array<{ date: string; hits: number }>;
 }
 
 const LOG_FETCH_LIMIT = 250;
+const WINDOW_SHOPPING_PLACEHOLDER_COUNT_PRIMARY = 1234;
+const WINDOW_SHOPPING_PLACEHOLDER_COUNT_SECONDARY = 789;
+const WINDOW_SHOPPING_PLACEHOLDER_COST = "0.1234";
+const WINDOW_SHOPPING_PLACEHOLDER_AGG_HITS = 10567;
+const WINDOW_SHOPPING_PLACEHOLDER_AGG_IPS = 876;
+
+const PLACEHOLDER_TOP_COUNTRIES_DEMO = [
+  { country: "Atlantis", hits: 300 }, { country: "El Dorado", hits: 250 }, { country: "Shangri-La", hits: 200 },
+  { country: "Avalon", hits: 150 }, { country: "Lyonesse", hits: 100 },
+];
+const PLACEHOLDER_TOP_IPS_DEMO = [
+  { ip: "10.0.0.1 (Demo)", hits: 150 }, { ip: "10.0.0.2 (Demo)", hits: 120 }, { ip: "10.0.0.3 (Demo)", hits: 90 },
+  { ip: "10.0.0.4 (Demo)", hits: 70 }, { ip: "10.0.0.5 (Demo)", hits: 50 },
+];
+const PLACEHOLDER_TOP_UAS_DEMO = [
+  { userAgent: "DemoBot/1.0", hits: 200 }, { userAgent: "SampleScraper/2.x", hits: 180 }, { userAgent: "TestCrawler/0.1", hits: 150 },
+  { userAgent: "PlaceholderUA", hits: 100 }, { userAgent: "Botzilla-Demo", hits: 80 },
+];
+const PLACEHOLDER_TOP_PATHS_DEMO = [
+  { path: "/demo-login.php", hits: 220 }, { path: "/sample-admin/", hits: 190 }, { path: "/test-api/data", hits: 160 },
+  { path: "/placeholder/path", hits: 110 }, { path: "/example-route", hits: 70 },
+];
+const PLACEHOLDER_METHOD_DIST_DEMO = { "GET (Demo)": 600, "POST (Demo)": 300, "PUT (Demo)": 50, "DELETE (Demo)": 20, "OPTIONS (Demo)": 30 };
+const PLACEHOLDER_STATUS_DIST_DEMO = { "200 (Demo)": 700, "404 (Demo)": 150, "403 (Demo)": 100, "500 (Demo)": 30, "301 (Demo)": 20 };
+const PLACEHOLDER_SUMMARY_HITS_OVER_TIME_DEMO = (rangeHours: number): Array<{date: string, hits: number}> => {
+    const now = new Date();
+    const endDate = now;
+    const startDate = new Date(now.getTime() - rangeHours * 60 * 60 * 1000);
+    let intervalPoints: Date[];
+     if (rangeHours <= 48) { intervalPoints = eachHourOfInterval({ start: startDate, end: endDate });}
+     else { intervalPoints = eachDayOfInterval({ start: startDate, end: endDate }); }
+    return intervalPoints.map(point => ({
+        date: point.toISOString(),
+        hits: Math.floor(Math.random() * (rangeHours <=48 ? 20 : 200) + 5) // Random small numbers
+    }));
+};
+
 
 function aggregateTopList<T extends { hits: number }, K extends keyof T>(
   summaries: AnalyticsSummaryDocument[],
@@ -102,7 +142,7 @@ function aggregateDistribution(
 const HorizontalBarChart = ({ data, nameKey, valueKey, layout = 'vertical' }: { data: any[], nameKey: string, valueKey: string, layout?: 'horizontal' | 'vertical' }) => {
   if (!data || data.length === 0) return <p className="text-xs text-muted-foreground h-40 flex items-center justify-center">No data to display.</p>;
   const chartData = data.map(item => ({ name: item[nameKey], value: item[valueKey] })).slice(0, 5);
-  const containerHeight = layout === 'vertical' ? (chartData.length * 35 + 40) : 200; // Adjusted for better spacing
+  const containerHeight = layout === 'vertical' ? (chartData.length * 35 + 40) : 200;
 
   return (
     <ResponsiveContainer width="100%" height={containerHeight}>
@@ -147,11 +187,22 @@ export default function DashboardPage() {
   const [isAggregatedLoading, setIsAggregatedLoading] = useState(true);
   const [aggregatedError, setAggregatedError] = useState<string | null>(null);
 
-  const isAnalyticsTier = useMemo(() => {
+  const isSubscriptionActive = useMemo(() => userProfile?.subscriptionStatus === 'active' || userProfile?.subscriptionStatus === 'trialing', [userProfile]);
+
+  const isWindowShoppingTier = useMemo(() => {
     if (!userProfile) return false;
-    // Ensure stripePriceId check for "Analytics" tier matches AccountPage.
+    return userProfile.activeTierId === 'window_shopping' || !isSubscriptionActive; // If not active, effectively window shopping
+  }, [userProfile, isSubscriptionActive]);
+
+  const isSetAndForgetTier = useMemo(() => {
+    if (!userProfile || !isSubscriptionActive) return false;
+    return userProfile.activeTierId === 'set_and_forget' || userProfile.activeTierId === 'price_1RTilPKPVCKvfVVwBUqudAnp';
+  }, [userProfile, isSubscriptionActive]);
+
+  const isAnalyticsTier = useMemo(() => {
+    if (!userProfile || !isSubscriptionActive) return false;
     return userProfile.activeTierId === 'analytics' || userProfile.activeTierId === 'price_1RTim1KPVCKvfVVwDkc5G0at';
-  }, [userProfile]);
+  }, [userProfile, isSubscriptionActive]);
 
   useEffect(() => {
     if (authLoading) { setIsLoadingInstancesCount(true); return; }
@@ -175,10 +226,11 @@ export default function DashboardPage() {
   }, [user, authLoading, toast]);
 
   useEffect(() => {
-    if (authLoading || !user) {
+    if (authLoading || !user || !isAnalyticsTier) { // API logs only for Analytics tier
       setApiLoading(true);
       setApiLogsData([]);
       if (!user && !authLoading) { setApiLoading(false); }
+      if(!isAnalyticsTier && user && !authLoading) {setApiLoading(false); } // Stop loading if not analytics tier
       return;
     }
     const fetchApiLogs = async () => {
@@ -211,13 +263,14 @@ export default function DashboardPage() {
       } finally { setApiLoading(false); }
     };
     fetchApiLogs();
-  }, [user, authLoading, toast, selectedRangeHours]);
+  }, [user, authLoading, toast, selectedRangeHours, isAnalyticsTier]);
 
   useEffect(() => {
-    if (authLoading || !user) {
+    if (authLoading || !user || isWindowShoppingTier) { // No summaries for Window Shopping
       setIsAggregatedLoading(true);
       setAggregatedAnalytics(null);
       if(!user && !authLoading) setIsAggregatedLoading(false);
+      if(isWindowShoppingTier && user && !authLoading) { setIsAggregatedLoading(false); } // Stop loading if window shopping
       return;
     }
 
@@ -234,7 +287,8 @@ export default function DashboardPage() {
         if (userTarpitIds.length === 0) {
           setAggregatedAnalytics({
             totalHits: 0, approxUniqueIpCount: 0, topCountries: [], topIPs: [],
-            topUserAgents: [], topPaths: [], methodDistribution: {}, statusDistribution: {}
+            topUserAgents: [], topPaths: [], methodDistribution: {}, statusDistribution: {},
+            summaryHitsOverTime: [],
           });
           setIsAggregatedLoading(false);
           return;
@@ -265,21 +319,51 @@ export default function DashboardPage() {
         if (allSummaries.length === 0) {
            setAggregatedAnalytics({
             totalHits: 0, approxUniqueIpCount: 0, topCountries: [], topIPs: [],
-            topUserAgents: [], topPaths: [], methodDistribution: {}, statusDistribution: {}
+            topUserAgents: [], topPaths: [], methodDistribution: {}, statusDistribution: {},
+            summaryHitsOverTime: [],
           });
           setIsAggregatedLoading(false);
           return;
         }
 
+        // Process summaries for chart data (Set & Forget tier)
+        const hitsByInterval: { [key: string]: number } = {};
+        const now = new Date();
+        const chartEndDate = now;
+        const chartStartDate = new Date(now.getTime() - selectedRangeHours * 60 * 60 * 1000);
+        let intervalPoints: Date[];
+        let aggregationFormat: string;
+        if (selectedRangeHours <= 48) { 
+          intervalPoints = eachHourOfInterval({ start: chartStartDate, end: chartEndDate });
+          aggregationFormat = 'yyyy-MM-dd HH'; 
+        } else {
+          intervalPoints = eachDayOfInterval({ start: chartStartDate, end: chartEndDate });
+          aggregationFormat = 'yyyy-MM-dd';
+        }
+        intervalPoints.forEach(point => { hitsByInterval[format(point, aggregationFormat)] = 0; });
+        allSummaries.forEach(summary => {
+            const summaryStartTime = summary.startTime.toDate();
+            let intervalKey: string;
+            if (selectedRangeHours <= 48) { intervalKey = format(startOfHour(summaryStartTime), aggregationFormat); } 
+            else { intervalKey = format(startOfDay(summaryStartTime), aggregationFormat); }
+            if (hitsByInterval[intervalKey] !== undefined) { hitsByInterval[intervalKey] += summary.totalHits; }
+        });
+        const summaryHitsOverTimeData = intervalPoints.map(point => {
+            const key = format(point, aggregationFormat);
+            return { date: point.toISOString(), hits: hitsByInterval[key] || 0 };
+        });
+
+
         const aggregatedData: AggregatedAnalyticsData = {
           totalHits: allSummaries.reduce((sum, s) => sum + (s.totalHits || 0), 0),
-          approxUniqueIpCount: allSummaries.reduce((sum, s) => sum + (s.uniqueIpCount || 0), 0),
+          approxUniqueIpCount: allSummaries.reduce((sum, s) => sum + (s.uniqueIpCount || 0), 0), // Note: This is a sum, not a true unique count across all summaries
           topCountries: aggregateTopList(allSummaries, "topCountries", "country"),
           topIPs: aggregateTopList(allSummaries, "topIPs", "ip"),
           topUserAgents: aggregateTopList(allSummaries, "topUserAgents", "userAgent"),
-          topPaths: aggregateTopList(allSummaries, "topPaths", "path", 10), // Show top 10 paths
+          topPaths: aggregateTopList(allSummaries, "topPaths", "path", 10),
           methodDistribution: aggregateDistribution(allSummaries, "methodDistribution"),
           statusDistribution: aggregateDistribution(allSummaries, "statusDistribution"),
+          summaryHitsOverTime: summaryHitsOverTimeData,
         };
         setAggregatedAnalytics(aggregatedData);
 
@@ -292,11 +376,16 @@ export default function DashboardPage() {
       }
     };
 
-    fetchAggregatedAnalytics();
-  }, [user, authLoading, selectedRangeHours, toast]);
+    if (isSetAndForgetTier || isAnalyticsTier) {
+        fetchAggregatedAnalytics();
+    }
+  }, [user, authLoading, selectedRangeHours, toast, isWindowShoppingTier, isSetAndForgetTier, isAnalyticsTier]);
 
   const apiKpiStats = useMemo(() => {
-    if (!apiLogsData || apiLogsData.length === 0) {
+    if (isWindowShoppingTier) {
+        return { totalHitsInRange: WINDOW_SHOPPING_PLACEHOLDER_COUNT_PRIMARY, uniqueAttackerIpsInRange: WINDOW_SHOPPING_PLACEHOLDER_COUNT_SECONDARY, mostProbedPath: { path: "/wp-login.php (Demo)", hits: WINDOW_SHOPPING_PLACEHOLDER_COUNT_PRIMARY / 2 }, uniqueUserAgentsInRange: WINDOW_SHOPPING_PLACEHOLDER_COUNT_SECONDARY / 2 };
+    }
+    if (!isAnalyticsTier || !apiLogsData || apiLogsData.length === 0) { // Set & Forget will have empty apiLogsData
       return { totalHitsInRange: 0, uniqueAttackerIpsInRange: 0, mostProbedPath: { path: "N/A", hits: 0 }, uniqueUserAgentsInRange: 0 };
     }
     const uniqueIps = new Set(apiLogsData.map(log => log.source_ip)).size;
@@ -306,29 +395,47 @@ export default function DashboardPage() {
     let mostProbedPath = "N/A"; let maxHits = 0;
     for (const path in pathCounts) { if (pathCounts[path] > maxHits) { mostProbedPath = path; maxHits = pathCounts[path]; } }
     return { totalHitsInRange: apiLogsData.length, uniqueAttackerIpsInRange: uniqueIps, mostProbedPath: { path: mostProbedPath, hits: maxHits }, uniqueUserAgentsInRange: uniqueUserAgents };
-  }, [apiLogsData]);
+  }, [apiLogsData, isAnalyticsTier, isWindowShoppingTier]);
 
-  const illustrativeCost = (apiKpiStats.totalHitsInRange * 0.0001).toFixed(4);
+  const illustrativeCost = isWindowShoppingTier ? WINDOW_SHOPPING_PLACEHOLDER_COST : (apiKpiStats.totalHitsInRange * 0.0001).toFixed(4);
   const handleRangeChange = (value: string) => { setSelectedRangeHours(Number(value)); };
-  const isLoadingKpis = apiLoading; // Keep this for API-specific KPIs
+  
+  const isLoadingKpis = apiLoading && isAnalyticsTier; // Only show loading for KPIs if analytics tier and api is loading.
 
-  const renderDistributionCard = (title: string, data: Record<string, number> | undefined, icon: React.ElementType, isLoading: boolean, error: string | null, showPercentages: boolean) => {
+  const renderDistributionCard = (title: string, data: Record<string, number> | undefined, icon: React.ElementType, isLoading: boolean, error: string | null, showPercentages: boolean, tier: 'window' | 'setforget' | 'analytics') => {
     const IconComponent = icon;
-    const sortedData = data ? Object.entries(data).sort(([,a],[,b]) => b-a).slice(0,5) : [];
+    let displayData = data;
+    let cardIsLoading = isLoading;
+    let cardError = error;
+
+    if (tier === 'window') {
+        cardIsLoading = false; cardError = null;
+        displayData = title.toLowerCase().includes("method") ? PLACEHOLDER_METHOD_DIST_DEMO : PLACEHOLDER_STATUS_DIST_DEMO;
+    }
+
+    const sortedData = displayData ? Object.entries(displayData).sort(([,a],[,b]) => b-a).slice(0,5) : [];
     const totalHits = showPercentages ? sortedData.reduce((sum, [, value]) => sum + value, 0) : 0;
     
     return (
       <Card className="border-primary/30 shadow-lg">
         <CardHeader>
-          <div className="flex items-center gap-2">
-            <IconComponent className="h-5 w-5 text-primary" />
-            <CardTitle className="text-md font-medium text-primary">{title}</CardTitle>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <IconComponent className="h-5 w-5 text-primary" />
+              <CardTitle className="text-md font-medium text-primary">{title}</CardTitle>
+            </div>
+            {tier === 'setforget' && !showPercentages && (
+                 <TooltipProvider><Tooltip delayDuration={100}>
+                    <TooltipTrigger asChild><Info className="h-4 w-4 text-muted-foreground cursor-help" /></TooltipTrigger>
+                    <TooltipContent className="bg-popover text-popover-foreground border-primary/50 max-w-xs"><p className="text-xs">Percentage breakdown available in Analytics Tier.</p></TooltipContent>
+                </Tooltip></TooltipProvider>
+            )}
           </div>
         </CardHeader>
         <CardContent className="min-h-[150px]">
-          {isLoading ? <Skeleton className="h-20 w-full" /> :
-           error ? <p className="text-xs text-destructive">{error}</p> :
-           !data || sortedData.length === 0 ? <p className="text-xs text-muted-foreground">No data available.</p> :
+          {cardIsLoading ? <Skeleton className="h-20 w-full" /> :
+           cardError ? <p className="text-xs text-destructive">{cardError}</p> :
+           !displayData || sortedData.length === 0 ? <p className="text-xs text-muted-foreground">No data available.</p> :
             <ul className="space-y-1 text-xs text-muted-foreground">
               {sortedData.map(([key, value]) => {
                 const percentage = totalHits > 0 ? ((value / totalHits) * 100).toFixed(1) : "0.0";
@@ -348,22 +455,37 @@ export default function DashboardPage() {
     );
   };
   
-  const renderTopListCard = (title: string, data: Array<{ [key: string]: string | number, hits: number }> | undefined, itemKey: string, icon: React.ElementType, isLoading: boolean, error: string | null) => {
+  const renderTopListCard = (title: string, data: Array<{ [key: string]: string | number, hits: number }> | undefined, itemKey: string, icon: React.ElementType, isLoading: boolean, error: string | null, tier: 'window' | 'setforget' | 'analytics') => {
     const IconComponent = icon;
+    let displayData = data;
+    let cardIsLoading = isLoading;
+    let cardError = error;
+
+    if (tier === 'window') {
+        cardIsLoading = false; cardError = null;
+        if (title.toLowerCase().includes("countries")) displayData = PLACEHOLDER_TOP_COUNTRIES_DEMO;
+        else if (title.toLowerCase().includes("ips")) displayData = PLACEHOLDER_TOP_IPS_DEMO;
+        else if (title.toLowerCase().includes("user agents")) displayData = PLACEHOLDER_TOP_UAS_DEMO;
+        else if (title.toLowerCase().includes("paths")) displayData = PLACEHOLDER_TOP_PATHS_DEMO;
+    }
+    
     return (
       <Card className="border-accent/30 shadow-lg">
         <CardHeader>
-          <div className="flex items-center gap-2">
-            <IconComponent className="h-5 w-5 text-accent" />
-            <CardTitle className="text-md font-medium text-accent">{title}</CardTitle>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <IconComponent className="h-5 w-5 text-accent" />
+              <CardTitle className="text-md font-medium text-accent">{title}</CardTitle>
+            </div>
+            {tier === 'window' && <TooltipProvider><Tooltip delayDuration={100}><TooltipTrigger asChild><Info className="h-4 w-4 text-muted-foreground cursor-help" /></TooltipTrigger><TooltipContent className="bg-popover text-popover-foreground border-primary/50 max-w-xs"><p className="text-xs">Live data and full lists available in paid tiers.</p></TooltipContent></Tooltip></TooltipProvider>}
           </div>
         </CardHeader>
         <CardContent className="min-h-[150px]">
-          {isLoading ? <Skeleton className="h-20 w-full" /> :
-           error ? <p className="text-xs text-destructive">{error}</p> :
-           !data || data.length === 0 ? <p className="text-xs text-muted-foreground">No data available.</p> :
+          {cardIsLoading ? <Skeleton className="h-20 w-full" /> :
+           cardError ? <p className="text-xs text-destructive">{cardError}</p> :
+           !displayData || displayData.length === 0 ? <p className="text-xs text-muted-foreground">No data available.</p> :
             <ul className="space-y-1 text-xs text-muted-foreground">
-              {data.slice(0,5).map((item, index) => (
+              {displayData.slice(0, tier === 'setforget' ? 2 : 5).map((item, index) => ( // Show top 2 for Set&Forget, top 5 for others
                 <li key={index} className="flex justify-between">
                   <TooltipProvider delayDuration={100}>
                     <Tooltip>
@@ -385,6 +507,11 @@ export default function DashboardPage() {
     );
   };
 
+  const currentDashboardTier: 'window' | 'setforget' | 'analytics' = 
+    isAnalyticsTier ? 'analytics' : 
+    isSetAndForgetTier ? 'setforget' : 
+    'window';
+
   return (
     <div className="space-y-8">
       <header className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -392,11 +519,12 @@ export default function DashboardPage() {
           <h1 className="text-4xl font-bold tracking-tight text-primary glitch-text">Dashboard</h1>
           <p className="text-muted-foreground mt-2 text-lg">
             Overview of your SpiteSpiral Tarpit activity. Selected range: Last {selectedRangeHours} hours.
+            Current Tier: <span className="font-semibold text-accent">{isAnalyticsTier ? "Analytics" : isSetAndForgetTier ? "Set & Forget" : "Window Shopping"}</span>
           </p>
         </div>
         <div className="flex items-center gap-2">
             <Label htmlFor="timeRange" className="text-sm text-muted-foreground whitespace-nowrap">Time Range:</Label>
-            <Select value={String(selectedRangeHours)} onValueChange={handleRangeChange} disabled={apiLoading || isAggregatedLoading}>
+            <Select value={String(selectedRangeHours)} onValueChange={handleRangeChange} disabled={apiLoading || isAggregatedLoading || isWindowShoppingTier}>
                 <SelectTrigger id="timeRange" className="w-[180px] bg-background border-primary/30 focus:ring-primary">
                     <SelectValue placeholder="Select time range" />
                 </SelectTrigger>
@@ -411,21 +539,22 @@ export default function DashboardPage() {
 
       <Alert variant="default" className="border-accent/20 bg-card/50 mb-6">
         <Info className="h-5 w-5 text-accent" />
-        <AlertTitle className="text-accent">Dashboard Data Sources</AlertTitle>
+        <AlertTitle className="text-accent">Dashboard Data Sources & Tier Features</AlertTitle>
         <AlertDescription className="text-muted-foreground space-y-1">
-          <p> • <strong>Recent Activity (Table & Chart below):</strong> Shows up to {LOG_FETCH_LIMIT} most recent raw log entries from the <code className="text-xs bg-muted p-0.5 rounded">/v1/logs</code> API for the selected time range. KPIs labeled "(in API range)" are derived from this specific slice of data.</p>
-          <p> • <strong>Overall Summaries (Cards in 'Aggregated Analytics' section):</strong> Provides aggregated statistics (e.g., Top IPs, Top Countries) from processed <code className="text-xs bg-muted p-0.5 rounded">tarpit_analytics_summaries</code> in Firestore across all your active tarpits for the full selected time range. Advanced visualizations for "Analytics" tier.</p>
+          <p> • <strong className="text-primary">Window Shopping Tier:</strong> Displays static, illustrative demo data. Upgrade for live analytics!</p>
+          <p> • <strong className="text-primary">Set & Forget Tier:</strong> Shows aggregated statistics from your tarpits (updated periodically from Firestore summaries). Limited visual details. Upgrade to Analytics for real-time logs and full visualizations.</p>
+          <p> • <strong className="text-primary">Analytics Tier:</strong> Full access to near real-time detailed logs (up to {LOG_FETCH_LIMIT} via API), aggregated summaries, and all advanced visualizations.</p>
         </AlertDescription>
       </Alert>
       
-      {apiError && (
+      {apiError && isAnalyticsTier && ( // Only show API error if it's relevant (Analytics tier)
          <Alert variant="destructive" className="mb-6">
           <Activity className="h-5 w-5" />
-          <AlertTitle>API Error (Recent Logs)</AlertTitle>
+          <AlertTitle>API Error (Recent Logs - Analytics Tier)</AlertTitle>
           <AlertDescription>Could not load recent activity logs: {apiError}</AlertDescription>
         </Alert>
       )}
-       {aggregatedError && (
+       {aggregatedError && (isSetAndForgetTier || isAnalyticsTier) && ( // Only show summary error if relevant
          <Alert variant="destructive" className="mb-6">
           <AlertCircle className="h-5 w-5" />
           <AlertTitle>Error Loading Summarized Analytics</AlertTitle>
@@ -433,93 +562,110 @@ export default function DashboardPage() {
         </Alert>
       )}
 
-      <h2 className="text-2xl font-semibold text-primary mt-8 mb-4">Recent Activity Insights (from latest {LOG_FETCH_LIMIT} API logs)</h2>
-      <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4">
-        <Card className="border-primary/30 shadow-lg">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-primary">Total Hits (in API range)</CardTitle>
-            <Users className="h-6 w-6 text-accent" />
-          </CardHeader>
-          <CardContent>
-            {isLoadingKpis ? <Skeleton className="h-8 w-1/2" /> : <div className="text-3xl font-bold text-foreground">{apiKpiStats.totalHitsInRange}</div>}
-            <p className="text-xs text-muted-foreground mt-1">Hits from latest {LOG_FETCH_LIMIT} API logs for range.</p>
-          </CardContent>
-        </Card>
-        <Card className="border-accent/30 shadow-lg">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-accent">Unique IPs (in API range)</CardTitle>
-            <Fingerprint className="h-6 w-6 text-primary" />
-          </CardHeader>
-          <CardContent>
-            {isLoadingKpis ? <Skeleton className="h-8 w-1/2" /> : <div className="text-3xl font-bold text-foreground">{apiKpiStats.uniqueAttackerIpsInRange}</div>}
-            <p className="text-xs text-muted-foreground mt-1">Unique source IPs from displayed API logs.</p>
-          </CardContent>
-        </Card>
-        <Card className="border-primary/30 shadow-lg">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <div className="flex items-center gap-1.5">
-              <CardTitle className="text-sm font-medium text-primary">Illustrative Compute Wasted</CardTitle>
-              <TooltipProvider><Tooltip delayDuration={100}><TooltipTrigger asChild><Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" /></TooltipTrigger><TooltipContent className="bg-popover text-popover-foreground border-primary/50 max-w-xs"><p className="text-xs">Each hit shown (from API logs) contributes $0.0001 to this illustrative total.</p></TooltipContent></Tooltip></TooltipProvider>
-            </div>
-            <DollarSign className="h-6 w-6 text-primary" />
-          </CardHeader>
-          <CardContent>
-            {isLoadingKpis ? <Skeleton className="h-8 w-1/2" /> : <div className="text-3xl font-bold text-foreground">${illustrativeCost}</div>}
-            <p className="text-xs text-muted-foreground mt-1">Based on hits in displayed API logs.</p>
-          </CardContent>
-        </Card>
-        <Card className="border-accent/30 shadow-lg">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-accent">Active Tarpit Instances</CardTitle>
-            <ShieldCheck className="h-6 w-6 text-primary" />
-          </CardHeader>
-          <CardContent>
-            {isLoadingInstancesCount ? <Skeleton className="h-8 w-1/2" /> : <div className="text-3xl font-bold text-foreground">{activeInstancesCount ?? 0}</div>}
-            <p className="text-xs text-muted-foreground mt-1">Currently configured managed URLs.</p>
-          </CardContent>
-        </Card>
-      </section>
-      <section className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
-          <Card className="border-primary/30 shadow-lg">
-              <CardHeader><CardTitle className="text-lg font-medium text-primary">Most Probed Path (in API range)</CardTitle></CardHeader>
-              <CardContent>
-                  {isLoadingKpis ? (
-                      <Skeleton className="h-8 w-3/4" />
-                  ) : (
-                      <div className="text-2xl font-bold text-foreground truncate" title={apiKpiStats.mostProbedPath.path}>{apiKpiStats.mostProbedPath.path}</div>
-                  )}
-                  {isLoadingKpis ? (
-                      <Skeleton className="h-4 w-1/2 mt-1" />
-                  ) : (
-                     <p className="text-xs text-muted-foreground mt-1">{`${apiKpiStats.mostProbedPath.hits} hits to this path in displayed API logs.`}</p>
-                  )}
-              </CardContent>
-          </Card>
-          <Card className="border-accent/30 shadow-lg">
-              <CardHeader><CardTitle className="text-lg font-medium text-accent">Unique User Agents (in API range)</CardTitle></CardHeader>
-              <CardContent>
-                  {isLoadingKpis ? <Skeleton className="h-8 w-1/2" /> : <div className="text-2xl font-bold text-foreground">{apiKpiStats.uniqueUserAgentsInRange}</div>}
-                  <p className="text-xs text-muted-foreground mt-1">Unique User-Agent strings from displayed API logs.</p>
-              </CardContent>
-          </Card>
-      </section>
+      {isAnalyticsTier && (
+        <>
+            <h2 className="text-2xl font-semibold text-primary mt-8 mb-4">Recent Activity Insights (from latest {LOG_FETCH_LIMIT} API logs - Analytics Tier)</h2>
+            <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4">
+                <Card className="border-primary/30 shadow-lg">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-primary">Total Hits (in API range)</CardTitle>
+                    <Users className="h-6 w-6 text-accent" />
+                </CardHeader>
+                <CardContent>
+                    {isLoadingKpis ? <Skeleton className="h-8 w-1/2" /> : <div className="text-3xl font-bold text-foreground">{apiKpiStats.totalHitsInRange}</div>}
+                    <p className="text-xs text-muted-foreground mt-1">Hits from latest {LOG_FETCH_LIMIT} API logs.</p>
+                </CardContent>
+                </Card>
+                <Card className="border-accent/30 shadow-lg">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-accent">Unique IPs (in API range)</CardTitle>
+                    <Fingerprint className="h-6 w-6 text-primary" />
+                </CardHeader>
+                <CardContent>
+                    {isLoadingKpis ? <Skeleton className="h-8 w-1/2" /> : <div className="text-3xl font-bold text-foreground">{apiKpiStats.uniqueAttackerIpsInRange}</div>}
+                    <p className="text-xs text-muted-foreground mt-1">Unique source IPs from API logs.</p>
+                </CardContent>
+                </Card>
+                <Card className="border-primary/30 shadow-lg">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <div className="flex items-center gap-1.5">
+                    <CardTitle className="text-sm font-medium text-primary">Illustrative Compute Wasted</CardTitle>
+                    <TooltipProvider><Tooltip delayDuration={100}><TooltipTrigger asChild><Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" /></TooltipTrigger><TooltipContent className="bg-popover text-popover-foreground border-primary/50 max-w-xs"><p className="text-xs">Each hit shown (from API logs) contributes $0.0001 to this illustrative total.</p></TooltipContent></Tooltip></TooltipProvider>
+                    </div>
+                    <DollarSign className="h-6 w-6 text-primary" />
+                </CardHeader>
+                <CardContent>
+                    {isLoadingKpis ? <Skeleton className="h-8 w-1/2" /> : <div className="text-3xl font-bold text-foreground">${illustrativeCost}</div>}
+                    <p className="text-xs text-muted-foreground mt-1">Based on hits in displayed API logs.</p>
+                </CardContent>
+                </Card>
+                <Card className="border-accent/30 shadow-lg">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium text-accent">Active Tarpit Instances</CardTitle>
+                        <ShieldCheck className="h-6 w-6 text-primary" />
+                    </CardHeader>
+                    <CardContent>
+                        {isLoadingInstancesCount ? <Skeleton className="h-8 w-1/2" /> : <div className="text-3xl font-bold text-foreground">{activeInstancesCount ?? 0}</div>}
+                        <p className="text-xs text-muted-foreground mt-1">Currently configured managed URLs.</p>
+                    </CardContent>
+                </Card>
+            </section>
+             <section className="grid gap-6 md:grid-cols-1 lg:grid-cols-2 mt-6">
+                <Card className="border-primary/30 shadow-lg">
+                    <CardHeader><CardTitle className="text-lg font-medium text-primary">Most Probed Path (in API range)</CardTitle></CardHeader>
+                    <CardContent>
+                        {isLoadingKpis ? <Skeleton className="h-8 w-3/4" /> : <div className="text-2xl font-bold text-foreground truncate" title={apiKpiStats.mostProbedPath.path}>{apiKpiStats.mostProbedPath.path}</div>}
+                        {isLoadingKpis ? <Skeleton className="h-4 w-1/2 mt-1" /> : <p className="text-xs text-muted-foreground mt-1">{`${apiKpiStats.mostProbedPath.hits} hits to this path in API logs.`}</p>}
+                    </CardContent>
+                </Card>
+                <Card className="border-accent/30 shadow-lg">
+                    <CardHeader><CardTitle className="text-lg font-medium text-accent">Unique User Agents (in API range)</CardTitle></CardHeader>
+                    <CardContent>
+                        {isLoadingKpis ? <Skeleton className="h-8 w-1/2" /> : <div className="text-2xl font-bold text-foreground">{apiKpiStats.uniqueUserAgentsInRange}</div>}
+                        <p className="text-xs text-muted-foreground mt-1">Unique User-Agent strings from API logs.</p>
+                    </CardContent>
+                </Card>
+            </section>
+        </>
+      )}
+      {isSetAndForgetTier && (
+        <Alert variant="default" className="border-primary/20 bg-card/50 my-6">
+            <Lock className="h-5 w-5 text-primary" />
+            <AlertTitle className="text-primary">Analytics Tier Features</AlertTitle>
+            <AlertDescription className="text-muted-foreground">
+                Recent Activity Insights (from real-time API logs), detailed log table, and advanced chart visualizations are available in the <strong className="text-accent">Analytics Tier</strong>.
+            </AlertDescription>
+        </Alert>
+      )}
+       {isWindowShoppingTier && (
+        <>
+            <h2 className="text-2xl font-semibold text-primary mt-8 mb-4">Recent Activity Insights (Demo Data)</h2>
+             <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4">
+                 <Card className="border-primary/30 shadow-lg"><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium text-primary">Total Hits (Demo)</CardTitle><Users className="h-6 w-6 text-accent" /></CardHeader><CardContent><div className="text-3xl font-bold text-foreground">{WINDOW_SHOPPING_PLACEHOLDER_COUNT_PRIMARY}</div><p className="text-xs text-muted-foreground mt-1">Illustrative demo data.</p></CardContent></Card>
+                 <Card className="border-accent/30 shadow-lg"><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium text-accent">Unique IPs (Demo)</CardTitle><Fingerprint className="h-6 w-6 text-primary" /></CardHeader><CardContent><div className="text-3xl font-bold text-foreground">{WINDOW_SHOPPING_PLACEHOLDER_COUNT_SECONDARY}</div><p className="text-xs text-muted-foreground mt-1">Illustrative demo data.</p></CardContent></Card>
+                 <Card className="border-primary/30 shadow-lg"><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><div className="flex items-center gap-1.5"><CardTitle className="text-sm font-medium text-primary">Compute Wasted (Demo)</CardTitle></div><DollarSign className="h-6 w-6 text-primary" /></CardHeader><CardContent><div className="text-3xl font-bold text-foreground">${WINDOW_SHOPPING_PLACEHOLDER_COST}</div><p className="text-xs text-muted-foreground mt-1">Illustrative demo data.</p></CardContent></Card>
+                 <Card className="border-accent/30 shadow-lg"><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium text-accent">Active Tarpit Instances</CardTitle><ShieldCheck className="h-6 w-6 text-primary" /></CardHeader><CardContent>{isLoadingInstancesCount ? <Skeleton className="h-8 w-1/2" /> : <div className="text-3xl font-bold text-foreground">{activeInstancesCount ?? 0}</div>}<p className="text-xs text-muted-foreground mt-1">Your configured URLs.</p></CardContent></Card>
+            </section>
+        </>
+      )}
+
 
       <Separator className="my-8 border-primary/20" />
       <h2 className="text-2xl font-semibold text-primary mt-8 mb-4">Overall Aggregated Analytics (Summarized for Selected Range)</h2>
-      {isAggregatedLoading && (
+      {(isAggregatedLoading && !isWindowShoppingTier) && (
           <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
               {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-48 w-full" />)}
           </section>
       )}
-      {!isAggregatedLoading && aggregatedAnalytics && (
+      {(!isAggregatedLoading || isWindowShoppingTier) && (aggregatedAnalytics || isWindowShoppingTier) && (
         <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
           <Card className="border-primary/30 shadow-lg">
             <CardHeader className="pb-2"><div className="flex items-center gap-2"><Activity className="h-5 w-5 text-primary" /><CardTitle className="text-md font-medium text-primary">Total Hits (Summarized)</CardTitle></div></CardHeader>
-            <CardContent><div className="text-3xl font-bold text-foreground">{aggregatedAnalytics.totalHits}</div><p className="text-xs text-muted-foreground mt-1">Across all your tarpits for the range.</p></CardContent>
+            <CardContent><div className="text-3xl font-bold text-foreground">{isWindowShoppingTier ? WINDOW_SHOPPING_PLACEHOLDER_AGG_HITS : aggregatedAnalytics?.totalHits ?? 0}</div><p className="text-xs text-muted-foreground mt-1">Across your tarpits for the range.</p></CardContent>
           </Card>
           <Card className="border-accent/30 shadow-lg">
             <CardHeader className="pb-2"><div className="flex items-center gap-2"><Users className="h-5 w-5 text-accent" /><CardTitle className="text-md font-medium text-accent">Approx. Unique IPs (Summarized)</CardTitle></div></CardHeader>
-            <CardContent><div className="text-3xl font-bold text-foreground">{aggregatedAnalytics.approxUniqueIpCount}</div><p className="text-xs text-muted-foreground mt-1">Sum of unique IP counts from summaries.</p></CardContent>
+            <CardContent><div className="text-3xl font-bold text-foreground">{isWindowShoppingTier ? WINDOW_SHOPPING_PLACEHOLDER_AGG_IPS : aggregatedAnalytics?.approxUniqueIpCount ?? 0}</div><p className="text-xs text-muted-foreground mt-1">Sum of unique IP counts from summaries.</p></CardContent>
           </Card>
           
           {isAnalyticsTier ? (
@@ -531,8 +677,8 @@ export default function DashboardPage() {
                  <HorizontalBarChart data={aggregatedAnalytics.topCountries} nameKey="country" valueKey="hits" />}
               </CardContent>
             </Card>
-          ) : (
-            renderTopListCard("Top Attacking Countries", aggregatedAnalytics.topCountries, "country", Globe, isAggregatedLoading, aggregatedError)
+          ) : ( // Set & Forget or Window Shopping
+            renderTopListCard("Top Attacking Countries", aggregatedAnalytics?.topCountries, "country", Globe, isAggregatedLoading && !isWindowShoppingTier, aggregatedError, currentDashboardTier)
           )}
 
           {isAnalyticsTier ? (
@@ -544,8 +690,8 @@ export default function DashboardPage() {
                  <HorizontalBarChart data={aggregatedAnalytics.topIPs} nameKey="ip" valueKey="hits" />}
               </CardContent>
             </Card>
-          ) : (
-             renderTopListCard("Top Attacker IPs", aggregatedAnalytics.topIPs, "ip", Fingerprint, isAggregatedLoading, aggregatedError)
+          ) : ( // Set & Forget or Window Shopping
+             renderTopListCard("Top Attacker IPs", aggregatedAnalytics?.topIPs, "ip", Fingerprint, isAggregatedLoading && !isWindowShoppingTier, aggregatedError, currentDashboardTier)
           )}
 
           {isAnalyticsTier ? (
@@ -557,45 +703,74 @@ export default function DashboardPage() {
                  <HorizontalBarChart data={aggregatedAnalytics.topUserAgents} nameKey="userAgent" valueKey="hits" />}
               </CardContent>
             </Card>
-          ) : (
-            renderTopListCard("Top User Agents", aggregatedAnalytics.topUserAgents, "userAgent", ListFilter, isAggregatedLoading, aggregatedError)
+          ) : ( // Set & Forget or Window Shopping
+            renderTopListCard("Top User Agents", aggregatedAnalytics?.topUserAgents, "userAgent", ListFilter, isAggregatedLoading && !isWindowShoppingTier, aggregatedError, currentDashboardTier)
           )}
           
-           {renderTopListCard("Top Paths Hit", aggregatedAnalytics.topPaths, "path", FileText, isAggregatedLoading, aggregatedError)}
-           {renderDistributionCard("HTTP Method Distribution", aggregatedAnalytics.methodDistribution, Server, isAggregatedLoading, aggregatedError, isAnalyticsTier)}
-           {renderDistributionCard("HTTP Status Code Distribution", aggregatedAnalytics.statusDistribution, BarChart3, isAggregatedLoading, aggregatedError, isAnalyticsTier)}
+           {renderTopListCard("Top Paths Hit", aggregatedAnalytics?.topPaths, "path", FileText, isAggregatedLoading && !isWindowShoppingTier, aggregatedError, currentDashboardTier)}
+           {renderDistributionCard("HTTP Method Distribution", aggregatedAnalytics?.methodDistribution, Server, isAggregatedLoading && !isWindowShoppingTier, aggregatedError, isAnalyticsTier, currentDashboardTier)}
+           {renderDistributionCard("HTTP Status Code Distribution", aggregatedAnalytics?.statusDistribution, BarChart3, isAggregatedLoading && !isWindowShoppingTier, aggregatedError, isAnalyticsTier, currentDashboardTier)}
         </section>
       )}
-       {!isAggregatedLoading && !aggregatedAnalytics && !aggregatedError && (
+       {(!isAggregatedLoading && !aggregatedAnalytics && !aggregatedError && !isWindowShoppingTier) && (
         <p className="text-muted-foreground text-center py-4">No aggregated summary data found for the selected range.</p>
       )}
 
       <Separator className="my-8 border-primary/20" />
-      <h2 className="text-2xl font-semibold text-primary mt-8 mb-4">Recent Activity Details (from latest {LOG_FETCH_LIMIT} API logs)</h2>
+      <h2 className="text-2xl font-semibold text-primary mt-8 mb-4">
+        {isWindowShoppingTier ? "Activity Details (Demo Data)" : 
+         isSetAndForgetTier ? "Activity Hits Over Time (Summarized)" : 
+         "Recent Activity Details (from latest " + LOG_FETCH_LIMIT + " API logs - Analytics Tier)"}
+      </h2>
       <section>
         <Card className="shadow-lg border-primary/20">
           <CardHeader>
-            <CardTitle className="text-xl text-primary">Total Hits Over Time (in API range)</CardTitle>
-            <CardDescription>Total tarpit hits from API logs for the selected range.</CardDescription>
+            <CardTitle className="text-xl text-primary">Total Hits Over Time
+                {isWindowShoppingTier ? " (Demo)" : isSetAndForgetTier ? " (Summarized)" : " (API Range)"}
+            </CardTitle>
+            <CardDescription>
+                {isWindowShoppingTier ? "Illustrative demo of tarpit hits." :
+                 isSetAndForgetTier ? "Total tarpit hits from aggregated summaries for the selected range." :
+                 `Total tarpit hits from API logs for the selected range (Analytics Tier).`}
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <TrappedCrawlersChart apiLogs={apiLogsData} isLoading={apiLoading} selectedRangeHours={selectedRangeHours} />
+            <TrappedCrawlersChart 
+                apiLogs={isAnalyticsTier ? apiLogsData : []} 
+                summaryHitsOverTime={isWindowShoppingTier ? PLACEHOLDER_SUMMARY_HITS_OVER_TIME_DEMO(selectedRangeHours) : (isSetAndForgetTier || isAnalyticsTier /* Analytics can also use summary for a secondary chart later */) ? aggregatedAnalytics?.summaryHitsOverTime : []}
+                isLoading={isAnalyticsTier ? apiLoading : (isSetAndForgetTier ? isAggregatedLoading : false)} 
+                selectedRangeHours={selectedRangeHours}
+                tier={currentDashboardTier}
+            />
           </CardContent>
         </Card>
       </section>
-      <section>
-        <Card className="shadow-lg border-accent/20">
-          <CardHeader>
-             <div className="flex items-center gap-2"> <ListFilter className="h-6 w-6 text-accent" /> <CardTitle className="text-xl text-accent">Detailed Activity Logs (Last {LOG_FETCH_LIMIT} for range)</CardTitle> </div>
-            <CardDescription>Raw log entries from your tarpit instances for the selected range (via API).</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ApiLogTable logs={apiLogsData} isLoading={apiLoading} error={apiError} />
-          </CardContent>
-        </Card>
-      </section>
+      
+      {isAnalyticsTier && (
+        <section className="mt-8">
+            <Card className="shadow-lg border-accent/20">
+            <CardHeader>
+                <div className="flex items-center gap-2"> <ListFilter className="h-6 w-6 text-accent" /> <CardTitle className="text-xl text-accent">Detailed Activity Logs (Last {LOG_FETCH_LIMIT} for range)</CardTitle> </div>
+                <CardDescription>Raw log entries from your tarpit instances for the selected range (via API - Analytics Tier).</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <ApiLogTable logs={apiLogsData} isLoading={apiLoading} error={apiError} />
+            </CardContent>
+            </Card>
+        </section>
+      )}
+      {(isSetAndForgetTier || isWindowShoppingTier) && (
+          <Alert variant="default" className="border-primary/20 bg-card/50 my-8">
+            <Lock className="h-5 w-5 text-primary" />
+            <AlertTitle className="text-primary">Detailed Logs - Analytics Tier Feature</AlertTitle>
+            <AlertDescription className="text-muted-foreground">
+                Access to the detailed raw activity log table is available in the <strong className="text-accent">Analytics Tier</strong>.
+                {isWindowShoppingTier && " Upgrade to a paid plan to unlock live data and detailed logs!"}
+            </AlertDescription>
+        </Alert>
+      )}
     </div>
   );
 }
-
     
+
