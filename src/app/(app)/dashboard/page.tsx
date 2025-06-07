@@ -110,9 +110,16 @@ export default function DashboardPage() {
         }
       } catch (err) {
         console.error("Error fetching API logs:", err);
-        const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
-        setApiError(errorMessage);
-        toast({ title: "Log Fetch Error", description: errorMessage, variant: "destructive" });
+        let userFriendlyMessage = "An unknown error occurred while fetching logs.";
+        if (err instanceof Error) {
+          if (err.message.toLowerCase().includes("failed to fetch")) {
+            userFriendlyMessage = "Could not connect to the log server. Please check your internet connection or try again later. The service might be temporarily unavailable.";
+          } else {
+            userFriendlyMessage = err.message;
+          }
+        }
+        setApiError(userFriendlyMessage);
+        toast({ title: "Log Fetch Error", description: userFriendlyMessage, variant: "destructive", duration: 7000 });
         setApiLogsData([]);
       } finally {
         setApiLoading(false);
