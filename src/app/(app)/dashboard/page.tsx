@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label"; // Added import
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface ApiLogEntry {
@@ -296,9 +296,13 @@ export default function DashboardPage() {
                           {kpiStats.mostProbedPath.path}
                       </div>
                   )}
-                  <p className="text-xs text-muted-foreground mt-1">
-                      {isLoadingKpis ? <Skeleton className="h-4 w-1/2" /> : `${kpiStats.mostProbedPath.hits} hits to this path in displayed logs.`}
-                  </p>
+                  {isLoadingKpis ? (
+                    <Skeleton className="h-4 w-1/2 mt-1" />
+                   ) : (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {`${kpiStats.mostProbedPath.hits} hits to this path in displayed logs.`}
+                    </p>
+                   )}
               </CardContent>
           </Card>
           <Card className="border-accent/30 shadow-lg shadow-accent/10 hover:shadow-accent/20 transition-shadow duration-300">
