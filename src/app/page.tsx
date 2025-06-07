@@ -281,10 +281,7 @@ export default function HomePage() {
             © {new Date().getFullYear()} SpiteSpiral. Trap with malice.
           </p>
           
-          {/* Hidden HTML link to /sneedsfeedandseed/ redirect in the footer */}
-          <div aria-hidden="true" style={{ position: 'absolute', left: '-9999px', top: '-9999px', opacity: 0, width: '1px', height: '1px', overflow: 'hidden' }}>
-            <a href="/sneedsfeedandseed/" title="Internal Data Archive" style={{ fontSize: '1px', color: 'transparent', display: 'inline-block' }}>.</a>
-          </div>
+          {/* Removed the hidden HTML link to /sneedsfeedandseed/ redirect from the footer */}
 
         </div>
       </footer>
