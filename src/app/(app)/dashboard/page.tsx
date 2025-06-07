@@ -5,10 +5,10 @@ import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import TrappedCrawlersChart from "@/components/dashboard/TrappedCrawlersChart";
 import ApiLogTable from "@/components/dashboard/ApiLogTable";
-import { ShieldCheck, Users, DollarSign, Info, Fingerprint, ListFilter, Activity, Globe, Server, FileText, BarChart3, AlertCircle } from "lucide-react"; // Added new icons
-import { useAuth } from "@/contexts/AuthContext";
+import { ShieldCheck, Users, DollarSign, Info, Fingerprint, ListFilter, Activity, Globe, Server, FileText, BarChart3, AlertCircle } from "lucide-react";
+import { useAuth, type UserProfile } from "@/contexts/AuthContext";
 import { db } from "@/lib/firebase/clientApp";
-import { collection, query, where, onSnapshot, type DocumentData, type QuerySnapshot, Timestamp, getDocs } from "firebase/firestore"; // Added getDocs, Timestamp
+import { collection, query, where, onSnapshot, type DocumentData, type QuerySnapshot, Timestamp, getDocs } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip as RechartsTooltip } from "recharts";
 
 interface ApiLogEntry {
   timestamp: number; // Millisecond Unix timestamp
@@ -35,27 +36,15 @@ interface ApiResponse {
   message?: string;
 }
 
-// Interface for data from 'tarpit_analytics_summaries'
-interface AnalyticsSummaryItem {
-  count: number; // For distributions
-  hits?: number; // For top lists
-  country?: string;
-  ip?: string;
-  userAgent?: string;
-  path?: string;
-  method?: string;
-  status?: string | number;
-}
-
 interface AnalyticsSummaryDocument {
-  id?: string; // Firestore doc ID
+  id?: string;
   tarpitId: string;
   startTime: Timestamp;
   totalHits: number;
-  uniqueIpCount: number; // Approximation if summed across many
+  uniqueIpCount: number;
   topCountries?: Array<{ country: string; hits: number }>;
-  methodDistribution?: Record<string, number>; // e.g., { "GET": 100, "POST": 5 }
-  statusDistribution?: Record<string, number>; // e.g., { "200": 90, "404": 10 }
+  methodDistribution?: Record<string, number>;
+  statusDistribution?: Record<string, number>;
   topPaths?: Array<{ path: string; hits: number }>;
   topIPs?: Array<{ ip: string; hits: number }>;
   topUserAgents?: Array<{ userAgent: string; hits: number }>;
@@ -72,19 +61,17 @@ interface AggregatedAnalyticsData {
   statusDistribution: Record<string, number>;
 }
 
-
 const LOG_FETCH_LIMIT = 250;
 
-// Helper function to aggregate "top X" style arrays
 function aggregateTopList<T extends { hits: number }, K extends keyof T>(
   summaries: AnalyticsSummaryDocument[],
   keyField: K extends "country" ? "topCountries" : K extends "ip" ? "topIPs" : K extends "userAgent" ? "topUserAgents" : "topPaths",
-  valueField: K, // 'country', 'ip', 'userAgent', 'path'
+  valueField: K,
   limit: number = 5
-): Array<{ [P in K]: T[K] } & { hits: number }> {
+): Array<{ [P in K]: T[P] } & { hits: number }> {
   const counts: Record<string, number> = {};
   summaries.forEach(summary => {
-    const list = summary[keyField] as Array<{ [P in K]: T[K] } & { hits: number }> | undefined;
+    const list = summary[keyField] as Array<{ [P in K]: T[P] } & { hits: number }> | undefined;
     list?.forEach(item => {
       const itemValue = item[valueField] as string;
       counts[itemValue] = (counts[itemValue] || 0) + item.hits;
@@ -96,7 +83,6 @@ function aggregateTopList<T extends { hits: number }, K extends keyof T>(
     .map(([val, hits]) => ({ [valueField]: val, hits } as any));
 }
 
-// Helper function to aggregate distribution objects
 function aggregateDistribution(
   summaries: AnalyticsSummaryDocument[],
   keyField: "methodDistribution" | "statusDistribution"
@@ -113,9 +99,40 @@ function aggregateDistribution(
   return totalDistribution;
 }
 
+const HorizontalBarChart = ({ data, nameKey, valueKey, layout = 'vertical' }: { data: any[], nameKey: string, valueKey: string, layout?: 'horizontal' | 'vertical' }) => {
+  if (!data || data.length === 0) return <p className="text-xs text-muted-foreground h-40 flex items-center justify-center">No data to display.</p>;
+  const chartData = data.map(item => ({ name: item[nameKey], value: item[valueKey] })).slice(0, 5);
+  const containerHeight = layout === 'vertical' ? (chartData.length * 35 + 40) : 200; // Adjusted for better spacing
+
+  return (
+    <ResponsiveContainer width="100%" height={containerHeight}>
+      <BarChart data={chartData} layout={layout} margin={{ top: 5, right: 20, left: layout === 'vertical' ? 60 : 5, bottom: 5 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border)/0.3)" />
+        {layout === 'horizontal' ? (
+          <XAxis dataKey="name" type="category" scale="band" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" interval={0} />
+        ) : (
+          <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" allowDecimals={false} />
+        )}
+        {layout === 'horizontal' ? (
+          <YAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" allowDecimals={false}/>
+        ) : (
+          <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 10, width: 90, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} interval={0} stroke="hsl(var(--muted-foreground))" />
+        )}
+        <RechartsTooltip
+          contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 'var(--radius)', fontSize: '12px' }}
+          labelStyle={{ color: 'hsl(var(--popover-foreground))', fontWeight: 'bold' }}
+          itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
+          cursor={{ fill: 'hsl(var(--accent)/0.1)' }}
+        />
+        <Bar dataKey="value" fill="hsl(var(--primary))" radius={layout === 'vertical' ? [0, 4, 4, 0] : [4, 4, 0, 0]} barSize={layout === 'vertical' ? 20 : undefined} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+};
+
 
 export default function DashboardPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, userProfile, loading: authLoading } = useAuth();
   const { toast } = useToast();
 
   const [activeInstancesCount, setActiveInstancesCount] = useState<number | null>(null);
@@ -126,10 +143,15 @@ export default function DashboardPage() {
   const [apiError, setApiError] = useState<string | null>(null);
   const [selectedRangeHours, setSelectedRangeHours] = useState<number>(24);
 
-  // State for aggregated analytics from Firestore summaries
   const [aggregatedAnalytics, setAggregatedAnalytics] = useState<AggregatedAnalyticsData | null>(null);
   const [isAggregatedLoading, setIsAggregatedLoading] = useState(true);
   const [aggregatedError, setAggregatedError] = useState<string | null>(null);
+
+  const isAnalyticsTier = useMemo(() => {
+    if (!userProfile) return false;
+    // Ensure stripePriceId check for "Analytics" tier matches AccountPage.
+    return userProfile.activeTierId === 'analytics' || userProfile.activeTierId === 'price_1RTim1KPVCKvfVVwDkc5G0at';
+  }, [userProfile]);
 
   useEffect(() => {
     if (authLoading) { setIsLoadingInstancesCount(true); return; }
@@ -164,7 +186,10 @@ export default function DashboardPage() {
       try {
         const token = await user.getIdToken();
         const apiUrl = `https://api.spitespiral.com/v1/logs?range=${selectedRangeHours}&limit=${LOG_FETCH_LIMIT}&direction=backward`;
-        const response = await fetch(apiUrl, { headers: { 'Authorization': `Bearer ${token}` } });
+        
+        const response = await fetch(apiUrl, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({ message: `API request failed with status ${response.status}` }));
           throw new Error(errorData.message || `Failed to fetch logs. Status: ${response.status}`);
@@ -188,7 +213,6 @@ export default function DashboardPage() {
     fetchApiLogs();
   }, [user, authLoading, toast, selectedRangeHours]);
 
-  // Fetch and process aggregated analytics from Firestore
   useEffect(() => {
     if (authLoading || !user) {
       setIsAggregatedLoading(true);
@@ -203,7 +227,6 @@ export default function DashboardPage() {
       setAggregatedAnalytics(null);
 
       try {
-        // 1. Get user's tarpit IDs (pathSegment) from tarpit_configs
         const configsQuery = query(collection(db, "tarpit_configs"), where("userId", "==", user.uid));
         const configsSnapshot = await getDocs(configsQuery);
         const userTarpitIds = configsSnapshot.docs.map(doc => doc.data().pathSegment as string).filter(id => id);
@@ -217,12 +240,10 @@ export default function DashboardPage() {
           return;
         }
         
-        // 2. Fetch summaries from tarpit_analytics_summaries
         const rangeInMilliseconds = selectedRangeHours * 60 * 60 * 1000;
         const startDate = new Date(Date.now() - rangeInMilliseconds);
         const startDateTimestamp = Timestamp.fromDate(startDate);
 
-        // Firestore 'in' query limit is 30. Chunk if necessary, though unlikely for tarpitIds.
         const MAX_IN_CLAUSE_VALUES = 30;
         let allSummaries: AnalyticsSummaryDocument[] = [];
 
@@ -241,7 +262,6 @@ export default function DashboardPage() {
             }
         }
         
-        // 3. Aggregate the summaries
         if (allSummaries.length === 0) {
            setAggregatedAnalytics({
             totalHits: 0, approxUniqueIpCount: 0, topCountries: [], topIPs: [],
@@ -257,7 +277,7 @@ export default function DashboardPage() {
           topCountries: aggregateTopList(allSummaries, "topCountries", "country"),
           topIPs: aggregateTopList(allSummaries, "topIPs", "ip"),
           topUserAgents: aggregateTopList(allSummaries, "topUserAgents", "userAgent"),
-          topPaths: aggregateTopList(allSummaries, "topPaths", "path"),
+          topPaths: aggregateTopList(allSummaries, "topPaths", "path", 10), // Show top 10 paths
           methodDistribution: aggregateDistribution(allSummaries, "methodDistribution"),
           statusDistribution: aggregateDistribution(allSummaries, "statusDistribution"),
         };
@@ -275,7 +295,6 @@ export default function DashboardPage() {
     fetchAggregatedAnalytics();
   }, [user, authLoading, selectedRangeHours, toast]);
 
-
   const apiKpiStats = useMemo(() => {
     if (!apiLogsData || apiLogsData.length === 0) {
       return { totalHitsInRange: 0, uniqueAttackerIpsInRange: 0, mostProbedPath: { path: "N/A", hits: 0 }, uniqueUserAgentsInRange: 0 };
@@ -291,11 +310,13 @@ export default function DashboardPage() {
 
   const illustrativeCost = (apiKpiStats.totalHitsInRange * 0.0001).toFixed(4);
   const handleRangeChange = (value: string) => { setSelectedRangeHours(Number(value)); };
-  const isLoadingApiKpis = apiLoading;
+  const isLoadingKpis = apiLoading; // Keep this for API-specific KPIs
 
-  const renderDistributionCard = (title: string, data: Record<string, number> | undefined, icon: React.ElementType, isLoading: boolean, error: string | null) => {
+  const renderDistributionCard = (title: string, data: Record<string, number> | undefined, icon: React.ElementType, isLoading: boolean, error: string | null, showPercentages: boolean) => {
     const IconComponent = icon;
     const sortedData = data ? Object.entries(data).sort(([,a],[,b]) => b-a).slice(0,5) : [];
+    const totalHits = showPercentages ? sortedData.reduce((sum, [, value]) => sum + value, 0) : 0;
+    
     return (
       <Card className="border-primary/30 shadow-lg">
         <CardHeader>
@@ -304,17 +325,22 @@ export default function DashboardPage() {
             <CardTitle className="text-md font-medium text-primary">{title}</CardTitle>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="min-h-[150px]">
           {isLoading ? <Skeleton className="h-20 w-full" /> :
            error ? <p className="text-xs text-destructive">{error}</p> :
            !data || sortedData.length === 0 ? <p className="text-xs text-muted-foreground">No data available.</p> :
             <ul className="space-y-1 text-xs text-muted-foreground">
-              {sortedData.map(([key, value]) => (
-                <li key={key} className="flex justify-between">
-                  <span className="truncate max-w-[70%]">{key}</span>
-                  <span className="font-semibold text-foreground/90">{value} hits</span>
-                </li>
-              ))}
+              {sortedData.map(([key, value]) => {
+                const percentage = totalHits > 0 ? ((value / totalHits) * 100).toFixed(1) : "0.0";
+                return (
+                  <li key={key} className="flex justify-between">
+                    <span className="truncate max-w-[60%]">{key}</span>
+                    <span className="font-semibold text-foreground/90 text-right">
+                      {value} hits {showPercentages && totalHits > 0 ? `(${percentage}%)` : ''}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           }
         </CardContent>
@@ -332,12 +358,12 @@ export default function DashboardPage() {
             <CardTitle className="text-md font-medium text-accent">{title}</CardTitle>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="min-h-[150px]">
           {isLoading ? <Skeleton className="h-20 w-full" /> :
            error ? <p className="text-xs text-destructive">{error}</p> :
            !data || data.length === 0 ? <p className="text-xs text-muted-foreground">No data available.</p> :
             <ul className="space-y-1 text-xs text-muted-foreground">
-              {data.map((item, index) => (
+              {data.slice(0,5).map((item, index) => (
                 <li key={index} className="flex justify-between">
                   <TooltipProvider delayDuration={100}>
                     <Tooltip>
@@ -359,14 +385,13 @@ export default function DashboardPage() {
     );
   };
 
-
   return (
     <div className="space-y-8">
       <header className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-4xl font-bold tracking-tight text-primary glitch-text">Dashboard</h1>
           <p className="text-muted-foreground mt-2 text-lg">
-            Overview of your SpiteSpiral Tarpit activity and performance. Selected range: Last {selectedRangeHours} hours.
+            Overview of your SpiteSpiral Tarpit activity. Selected range: Last {selectedRangeHours} hours.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -389,7 +414,7 @@ export default function DashboardPage() {
         <AlertTitle className="text-accent">Dashboard Data Sources</AlertTitle>
         <AlertDescription className="text-muted-foreground space-y-1">
           <p> • <strong>Recent Activity (Table & Chart below):</strong> Shows up to {LOG_FETCH_LIMIT} most recent raw log entries from the <code className="text-xs bg-muted p-0.5 rounded">/v1/logs</code> API for the selected time range. KPIs labeled "(in API range)" are derived from this specific slice of data.</p>
-          <p> • <strong>Overall Summaries (Cards in 'Aggregated Analytics' section):</strong> Provides aggregated statistics (e.g., Top IPs, Top Countries) from processed <code className="text-xs bg-muted p-0.5 rounded">tarpit_analytics_summaries</code> in Firestore across all your active tarpits for the full selected time range.</p>
+          <p> • <strong>Overall Summaries (Cards in 'Aggregated Analytics' section):</strong> Provides aggregated statistics (e.g., Top IPs, Top Countries) from processed <code className="text-xs bg-muted p-0.5 rounded">tarpit_analytics_summaries</code> in Firestore across all your active tarpits for the full selected time range. Advanced visualizations for "Analytics" tier.</p>
         </AlertDescription>
       </Alert>
       
@@ -408,7 +433,6 @@ export default function DashboardPage() {
         </Alert>
       )}
 
-      {/* KPIs from API Logs (Recent Slice) */}
       <h2 className="text-2xl font-semibold text-primary mt-8 mb-4">Recent Activity Insights (from latest {LOG_FETCH_LIMIT} API logs)</h2>
       <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4">
         <Card className="border-primary/30 shadow-lg">
@@ -417,7 +441,7 @@ export default function DashboardPage() {
             <Users className="h-6 w-6 text-accent" />
           </CardHeader>
           <CardContent>
-            {isLoadingApiKpis ? <Skeleton className="h-8 w-1/2" /> : <div className="text-3xl font-bold text-foreground">{apiKpiStats.totalHitsInRange}</div>}
+            {isLoadingKpis ? <Skeleton className="h-8 w-1/2" /> : <div className="text-3xl font-bold text-foreground">{apiKpiStats.totalHitsInRange}</div>}
             <p className="text-xs text-muted-foreground mt-1">Hits from latest {LOG_FETCH_LIMIT} API logs for range.</p>
           </CardContent>
         </Card>
@@ -427,7 +451,7 @@ export default function DashboardPage() {
             <Fingerprint className="h-6 w-6 text-primary" />
           </CardHeader>
           <CardContent>
-            {isLoadingApiKpis ? <Skeleton className="h-8 w-1/2" /> : <div className="text-3xl font-bold text-foreground">{apiKpiStats.uniqueAttackerIpsInRange}</div>}
+            {isLoadingKpis ? <Skeleton className="h-8 w-1/2" /> : <div className="text-3xl font-bold text-foreground">{apiKpiStats.uniqueAttackerIpsInRange}</div>}
             <p className="text-xs text-muted-foreground mt-1">Unique source IPs from displayed API logs.</p>
           </CardContent>
         </Card>
@@ -440,7 +464,7 @@ export default function DashboardPage() {
             <DollarSign className="h-6 w-6 text-primary" />
           </CardHeader>
           <CardContent>
-            {isLoadingApiKpis ? <Skeleton className="h-8 w-1/2" /> : <div className="text-3xl font-bold text-foreground">${illustrativeCost}</div>}
+            {isLoadingKpis ? <Skeleton className="h-8 w-1/2" /> : <div className="text-3xl font-bold text-foreground">${illustrativeCost}</div>}
             <p className="text-xs text-muted-foreground mt-1">Based on hits in displayed API logs.</p>
           </CardContent>
         </Card>
@@ -459,25 +483,32 @@ export default function DashboardPage() {
           <Card className="border-primary/30 shadow-lg">
               <CardHeader><CardTitle className="text-lg font-medium text-primary">Most Probed Path (in API range)</CardTitle></CardHeader>
               <CardContent>
-                  {isLoadingApiKpis ? <Skeleton className="h-8 w-3/4" /> : <div className="text-2xl font-bold text-foreground truncate" title={apiKpiStats.mostProbedPath.path}>{apiKpiStats.mostProbedPath.path}</div>}
-                  {isLoadingApiKpis ? <Skeleton className="h-4 w-1/2 mt-1" /> : <p className="text-xs text-muted-foreground mt-1">{`${apiKpiStats.mostProbedPath.hits} hits to this path in displayed API logs.`}</p>}
+                  {isLoadingKpis ? (
+                      <Skeleton className="h-8 w-3/4" />
+                  ) : (
+                      <div className="text-2xl font-bold text-foreground truncate" title={apiKpiStats.mostProbedPath.path}>{apiKpiStats.mostProbedPath.path}</div>
+                  )}
+                  {isLoadingKpis ? (
+                      <Skeleton className="h-4 w-1/2 mt-1" />
+                  ) : (
+                     <p className="text-xs text-muted-foreground mt-1">{`${apiKpiStats.mostProbedPath.hits} hits to this path in displayed API logs.`}</p>
+                  )}
               </CardContent>
           </Card>
           <Card className="border-accent/30 shadow-lg">
               <CardHeader><CardTitle className="text-lg font-medium text-accent">Unique User Agents (in API range)</CardTitle></CardHeader>
               <CardContent>
-                  {isLoadingApiKpis ? <Skeleton className="h-8 w-1/2" /> : <div className="text-2xl font-bold text-foreground">{apiKpiStats.uniqueUserAgentsInRange}</div>}
+                  {isLoadingKpis ? <Skeleton className="h-8 w-1/2" /> : <div className="text-2xl font-bold text-foreground">{apiKpiStats.uniqueUserAgentsInRange}</div>}
                   <p className="text-xs text-muted-foreground mt-1">Unique User-Agent strings from displayed API logs.</p>
               </CardContent>
           </Card>
       </section>
 
-      {/* Aggregated Analytics from Firestore Summaries */}
       <Separator className="my-8 border-primary/20" />
       <h2 className="text-2xl font-semibold text-primary mt-8 mb-4">Overall Aggregated Analytics (Summarized for Selected Range)</h2>
       {isAggregatedLoading && (
           <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
-              {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-48 w-full" />)}
+              {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-48 w-full" />)}
           </section>
       )}
       {!isAggregatedLoading && aggregatedAnalytics && (
@@ -490,12 +521,49 @@ export default function DashboardPage() {
             <CardHeader className="pb-2"><div className="flex items-center gap-2"><Users className="h-5 w-5 text-accent" /><CardTitle className="text-md font-medium text-accent">Approx. Unique IPs (Summarized)</CardTitle></div></CardHeader>
             <CardContent><div className="text-3xl font-bold text-foreground">{aggregatedAnalytics.approxUniqueIpCount}</div><p className="text-xs text-muted-foreground mt-1">Sum of unique IP counts from summaries.</p></CardContent>
           </Card>
-           {renderTopListCard("Top Attacking Countries", aggregatedAnalytics.topCountries, "country", Globe, isAggregatedLoading, aggregatedError)}
-           {renderTopListCard("Top Attacker IPs", aggregatedAnalytics.topIPs, "ip", Fingerprint, isAggregatedLoading, aggregatedError)}
-           {renderTopListCard("Top User Agents", aggregatedAnalytics.topUserAgents, "userAgent", ListFilter, isAggregatedLoading, aggregatedError)}
+          
+          {isAnalyticsTier ? (
+            <Card className="border-accent/30 shadow-lg">
+              <CardHeader><div className="flex items-center gap-2"><Globe className="h-5 w-5 text-accent" /><CardTitle className="text-md font-medium text-accent">Top Attacking Countries</CardTitle></div></CardHeader>
+              <CardContent className="min-h-[150px]">
+                {isAggregatedLoading ? <Skeleton className="h-40 w-full" /> : aggregatedError ? <p className="text-xs text-destructive">{aggregatedError}</p> :
+                 !aggregatedAnalytics?.topCountries || aggregatedAnalytics.topCountries.length === 0 ? <p className="text-xs text-muted-foreground">No data available.</p> :
+                 <HorizontalBarChart data={aggregatedAnalytics.topCountries} nameKey="country" valueKey="hits" />}
+              </CardContent>
+            </Card>
+          ) : (
+            renderTopListCard("Top Attacking Countries", aggregatedAnalytics.topCountries, "country", Globe, isAggregatedLoading, aggregatedError)
+          )}
+
+          {isAnalyticsTier ? (
+            <Card className="border-primary/30 shadow-lg">
+              <CardHeader><div className="flex items-center gap-2"><Fingerprint className="h-5 w-5 text-primary" /><CardTitle className="text-md font-medium text-primary">Top Attacker IPs</CardTitle></div></CardHeader>
+              <CardContent className="min-h-[150px]">
+                {isAggregatedLoading ? <Skeleton className="h-40 w-full" /> : aggregatedError ? <p className="text-xs text-destructive">{aggregatedError}</p> :
+                 !aggregatedAnalytics?.topIPs || aggregatedAnalytics.topIPs.length === 0 ? <p className="text-xs text-muted-foreground">No data available.</p> :
+                 <HorizontalBarChart data={aggregatedAnalytics.topIPs} nameKey="ip" valueKey="hits" />}
+              </CardContent>
+            </Card>
+          ) : (
+             renderTopListCard("Top Attacker IPs", aggregatedAnalytics.topIPs, "ip", Fingerprint, isAggregatedLoading, aggregatedError)
+          )}
+
+          {isAnalyticsTier ? (
+            <Card className="border-accent/30 shadow-lg">
+              <CardHeader><div className="flex items-center gap-2"><ListFilter className="h-5 w-5 text-accent" /><CardTitle className="text-md font-medium text-accent">Top User Agents</CardTitle></div></CardHeader>
+              <CardContent className="min-h-[150px]">
+                {isAggregatedLoading ? <Skeleton className="h-40 w-full" /> : aggregatedError ? <p className="text-xs text-destructive">{aggregatedError}</p> :
+                 !aggregatedAnalytics?.topUserAgents || aggregatedAnalytics.topUserAgents.length === 0 ? <p className="text-xs text-muted-foreground">No data available.</p> :
+                 <HorizontalBarChart data={aggregatedAnalytics.topUserAgents} nameKey="userAgent" valueKey="hits" />}
+              </CardContent>
+            </Card>
+          ) : (
+            renderTopListCard("Top User Agents", aggregatedAnalytics.topUserAgents, "userAgent", ListFilter, isAggregatedLoading, aggregatedError)
+          )}
+          
            {renderTopListCard("Top Paths Hit", aggregatedAnalytics.topPaths, "path", FileText, isAggregatedLoading, aggregatedError)}
-           {renderDistributionCard("HTTP Method Distribution", aggregatedAnalytics.methodDistribution, Server, isAggregatedLoading, aggregatedError)}
-           {renderDistributionCard("HTTP Status Code Distribution", aggregatedAnalytics.statusDistribution, BarChart3, isAggregatedLoading, aggregatedError)}
+           {renderDistributionCard("HTTP Method Distribution", aggregatedAnalytics.methodDistribution, Server, isAggregatedLoading, aggregatedError, isAnalyticsTier)}
+           {renderDistributionCard("HTTP Status Code Distribution", aggregatedAnalytics.statusDistribution, BarChart3, isAggregatedLoading, aggregatedError, isAnalyticsTier)}
         </section>
       )}
        {!isAggregatedLoading && !aggregatedAnalytics && !aggregatedError && (
@@ -529,3 +597,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
