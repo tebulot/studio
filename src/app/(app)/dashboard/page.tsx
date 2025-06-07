@@ -109,7 +109,8 @@ export default function DashboardPage() {
           throw new Error(result.message || "API returned success=false or no data.");
         }
       } catch (err) {
-        console.error("Error fetching API logs:", err);
+        // Log the full error object for more details
+        console.error("Full error object during fetchApiLogs:", err); 
         let userFriendlyMessage = "An unknown error occurred while fetching logs.";
         if (err instanceof Error) {
           if (err.message.toLowerCase().includes("failed to fetch")) {
