@@ -100,7 +100,7 @@ const faqData = [
 
 export default function HomePage() {
   const [isMounted, setIsMounted] = useState(false);
-  const directTarpitUrl = "https://api.spitespiral.com/trap/1e75948c-bd6d-4d14-ace9-f694de45dc24";
+  const directTarpitUrl = "https://api.spitespiral.com/trap/e331ba20-a9fb-408e-b697-f7f2eeac6d98";
 
   useEffect(() => {
     setIsMounted(true);
@@ -131,24 +131,25 @@ export default function HomePage() {
           </p>
         </div>
 
-        {/* User-requested hidden "tracking pixel" style link pointing directly to the tarpit API */}
+        {/* User-requested HTML snippet for the "pixel" style direct link */}
         <a
-            href={directTarpitUrl}
-            rel="nofollow noopener noreferrer"
-            aria-hidden="true"
-            tabIndex={-1}
-            style={{
-                opacity: 0.01,
-                position: 'absolute',
-                left: '-9999px',
-                top: '-9999px',
-                fontSize: '1px',
-                color: 'transparent',
-            }}
-            title="Data Archive (Internal Use Only)"
+          href={directTarpitUrl}
+          rel="nofollow noopener noreferrer"
+          aria-hidden="true"
+          tabIndex={-1}
+          style={{
+            opacity: 0.01,
+            position: 'absolute',
+            left: '-9999px',
+            top: '-9999px',
+            fontSize: '1px',
+            color: 'transparent',
+          }}
+          title="Data Archive (Internal Use Only)"
         >
-            Internal Resources
+          Internal Resources
         </a>
+
 
         <p className="text-lg md:text-xl text-muted-foreground mb-10 max-w-xl md:max-w-3xl leading-relaxed">
              Standard defenses like <code className="bg-muted px-1.5 py-0.5 rounded-sm">robots.txt</code> are routinely ignored by aggressive AI crawlers and data scrapers. SpiteSpiral offers a potent second line of defense. We don&apos;t just try to turn them away; we invite them into a digital labyrinth designed to waste their resources, pollute their datasets with LLM-generated &apos;intelligent babble,&apos; and make scraping your content an expensive, fruitless endeavor.
@@ -280,9 +281,6 @@ export default function HomePage() {
           <p className="text-xs text-muted-foreground/70">
             © {new Date().getFullYear()} SpiteSpiral. Trap with malice.
           </p>
-          
-          {/* Removed the hidden HTML link to /sneedsfeedandseed/ redirect from the footer */}
-
         </div>
       </footer>
     </div>
