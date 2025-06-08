@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import TrappedCrawlersChart from "@/components/dashboard/TrappedCrawlersChart";
 import ApiLogTable from "@/components/dashboard/ApiLogTable";
-import { ShieldCheck, Users, DollarSign, Info, Fingerprint, ListFilter, Activity, Globe, Server, FileText, BarChart3, AlertCircle, Eye, Lock } from "lucide-react";
+import { ShieldCheck, Users, DollarSign, Info, Fingerprint, ListFilter, Activity, Globe, Server, BarChart3, AlertCircle, Eye, Lock } from "lucide-react"; // Removed FileText
 import { useAuth, type UserProfile } from "@/contexts/AuthContext";
 import { db } from "@/lib/firebase/clientApp";
 import { collection, query, where, onSnapshot, type DocumentData, type QuerySnapshot, Timestamp, getDocs, orderBy } from "firebase/firestore"; // Added orderBy
@@ -49,7 +49,7 @@ interface AnalyticsSummaryDocument {
   topCountries?: Array<{ item: string; hits: number }>;
   methodDistribution?: Record<string, number>;
   statusDistribution?: Record<string, number>;
-  topPaths?: Array<{ item: string; hits: number }>;
+  topPaths?: Array<{ item: string; hits: number }>; // Kept for data structure, but not displayed
   topIPs?: Array<{ item: string; hits: number }>;
   topUserAgents?: Array<{ item: string; hits: number }>;
 }
@@ -60,7 +60,7 @@ interface AggregatedAnalyticsData {
   topCountries: Array<{ country: string; hits: number }>;
   topIPs: Array<{ ip: string; hits: number }>;
   topUserAgents: Array<{ userAgent: string; hits: number }>;
-  topPaths: Array<{ path: string; hits: number }>;
+  // topPaths: Array<{ path: string; hits: number }>; // Not needed in aggregated display
   methodDistribution: Record<string, number>;
   statusDistribution: Record<string, number>;
   summaryHitsOverTime?: Array<{ date: string; hits: number }>;
@@ -85,10 +85,7 @@ const PLACEHOLDER_TOP_UAS_DEMO = [
   { userAgent: "DemoBot/1.0 (Mozilla/5.0 compatible; Demo SuperCrawler) Example/Test", hits: 200 }, { userAgent: "SampleScraper/2.x (Linux; Android 10; SM-G960U) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Mobile Safari/537.36 (Demo)", hits: 180 }, { userAgent: "TestCrawler/0.1 CFNetwork/1209 Darwin/20.2.0 (Demo)", hits: 150 },
   { userAgent: "PlaceholderUA (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/100.0 (Demo)", hits: 100 }, { userAgent: "Botzilla-Demo (compatible; SpecialBot/3.0; +http://example.com/bot)", hits: 80 },
 ];
-const PLACEHOLDER_TOP_PATHS_DEMO = [
-  { path: "/demo-login.php (Demo)", hits: 220 }, { path: "/sample-admin/ (Demo)", hits: 190 }, { path: "/test-api/data (Demo)", hits: 160 },
-  { path: "/placeholder/path (Demo)", hits: 110 }, { path: "/example-route (Demo)", hits: 70 },
-];
+// const PLACEHOLDER_TOP_PATHS_DEMO = [...] removed as not used
 const PLACEHOLDER_METHOD_DIST_DEMO = { "GET (Demo)": 600, "POST (Demo)": 300, "PUT (Demo)": 50, "DELETE (Demo)": 20, "OPTIONS (Demo)": 30 };
 const PLACEHOLDER_STATUS_DIST_DEMO = { "200 (Demo)": 700, "404 (Demo)": 150, "403 (Demo)": 100, "500 (Demo)": 30, "301 (Demo)": 20 };
 const PLACEHOLDER_SUMMARY_HITS_OVER_TIME_DEMO = (rangeHours: number): Array<{date: string, hits: number}> => {
@@ -190,15 +187,13 @@ export default function DashboardPage() {
 
   const isEffectivelySubscribedForFeatures = useMemo(() => {
     if (!userProfile) return false;
-    // User has access to paid features if their subscription status is active, trialing,
-    // or if it's active_until_period_end or pending_downgrade (meaning they still have access for the current paid period).
     return ['active', 'trialing', 'active_until_period_end', 'pending_downgrade'].includes(userProfile.subscriptionStatus || '');
   }, [userProfile]);
 
   const isWindowShoppingTier = useMemo(() => {
-    if (!userProfile) return true; // Default to window shopping if no profile
-    if (userProfile.activeTierId === 'window_shopping') return true; // Explicitly on window shopping
-    return !isEffectivelySubscribedForFeatures; // If not effectively subscribed for features, they are on window shopping
+    if (!userProfile) return true;
+    if (userProfile.activeTierId === 'window_shopping') return true;
+    return !isEffectivelySubscribedForFeatures;
   }, [userProfile, isEffectivelySubscribedForFeatures]);
 
   const isSetAndForgetTier = useMemo(() => {
@@ -305,7 +300,7 @@ export default function DashboardPage() {
 
         const summariesQuery = query(
             collection(db, "tarpit_analytics_summaries"),
-            where("userId", "==", user.uid), // Direct query by userId
+            where("userId", "==", user.uid), 
             where("startTime", ">=", startDateTimestamp),
             orderBy("startTime", "asc")
         );
@@ -323,7 +318,7 @@ export default function DashboardPage() {
         if (allSummaries.length === 0) {
            setAggregatedAnalytics({
             totalHits: 0, approxUniqueIpCount: 0, topCountries: [], topIPs: [],
-            topUserAgents: [], topPaths: [], methodDistribution: {}, statusDistribution: {},
+            topUserAgents: [], methodDistribution: {}, statusDistribution: {},
             summaryHitsOverTime: [],
           });
           setIsAggregatedLoading(false);
@@ -363,8 +358,8 @@ export default function DashboardPage() {
           approxUniqueIpCount: allSummaries.reduce((sum, s) => sum + (s.uniqueIpCount || 0), 0),
           topCountries: aggregateTopList(allSummaries, "topCountries", "country"),
           topIPs: aggregateTopList(allSummaries, "topIPs", "ip"),
-          topUserAgents: aggregateTopList(allSummaries, "topUserAgents", "userAgent", 10), // Fetch more for table display
-          topPaths: aggregateTopList(allSummaries, "topPaths", "path", 10),
+          topUserAgents: aggregateTopList(allSummaries, "topUserAgents", "userAgent", 10),
+          // topPaths: aggregateTopList(allSummaries, "topPaths", "path", 10), // Not displayed
           methodDistribution: aggregateDistribution(allSummaries, "methodDistribution"),
           statusDistribution: aggregateDistribution(allSummaries, "statusDistribution"),
           summaryHitsOverTime: summaryHitsOverTimeData,
@@ -478,9 +473,7 @@ export default function DashboardPage() {
         cardIsLoading = false; cardError = null;
         if (title.toLowerCase().includes("countries") || title.toLowerCase().includes("country")) displayData = PLACEHOLDER_TOP_COUNTRIES_DEMO;
         else if (title.toLowerCase().includes("ips") || title.toLowerCase().includes("ip activity")) displayData = PLACEHOLDER_TOP_IPS_DEMO;
-        // Top User Agents will be handled by a separate table component/section now.
-        // else if (title.toLowerCase().includes("user agents")) displayData = PLACEHOLDER_TOP_UAS_DEMO;
-        else if (title.toLowerCase().includes("paths")) displayData = PLACEHOLDER_TOP_PATHS_DEMO;
+        // Top User Agents and Top Paths are handled by separate components/sections now.
     }
 
     return (
@@ -720,8 +713,6 @@ export default function DashboardPage() {
              renderTopListCard("IP Activity", aggregatedAnalytics?.topIPs, "ip", Fingerprint, isAggregatedLoading && !isWindowShoppingTier, aggregatedError, currentDashboardTier)
           )}
 
-           {/* Top User Agents card is now handled in a separate section below */}
-           {renderTopListCard("Top Paths Hit", aggregatedAnalytics?.topPaths, "path", FileText, isAggregatedLoading && !isWindowShoppingTier, aggregatedError, currentDashboardTier)}
            {renderDistributionCard("HTTP Method Distribution", aggregatedAnalytics?.methodDistribution, Server, isAggregatedLoading && !isWindowShoppingTier, aggregatedError, isAnalyticsTier, currentDashboardTier)}
            {renderDistributionCard("HTTP Status Code Distribution", aggregatedAnalytics?.statusDistribution, BarChart3, isAggregatedLoading && !isWindowShoppingTier, aggregatedError, isAnalyticsTier, currentDashboardTier)}
         </section>
@@ -848,3 +839,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+

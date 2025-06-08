@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import TrappedCrawlersChart from "@/components/dashboard/TrappedCrawlersChart";
-import { ShieldCheck, Users, DollarSign, Info, Eye, Fingerprint, Globe, ListFilter, BarChart3, Server, FileText, Activity } from "lucide-react";
+import { ShieldCheck, Users, DollarSign, Info, Eye, Fingerprint, Globe, ListFilter, BarChart3, Server, Activity } from "lucide-react"; // Removed FileText
 import { db } from "@/lib/firebase/clientApp";
 import { collection, query, where, onSnapshot, getDocs, type DocumentData, type QuerySnapshot, Timestamp, orderBy } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -32,7 +32,7 @@ interface AnalyticsSummaryDocumentForDemo {
   topCountries?: Array<{ item: string; hits: number }>;
   methodDistribution?: Record<string, number>;
   statusDistribution?: Record<string, number>;
-  topPaths?: Array<{ item: string; hits: number }>;
+  topPaths?: Array<{ item: string; hits: number }>; // Kept for data structure, but not displayed
   topIPs?: Array<{ item: string; hits: number }>;
   topUserAgents?: Array<{ item: string; hits: number }>;
 }
@@ -43,7 +43,7 @@ interface AggregatedAnalyticsDataForDemo {
   topCountries: Array<{ country: string; hits: number }>;
   topIPs: Array<{ ip: string; hits: number }>;
   topUserAgents: Array<{ userAgent: string; hits: number }>;
-  topPaths: Array<{ path: string; hits: number }>;
+  // topPaths: Array<{ path: string; hits: number }>; // Not needed in aggregated display
   methodDistribution: Record<string, number>;
   statusDistribution: Record<string, number>;
   summaryHitsOverTime?: Array<{ date: string; hits: number }>;
@@ -154,7 +154,7 @@ export default function DemoDashboardPage() {
         if (allFetchedSummaries.length === 0) {
           // console.log(`${logPrefix} No summaries found for demo tarpit ID: ${DEMO_TARPIT_PATH_SEGMENT}.`);
           setAggregatedDemoData({
-            totalHits: 0, approxUniqueIpCount: 0, topCountries: [], topIPs: [], topUserAgents: [], topPaths: [],
+            totalHits: 0, approxUniqueIpCount: 0, topCountries: [], topIPs: [], topUserAgents: [],
             methodDistribution: {}, statusDistribution: {}, summaryHitsOverTime: [], activeInstances, illustrativeCost: "0.0000"
           });
           setIsLoadingDemoData(false);
@@ -167,7 +167,7 @@ export default function DemoDashboardPage() {
         const topCountries = aggregateTopList(allFetchedSummaries, "topCountries", "country");
         const topIPs = aggregateTopList(allFetchedSummaries, "topIPs", "ip");
         const topUserAgents = aggregateTopList(allFetchedSummaries, "topUserAgents", "userAgent", 10); // Fetch more for table
-        const topPaths = aggregateTopList(allFetchedSummaries, "topPaths", "path", 10);
+        // const topPaths = aggregateTopList(allFetchedSummaries, "topPaths", "path", 10); // Not displayed
 
         const methodDistribution = aggregateDistribution(allFetchedSummaries, "methodDistribution");
         const statusDistribution = aggregateDistribution(allFetchedSummaries, "statusDistribution");
@@ -191,7 +191,7 @@ export default function DemoDashboardPage() {
         const illustrativeCost = (totalHits * 0.0001).toFixed(4);
 
         const finalAggregatedData: AggregatedAnalyticsDataForDemo = {
-            totalHits, approxUniqueIpCount, topCountries, topIPs, topUserAgents, topPaths,
+            totalHits, approxUniqueIpCount, topCountries, topIPs, topUserAgents,
             methodDistribution, statusDistribution, summaryHitsOverTime: summaryHitsOverTimeData,
             activeInstances, illustrativeCost
         };
@@ -245,8 +245,8 @@ export default function DemoDashboardPage() {
                 </section>
                 <Separator className="my-8 border-primary/20" />
                  <h2 className="text-2xl font-semibold text-primary mt-8 mb-4"><Skeleton className="h-8 w-1/2"/></h2>
-                 <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
-                    {[...Array(5)].map((_,i) => <Skeleton key={i} className="h-48 w-full" />)} {/* Adjusted skeleton count */}
+                 <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
+                    {[...Array(4)].map((_,i) => <Skeleton key={i} className="h-48 w-full" />)}
                 </section>
                 <Separator className="my-8 border-primary/20" />
                 <section><Skeleton className="h-80 w-full" /></section> {/* User Agent Table Skeleton */}
@@ -289,9 +289,7 @@ export default function DemoDashboardPage() {
           <AlertTitle className="text-primary">How This Demo Works</AlertTitle>
           <AlertDescription className="text-muted-foreground space-y-1">
            <p>
-              The statistics on this page are sourced from a live SpiteSpiral Tarpit instance.
-              Data is aggregated from activity summaries generated for this specific demo tarpit over the last 30 days.
-              The 'Active Instances' count reflects configurations specific to the demo account.
+              The statistics on this page are sourced from a live SpiteSpiral Tarpit instance. This demo showcases data aggregated from activity summaries generated for this specific demo tarpit over the last 30 days. The 'Active Instances' count reflects configurations specific to the demo account.
             </p>
           </AlertDescription>
         </Alert>
@@ -314,7 +312,7 @@ export default function DemoDashboardPage() {
         <Separator className="my-8 border-primary/20" />
         <h2 className="text-2xl font-semibold text-primary mt-8 mb-4">Aggregated Analytics (Last 30 Days Demo Summary)</h2>
         {aggregatedDemoData && aggregatedDemoData.totalHits > 0 ? (
-          <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
               <Card className="border-accent/30 shadow-lg">
                   <CardHeader><div className="flex items-center gap-2"><Globe className="h-5 w-5 text-accent" /><CardTitle className="text-md font-medium text-accent">Activity by Country</CardTitle></div></CardHeader>
                   <CardContent className="min-h-[200px]">
@@ -325,15 +323,6 @@ export default function DemoDashboardPage() {
                   <CardHeader><div className="flex items-center gap-2"><Fingerprint className="h-5 w-5 text-primary" /><CardTitle className="text-md font-medium text-primary">IP Activity</CardTitle></div></CardHeader>
                   <CardContent className="min-h-[200px]">
                       {aggregatedDemoData?.topIPs && aggregatedDemoData.topIPs.length > 0 ? <HorizontalBarChartDemo data={aggregatedDemoData.topIPs} nameKey="ip" valueKey="hits" /> : <p className="text-xs text-muted-foreground">No IP data.</p>}
-                  </CardContent>
-              </Card>
-              {/* Top User Agents card removed from here, will be a separate section */}
-              <Card className="border-primary/30 shadow-lg">
-                  <CardHeader><div className="flex items-center gap-2"><FileText className="h-5 w-5 text-primary" /><CardTitle className="text-md font-medium text-primary">Top Paths Hit</CardTitle></div></CardHeader>
-                  <CardContent className="min-h-[150px]">
-                    {aggregatedDemoData?.topPaths && aggregatedDemoData.topPaths.length > 0 ? (
-                      <ul className="space-y-1 text-xs text-muted-foreground">{aggregatedDemoData.topPaths.slice(0,5).map((p,i) => <li key={i} className="flex justify-between"><span className="truncate max-w-[70%]">{p.path}</span> <span className="font-semibold">{p.hits} hits</span></li>)}</ul>
-                    ) : <p className="text-xs text-muted-foreground">No path data.</p>}
                   </CardContent>
               </Card>
               <Card className="border-accent/30 shadow-lg">
@@ -472,3 +461,4 @@ function aggregateDistribution(
   });
   return totalDistribution;
 }
+
