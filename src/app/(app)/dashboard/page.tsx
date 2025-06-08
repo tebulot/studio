@@ -8,7 +8,7 @@ import ApiLogTable from "@/components/dashboard/ApiLogTable";
 import { ShieldCheck, Users, DollarSign, Info, Fingerprint, ListFilter, Activity, Globe, Server, FileText, BarChart3, AlertCircle, Eye, Lock } from "lucide-react";
 import { useAuth, type UserProfile } from "@/contexts/AuthContext";
 import { db } from "@/lib/firebase/clientApp";
-import { collection, query, where, onSnapshot, type DocumentData, type QuerySnapshot, Timestamp, getDocs } from "firebase/firestore";
+import { collection, query, where, onSnapshot, type DocumentData, type QuerySnapshot, Timestamp, getDocs, orderBy } from "firebase/firestore"; // Added orderBy
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -39,7 +39,8 @@ interface ApiResponse {
 
 interface AnalyticsSummaryDocument {
   id?: string;
-  tarpitId: string;
+  tarpitId: string; // Still needed for context if a user has multiple tarpits
+  userId?: string; // Expected to be added by the backend
   startTime: Timestamp;
   totalHits: number;
   uniqueIpCount: number;
@@ -191,9 +192,9 @@ export default function DashboardPage() {
   }, [userProfile]);
 
   const isWindowShoppingTier = useMemo(() => {
-    if (!userProfile) return true; // Default to window shopping if no profile
+    if (!userProfile) return true; 
     if (userProfile.activeTierId === 'window_shopping') return true;
-    return !isEffectivelySubscribedForFeatures; // If not effectively subscribed, treat as window shopping
+    return !isEffectivelySubscribedForFeatures; 
   }, [userProfile, isEffectivelySubscribedForFeatures]);
 
   const isSetAndForgetTier = useMemo(() => {
@@ -232,7 +233,7 @@ export default function DashboardPage() {
   }, [user, authLoading, toast]);
 
   useEffect(() => {
-    if (authLoading || !user || !isAnalyticsTier) { // Only fetch API logs for Analytics tier
+    if (authLoading || !user || !isAnalyticsTier) { 
       setApiLoading(true);
       setApiLogsData([]);
       if (!user && !authLoading) { setApiLoading(false); }
@@ -277,7 +278,7 @@ export default function DashboardPage() {
   }, [user, authLoading, toast, selectedRangeHours, isAnalyticsTier]);
 
   useEffect(() => {
-    if (authLoading || !user || isWindowShoppingTier) { // Don't fetch summaries for Window Shopping
+    if (authLoading || !user || isWindowShoppingTier) {
       setIsAggregatedLoading(true);
       setAggregatedAnalytics(null);
       if(!user && !authLoading) setIsAggregatedLoading(false);
@@ -290,50 +291,31 @@ export default function DashboardPage() {
       setAggregatedError(null);
       setAggregatedAnalytics(null);
       const logPrefix = `DashboardPage (User: ${user.uid.substring(0,5)}...) - Aggregated Analytics:`;
-      console.log(`${logPrefix} Starting fetch for aggregated analytics. Range: ${selectedRangeHours}h.`);
+      console.log(`${logPrefix} Starting fetch for aggregated analytics. Range: ${selectedRangeHours}h. Querying by userId: ${user.uid}`);
 
       try {
-        console.log(`${logPrefix} Fetching tarpit_configs to get user's tarpit IDs.`);
-        const configsQuery = query(collection(db, "tarpit_configs"), where("userId", "==", user.uid));
-        const configsSnapshot = await getDocs(configsQuery);
-        const userTarpitIds = configsSnapshot.docs.map(doc => doc.data().pathSegment as string).filter(id => id);
-        console.log(`${logPrefix} Found ${userTarpitIds.length} tarpit IDs for user:`, userTarpitIds);
-
-        if (userTarpitIds.length === 0) {
-          setAggregatedAnalytics({
-            totalHits: 0, approxUniqueIpCount: 0, topCountries: [], topIPs: [],
-            topUserAgents: [], topPaths: [], methodDistribution: {}, statusDistribution: {},
-            summaryHitsOverTime: [],
-          });
-          setIsAggregatedLoading(false);
-          console.log(`${logPrefix} No tarpit IDs found, setting empty aggregated analytics.`);
-          return;
-        }
-        
         const rangeInMilliseconds = selectedRangeHours * 60 * 60 * 1000;
         const startDate = new Date(Date.now() - rangeInMilliseconds);
         const startDateTimestamp = Timestamp.fromDate(startDate);
         console.log(`${logPrefix} Calculated start date for summaries: ${startDate.toISOString()}`);
+        
+        // New query: Directly query tarpit_analytics_summaries by userId
+        const summariesQuery = query(
+            collection(db, "tarpit_analytics_summaries"),
+            where("userId", "==", user.uid), // Assumes userId field will be added to summaries
+            where("startTime", ">=", startDateTimestamp),
+            orderBy("startTime", "asc") // Keep consistent ordering
+        );
+        console.log(`${logPrefix} Executing Firestore query for summaries with userId: ${user.uid} and startTime >= ${startDate.toISOString()}`);
 
-        const MAX_IN_CLAUSE_VALUES = 30;
-        let allSummaries: AnalyticsSummaryDocument[] = [];
-
-        for (let i = 0; i < userTarpitIds.length; i += MAX_IN_CLAUSE_VALUES) {
-            const chunkOfTarpitIds = userTarpitIds.slice(i, i + MAX_IN_CLAUSE_VALUES);
-            if (chunkOfTarpitIds.length > 0) {
-                console.log(`${logPrefix} Fetching summaries for tarpitId chunk (count: ${chunkOfTarpitIds.length}):`, chunkOfTarpitIds);
-                const summariesQuery = query(
-                    collection(db, "tarpit_analytics_summaries"),
-                    where("tarpitId", "in", chunkOfTarpitIds),
-                    where("startTime", ">=", startDateTimestamp)
-                );
-                const summariesSnapshot = await getDocs(summariesQuery);
-                summariesSnapshot.forEach(doc => {
-                    allSummaries.push({ id: doc.id, ...doc.data() } as AnalyticsSummaryDocument);
-                });
-                console.log(`${logPrefix} Fetched ${summariesSnapshot.size} summaries for this chunk. Total summaries so far: ${allSummaries.length}`);
-            }
-        }
+        const summariesSnapshot = await getDocs(summariesQuery);
+        const allSummaries: AnalyticsSummaryDocument[] = [];
+        summariesSnapshot.forEach(doc => {
+            const data = doc.data();
+            console.log(`${logPrefix} Summary doc ${doc.id} (tarpitId: ${data.tarpitId || 'N/A'}) data:`, JSON.parse(JSON.stringify(data)));
+            allSummaries.push({ id: doc.id, ...data } as AnalyticsSummaryDocument);
+        });
+        console.log(`${logPrefix} Fetched ${allSummaries.length} summaries for user ${user.uid}.`);
         
         if (allSummaries.length === 0) {
            setAggregatedAnalytics({
@@ -342,7 +324,8 @@ export default function DashboardPage() {
             summaryHitsOverTime: [],
           });
           setIsAggregatedLoading(false);
-          console.log(`${logPrefix} No summaries found for the given tarpit IDs and time range.`);
+          console.log(`${logPrefix} No summaries found for user ${user.uid} and time range.`);
+          toast({ title: "No Summary Data", description: "No aggregated analytics data found for your tarpits in the selected range. This might also occur if the backend hasn't started adding 'userId' to summary documents yet.", variant: "default", duration: 8000});
           return;
         }
 
@@ -372,7 +355,6 @@ export default function DashboardPage() {
             return { date: point.toISOString(), hits: hitsByInterval[key] || 0 };
         });
 
-
         const aggregatedData: AggregatedAnalyticsData = {
           totalHits: allSummaries.reduce((sum, s) => sum + (s.totalHits || 0), 0),
           approxUniqueIpCount: allSummaries.reduce((sum, s) => sum + (s.uniqueIpCount || 0), 0),
@@ -389,8 +371,9 @@ export default function DashboardPage() {
 
       } catch (err) {
         console.error(`${logPrefix} Error fetching/processing aggregated analytics:`, err);
-        setAggregatedError(err instanceof Error ? err.message : "An unknown error occurred.");
-        toast({ title: "Summary Error", description: "Could not load aggregated analytics.", variant: "destructive" });
+        const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
+        setAggregatedError(errorMessage);
+        toast({ title: "Summary Error", description: `Could not load aggregated analytics. ${errorMessage}`, variant: "destructive" });
       } finally {
         setIsAggregatedLoading(false);
       }
@@ -405,7 +388,7 @@ export default function DashboardPage() {
     if (isWindowShoppingTier) {
         return { totalHitsInRange: WINDOW_SHOPPING_PLACEHOLDER_COUNT_PRIMARY, uniqueAttackerIpsInRange: WINDOW_SHOPPING_PLACEHOLDER_COUNT_SECONDARY, mostProbedPath: { path: "/wp-login.php (Demo)", hits: WINDOW_SHOPPING_PLACEHOLDER_COUNT_PRIMARY / 2 }, uniqueUserAgentsInRange: WINDOW_SHOPPING_PLACEHOLDER_COUNT_SECONDARY / 2 };
     }
-    if (!isAnalyticsTier || !apiLogsData || apiLogsData.length === 0) { // These KPIs are API-log specific
+    if (!isAnalyticsTier || !apiLogsData || apiLogsData.length === 0) { 
       return { totalHitsInRange: 0, uniqueAttackerIpsInRange: 0, mostProbedPath: { path: "N/A", hits: 0 }, uniqueUserAgentsInRange: 0 };
     }
     const uniqueIps = new Set(apiLogsData.map(log => log.source_ip)).size;
@@ -420,7 +403,7 @@ export default function DashboardPage() {
   const illustrativeCost = isWindowShoppingTier ? WINDOW_SHOPPING_PLACEHOLDER_COST : (apiKpiStats.totalHitsInRange * 0.0001).toFixed(4);
   const handleRangeChange = (value: string) => { setSelectedRangeHours(Number(value)); };
   
-  const isLoadingKpis = apiLoading && isAnalyticsTier; // Specific to API-driven KPIs
+  const isLoadingKpis = apiLoading && isAnalyticsTier; 
 
   const currentTierName = useMemo(() => {
     if (isAnalyticsTier) return "Analytics";
@@ -682,12 +665,7 @@ export default function DashboardPage() {
 
       <Separator className="my-8 border-primary/20" />
       <h2 className="text-2xl font-semibold text-primary mt-8 mb-4">Overall Aggregated Analytics (Summarized for Selected Range)</h2>
-      {(isAggregatedLoading && !isWindowShoppingTier) && (
-          <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
-              {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-48 w-full" />)}
-          </section>
-      )}
-      {(!isAggregatedLoading || isWindowShoppingTier) && (aggregatedAnalytics || isWindowShoppingTier) && (
+      {(!isAggregatedLoading || isWindowShoppingTier) && (aggregatedAnalytics || isWindowShoppingTier) ? (
         <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
           <Card className="border-primary/30 shadow-lg">
             <CardHeader className="pb-2"><div className="flex items-center gap-2"><Activity className="h-5 w-5 text-primary" /><CardTitle className="text-md font-medium text-primary">Total Hits (Summarized)</CardTitle></div></CardHeader>
@@ -702,7 +680,7 @@ export default function DashboardPage() {
             <Card className="border-accent/30 shadow-lg">
               <CardHeader><div className="flex items-center gap-2"><Globe className="h-5 w-5 text-accent" /><CardTitle className="text-md font-medium text-accent">Top Attacking Countries</CardTitle></div></CardHeader>
               <CardContent className="min-h-[150px]">
-                {isAggregatedLoading ? <Skeleton className="h-40 w-full" /> : aggregatedError ? <p className="text-xs text-destructive">{aggregatedError}</p> :
+                {isAggregatedLoading && !isWindowShoppingTier ? <Skeleton className="h-40 w-full" /> : aggregatedError ? <p className="text-xs text-destructive">{aggregatedError}</p> :
                  !aggregatedAnalytics?.topCountries || aggregatedAnalytics.topCountries.length === 0 ? <p className="text-xs text-muted-foreground">No data available.</p> :
                  <HorizontalBarChart data={aggregatedAnalytics.topCountries} nameKey="country" valueKey="hits" />}
               </CardContent>
@@ -715,7 +693,7 @@ export default function DashboardPage() {
             <Card className="border-primary/30 shadow-lg">
               <CardHeader><div className="flex items-center gap-2"><Fingerprint className="h-5 w-5 text-primary" /><CardTitle className="text-md font-medium text-primary">Top Attacker IPs</CardTitle></div></CardHeader>
               <CardContent className="min-h-[150px]">
-                {isAggregatedLoading ? <Skeleton className="h-40 w-full" /> : aggregatedError ? <p className="text-xs text-destructive">{aggregatedError}</p> :
+                {isAggregatedLoading && !isWindowShoppingTier ? <Skeleton className="h-40 w-full" /> : aggregatedError ? <p className="text-xs text-destructive">{aggregatedError}</p> :
                  !aggregatedAnalytics?.topIPs || aggregatedAnalytics.topIPs.length === 0 ? <p className="text-xs text-muted-foreground">No data available.</p> :
                  <HorizontalBarChart data={aggregatedAnalytics.topIPs} nameKey="ip" valueKey="hits" />}
               </CardContent>
@@ -728,7 +706,7 @@ export default function DashboardPage() {
             <Card className="border-accent/30 shadow-lg">
               <CardHeader><div className="flex items-center gap-2"><ListFilter className="h-5 w-5 text-accent" /><CardTitle className="text-md font-medium text-accent">Top User Agents</CardTitle></div></CardHeader>
               <CardContent className="min-h-[150px]">
-                {isAggregatedLoading ? <Skeleton className="h-40 w-full" /> : aggregatedError ? <p className="text-xs text-destructive">{aggregatedError}</p> :
+                {isAggregatedLoading && !isWindowShoppingTier ? <Skeleton className="h-40 w-full" /> : aggregatedError ? <p className="text-xs text-destructive">{aggregatedError}</p> :
                  !aggregatedAnalytics?.topUserAgents || aggregatedAnalytics.topUserAgents.length === 0 ? <p className="text-xs text-muted-foreground">No data available.</p> :
                  <HorizontalBarChart data={aggregatedAnalytics.topUserAgents} nameKey="userAgent" valueKey="hits" />}
               </CardContent>
@@ -741,10 +719,14 @@ export default function DashboardPage() {
            {renderDistributionCard("HTTP Method Distribution", aggregatedAnalytics?.methodDistribution, Server, isAggregatedLoading && !isWindowShoppingTier, aggregatedError, isAnalyticsTier, currentDashboardTier)}
            {renderDistributionCard("HTTP Status Code Distribution", aggregatedAnalytics?.statusDistribution, BarChart3, isAggregatedLoading && !isWindowShoppingTier, aggregatedError, isAnalyticsTier, currentDashboardTier)}
         </section>
+      ) : (isAggregatedLoading && !isWindowShoppingTier) ? (
+           <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
+              {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-48 w-full" />)}
+          </section>
+      ) : (
+        <p className="text-muted-foreground text-center py-4">No aggregated summary data found for the selected range, or data is still loading.</p>
       )}
-       {(!isAggregatedLoading && !aggregatedAnalytics && !aggregatedError && !isWindowShoppingTier) && (
-        <p className="text-muted-foreground text-center py-4">No aggregated summary data found for the selected range.</p>
-      )}
+      
 
       <Separator className="my-8 border-primary/20" />
       <h2 className="text-2xl font-semibold text-primary mt-8 mb-4">
@@ -802,6 +784,8 @@ export default function DashboardPage() {
     </div>
   );
 }
+    
+
     
 
     
