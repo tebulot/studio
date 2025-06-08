@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import TrappedCrawlersChart from "@/components/dashboard/TrappedCrawlersChart";
-import { ShieldCheck, Users, DollarSign, Info, Eye, Fingerprint, Globe, ListFilter, BarChart3, Server, FileText } from "lucide-react"; // Added Globe, ListFilter, BarChart3, Server, FileText
+import { ShieldCheck, Users, DollarSign, Info, Eye, Fingerprint, Globe, ListFilter, BarChart3, Server, FileText, Activity } from "lucide-react"; // Added Globe, ListFilter, BarChart3, Server, FileText
 import { db } from "@/lib/firebase/clientApp";
 import { collection, query, where, onSnapshot, getDocs, type DocumentData, type QuerySnapshot, Timestamp, orderBy } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -26,22 +26,22 @@ interface AnalyticsSummaryDocumentForDemo {
   startTime: Timestamp;
   totalHits: number;
   uniqueIpCount: number;
-  topCountries?: Array<{ country: string; hits: number }>;
+  topCountries?: Array<{ item: string; hits: number }>; // Updated to 'item'
   methodDistribution?: Record<string, number>;
   statusDistribution?: Record<string, number>;
-  topPaths?: Array<{ path: string; hits: number }>;
-  topIPs?: Array<{ ip: string; hits: number }>;
-  topUserAgents?: Array<{ userAgent: string; hits: number }>;
-  userId: string; // Ensure userId is part of the interface
+  topPaths?: Array<{ item: string; hits: number }>; // Updated to 'item'
+  topIPs?: Array<{ item: string; hits: number }>; // Updated to 'item'
+  topUserAgents?: Array<{ item: string; hits: number }>; // Updated to 'item'
+  // userId: string; // userId is not on this document based on provided structure
 }
 
 interface AggregatedAnalyticsDataForDemo {
   totalHits: number;
   approxUniqueIpCount: number;
-  topCountries: Array<{ country: string; hits: number }>;
-  topIPs: Array<{ ip: string; hits: number }>;
-  topUserAgents: Array<{ userAgent: string; hits: number }>;
-  topPaths: Array<{ path: string; hits: number }>;
+  topCountries: Array<{ country: string; hits: number }>; // Output structure
+  topIPs: Array<{ ip: string; hits: number }>; // Output structure
+  topUserAgents: Array<{ userAgent: string; hits: number }>; // Output structure
+  topPaths: Array<{ path: string; hits: number }>; // Output structure
   methodDistribution: Record<string, number>;
   statusDistribution: Record<string, number>;
   summaryHitsOverTime?: Array<{ date: string; hits: number }>;
@@ -132,6 +132,7 @@ export default function DemoDashboardPage() {
 
         // Fetch summaries
         const thirtyDaysAgoDate = startOfDay(subDays(new Date(), 29)); // Last 30 days including today
+        console.log(`${logPrefix} Fetching summaries for tarpitId: ${DEMO_USER_ID} starting from ${thirtyDaysAgoDate.toISOString()}`);
         const summariesQuery = query(
           collection(db, "tarpit_analytics_summaries"),
           where("tarpitId", "==", DEMO_USER_ID), // Query by tarpitId for summaries
@@ -139,7 +140,7 @@ export default function DemoDashboardPage() {
           orderBy("startTime", "asc")
         );
         const querySnapshot = await getDocs(summariesQuery);
-        console.log(`${logPrefix} Fetched ${querySnapshot.size} summary documents from Firestore for demo user.`);
+        console.log(`${logPrefix} Fetched ${querySnapshot.size} summary documents from Firestore for demo user (tarpitId: ${DEMO_USER_ID}).`);
 
         const allFetchedSummaries: AnalyticsSummaryDocumentForDemo[] = [];
         querySnapshot.forEach((doc) => {
@@ -160,14 +161,14 @@ export default function DemoDashboardPage() {
         const approxUniqueIpCount = allFetchedSummaries.reduce((sum, s) => sum + (s.uniqueIpCount || 0), 0);
         
         // Aggregate top lists
-        const topCountries = aggregateTopList(allFetchedSummaries as any, "topCountries", "country");
-        const topIPs = aggregateTopList(allFetchedSummaries as any, "topIPs", "ip");
-        const topUserAgents = aggregateTopList(allFetchedSummaries as any, "topUserAgents", "userAgent");
-        const topPaths = aggregateTopList(allFetchedSummaries as any, "topPaths", "path", 10);
+        const topCountries = aggregateTopList(allFetchedSummaries, "topCountries", "country");
+        const topIPs = aggregateTopList(allFetchedSummaries, "topIPs", "ip");
+        const topUserAgents = aggregateTopList(allFetchedSummaries, "topUserAgents", "userAgent");
+        const topPaths = aggregateTopList(allFetchedSummaries, "topPaths", "path", 10);
 
         // Aggregate distributions
-        const methodDistribution = aggregateDistribution(allFetchedSummaries as any, "methodDistribution");
-        const statusDistribution = aggregateDistribution(allFetchedSummaries as any, "statusDistribution");
+        const methodDistribution = aggregateDistribution(allFetchedSummaries, "methodDistribution");
+        const statusDistribution = aggregateDistribution(allFetchedSummaries, "statusDistribution");
         
         // Process summaries for chart data
         const hitsByInterval: { [key: string]: number } = {};
@@ -380,24 +381,24 @@ export default function DemoDashboardPage() {
 }
 
 // Helper functions (can be moved to a utils file if used elsewhere)
-function aggregateTopList<T extends { hits: number }, K extends keyof T>(
+// Updated to match the new structure in the main dashboard page
+function aggregateTopList(
   summaries: AnalyticsSummaryDocumentForDemo[],
-  keyField: K extends "country" ? "topCountries" : K extends "ip" ? "topIPs" : K extends "userAgent" ? "topUserAgents" : "topPaths",
-  valueField: K,
+  sourceArrayKey: "topCountries" | "topIPs" | "topUserAgents" | "topPaths",
+  outputNameKey: string, // e.g., "country", "ip", "userAgent", "path"
   limit: number = 5
-): Array<{ [P in K]: T[P] } & { hits: number }> {
+): Array<{ [key: string]: string | number } & { hits: number }> {
   const counts: Record<string, number> = {};
   summaries.forEach(summary => {
-    const list = summary[keyField] as Array<{ [P in K]: T[P] } & { hits: number }> | undefined;
-    list?.forEach(item => {
-      const itemValue = item[valueField] as string;
-      counts[itemValue] = (counts[itemValue] || 0) + item.hits;
+    const list = summary[sourceArrayKey] as Array<{ item: string; hits: number }> | undefined; // Process 'item' field
+    list?.forEach(subItem => {
+      counts[subItem.item] = (counts[subItem.item] || 0) + subItem.hits;
     });
   });
   return Object.entries(counts)
     .sort(([, a], [, b]) => b - a)
     .slice(0, limit)
-    .map(([val, hits]) => ({ [valueField]: val, hits } as any));
+    .map(([val, hits]) => ({ [outputNameKey]: val, hits })); // Use outputNameKey for the resulting object
 }
 
 function aggregateDistribution(
@@ -415,3 +416,4 @@ function aggregateDistribution(
   });
   return totalDistribution;
 }
+

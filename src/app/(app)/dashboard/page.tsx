@@ -42,22 +42,22 @@ interface AnalyticsSummaryDocument {
   tarpitId: string;
   startTime: Timestamp;
   totalHits: number;
-  uniqueIpCount: number;
-  topCountries?: Array<{ country: string; hits: number }>;
+  uniqueIpCount: number; // This field is in the Firestore doc
+  topCountries?: Array<{ item: string; hits: number }>; // Updated to 'item'
   methodDistribution?: Record<string, number>;
   statusDistribution?: Record<string, number>;
-  topPaths?: Array<{ path: string; hits: number }>;
-  topIPs?: Array<{ ip: string; hits: number }>;
-  topUserAgents?: Array<{ userAgent: string; hits: number }>;
+  topPaths?: Array<{ item: string; hits: number }>; // Updated to 'item'
+  topIPs?: Array<{ item: string; hits: number }>; // Updated to 'item'
+  topUserAgents?: Array<{ item: string; hits: number }>; // Updated to 'item'
 }
 
 interface AggregatedAnalyticsData {
   totalHits: number;
   approxUniqueIpCount: number;
-  topCountries: Array<{ country: string; hits: number }>;
-  topIPs: Array<{ ip: string; hits: number }>;
-  topUserAgents: Array<{ userAgent: string; hits: number }>;
-  topPaths: Array<{ path: string; hits: number }>;
+  topCountries: Array<{ country: string; hits: number }>; // Output structure
+  topIPs: Array<{ ip: string; hits: number }>; // Output structure
+  topUserAgents: Array<{ userAgent: string; hits: number }>; // Output structure
+  topPaths: Array<{ path: string; hits: number }>; // Output structure
   methodDistribution: Record<string, number>;
   statusDistribution: Record<string, number>;
   summaryHitsOverTime?: Array<{ date: string; hits: number }>;
@@ -101,26 +101,25 @@ const PLACEHOLDER_SUMMARY_HITS_OVER_TIME_DEMO = (rangeHours: number): Array<{dat
     }));
 };
 
-
-function aggregateTopList<T extends { hits: number }, K extends keyof T>(
+function aggregateTopList(
   summaries: AnalyticsSummaryDocument[],
-  keyField: K extends "country" ? "topCountries" : K extends "ip" ? "topIPs" : K extends "userAgent" ? "topUserAgents" : "topPaths",
-  valueField: K,
+  sourceArrayKey: "topCountries" | "topIPs" | "topUserAgents" | "topPaths",
+  outputNameKey: string, // e.g., "country", "ip", "userAgent", "path"
   limit: number = 5
-): Array<{ [P in K]: T[P] } & { hits: number }> {
+): Array<{ [key: string]: string | number } & { hits: number }> {
   const counts: Record<string, number> = {};
   summaries.forEach(summary => {
-    const list = summary[keyField] as Array<{ [P in K]: T[P] } & { hits: number }> | undefined;
-    list?.forEach(item => {
-      const itemValue = item[valueField] as string;
-      counts[itemValue] = (counts[itemValue] || 0) + item.hits;
+    const list = summary[sourceArrayKey] as Array<{ item: string; hits: number }> | undefined; // Process 'item' field
+    list?.forEach(subItem => {
+      counts[subItem.item] = (counts[subItem.item] || 0) + subItem.hits;
     });
   });
   return Object.entries(counts)
     .sort(([, a], [, b]) => b - a)
     .slice(0, limit)
-    .map(([val, hits]) => ({ [valueField]: val, hits } as any));
+    .map(([val, hits]) => ({ [outputNameKey]: val, hits })); // Use outputNameKey for the resulting object
 }
+
 
 function aggregateDistribution(
   summaries: AnalyticsSummaryDocument[],
@@ -189,7 +188,7 @@ export default function DashboardPage() {
   const isSubscriptionActive = useMemo(() => userProfile?.subscriptionStatus === 'active' || userProfile?.subscriptionStatus === 'trialing', [userProfile]);
 
   const isWindowShoppingTier = useMemo(() => {
-    if (!userProfile) return false; // Default to not window shopping if profile isn't loaded
+    if (!userProfile) return false;
     return userProfile.activeTierId === 'window_shopping' || !isSubscriptionActive;
   }, [userProfile, isSubscriptionActive]);
 
@@ -311,13 +310,13 @@ export default function DashboardPage() {
         const startDateTimestamp = Timestamp.fromDate(startDate);
         console.log(`${logPrefix} Calculated start date for summaries: ${startDate.toISOString()}`);
 
-        const MAX_IN_CLAUSE_VALUES = 30;
+        const MAX_IN_CLAUSE_VALUES = 30; // Firestore 'in' query limit is 30
         let allSummaries: AnalyticsSummaryDocument[] = [];
 
         for (let i = 0; i < userTarpitIds.length; i += MAX_IN_CLAUSE_VALUES) {
             const chunkOfTarpitIds = userTarpitIds.slice(i, i + MAX_IN_CLAUSE_VALUES);
             if (chunkOfTarpitIds.length > 0) {
-                console.log(`${logPrefix} Fetching summaries for tarpitId chunk:`, chunkOfTarpitIds);
+                console.log(`${logPrefix} Fetching summaries for tarpitId chunk (count: ${chunkOfTarpitIds.length}):`, chunkOfTarpitIds);
                 const summariesQuery = query(
                     collection(db, "tarpit_analytics_summaries"),
                     where("tarpitId", "in", chunkOfTarpitIds),
@@ -792,3 +791,4 @@ export default function DashboardPage() {
   );
 }
     
+
