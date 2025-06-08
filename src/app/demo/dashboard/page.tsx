@@ -18,8 +18,8 @@ import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Toolti
 import { Separator } from "@/components/ui/separator";
 
 const DEMO_USER_ID = process.env.NEXT_PUBLIC_DEMO_USER_ID;
-const DEMO_TARPIT_PATH_SEGMENT = process.env.NEXT_PUBLIC_DEMO_TARPIT_PATH_SEGMENT; // New env variable
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds (reduced for quicker debugging)
+const DEMO_TARPIT_PATH_SEGMENT = process.env.NEXT_PUBLIC_DEMO_TARPIT_PATH_SEGMENT; 
+// const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds (currently disabled)
 const DIRECT_TRAP_URL = "https://api.spitespiral.com/trap/b4b37b21-31b5-47f8-81a7-7a9f8a867911";
 
 interface AnalyticsSummaryDocumentForDemo {
@@ -110,7 +110,7 @@ export default function DemoDashboardPage() {
     const fetchAndAggregateDemoData = async () => {
       setIsLoadingDemoData(true);
       setDemoDataError(null);
-      const logPrefix = `DemoDashboardPage (DEMO_TARPIT_PATH_SEGMENT: ${DEMO_TARPIT_PATH_SEGMENT ? DEMO_TARPIT_PATH_SEGMENT.substring(0,8) : 'N/A'}...) - Demo Data Fetch:`;
+      const logPrefix = `DemoDashboardPage (DEMO_TARPIT_PATH_SEGMENT: ${DEMO_TARPIT_PATH_SEGMENT ? DEMO_TARPIT_PATH_SEGMENT : 'N/A'}...) - Demo Data Fetch:`;
       
       // Temporarily disabled localStorage caching for debugging
       // const cacheKey = `spiteSpiral_demoDashboardData_${DEMO_TARPIT_PATH_SEGMENT}`;
@@ -134,7 +134,7 @@ export default function DemoDashboardPage() {
         // console.log(`${logPrefix} Cache stale or not found (or disabled). Fetching fresh demo data.`);
 
         let activeInstances = 0;
-        if (DEMO_USER_ID) { // Only fetch if DEMO_USER_ID is set, for active instances count
+        if (DEMO_USER_ID) { 
           try {
             console.log(`${logPrefix} Fetching active instances for demo user ID: ${DEMO_USER_ID}`);
             const instancesQuery = query(collection(db, "tarpit_configs"), where("userId", "==", DEMO_USER_ID));
@@ -154,7 +154,7 @@ export default function DemoDashboardPage() {
         
         const summariesQuery = query(
           collection(db, "tarpit_analytics_summaries"),
-          where("tarpitId", "==", DEMO_TARPIT_PATH_SEGMENT), // Query by the actual demo tarpit's path segment
+          where("tarpitId", "==", DEMO_TARPIT_PATH_SEGMENT), 
           where("startTime", ">=", Timestamp.fromDate(thirtyDaysAgoDate)),
           orderBy("startTime", "asc")
         );
@@ -164,7 +164,7 @@ export default function DemoDashboardPage() {
         const allFetchedSummaries: AnalyticsSummaryDocumentForDemo[] = [];
         querySnapshot.forEach((doc) => {
           const data = doc.data();
-          console.log(`${logPrefix} Summary doc ${doc.id} data:`, JSON.parse(JSON.stringify(data))); // Log fetched data
+          console.log(`${logPrefix} Summary doc ${doc.id} data:`, JSON.parse(JSON.stringify(data))); 
           allFetchedSummaries.push({ id: doc.id, ...data } as AnalyticsSummaryDocumentForDemo);
         });
 
@@ -190,9 +190,9 @@ export default function DemoDashboardPage() {
         const statusDistribution = aggregateDistribution(allFetchedSummaries, "statusDistribution");
         
         const hitsByInterval: { [key: string]: number } = {};
-        const chartRangeHours = 30 * 24;
+        // const chartRangeHours = 30 * 24; // Already have thirtyDaysAgoDate logic for query
         const chartEndDate = new Date();
-        const chartStartDate = subDays(chartEndDate, 29);
+        const chartStartDate = subDays(chartEndDate, 29); // Align chart with query range
         const intervalPoints = eachDayOfInterval({ start: chartStartDate, end: chartEndDate });
         const aggregationFormat = 'yyyy-MM-dd';
         intervalPoints.forEach(point => { hitsByInterval[format(point, aggregationFormat)] = 0; });
@@ -230,7 +230,7 @@ export default function DemoDashboardPage() {
     };
 
     fetchAndAggregateDemoData();
-  }, [isDemoConfigProperlySet, toast]);
+  }, [isDemoConfigProperlySet, toast, DEMO_TARPIT_PATH_SEGMENT]);
 
 
   if (!isDemoConfigProperlySet && !isLoadingDemoData) {
@@ -275,7 +275,7 @@ export default function DemoDashboardPage() {
      )
   }
   
-  if (demoDataError && !aggregatedDemoData) { // Show error only if no data could be aggregated
+  if (demoDataError && !aggregatedDemoData) { 
       return (
            <>
             <a href={DIRECT_TRAP_URL} rel="nofollow noopener noreferrer" aria-hidden="true" tabIndex={-1} style={{ opacity: 0.01, position: 'absolute', left: '-9999px', top: '-9999px', fontSize: '1px', color: 'transparent', width: '1px', height: '1px', overflow: 'hidden' }} title="SpiteSpiral Internal Data - Demo Dashboard Error">.</a>
@@ -306,7 +306,11 @@ export default function DemoDashboardPage() {
           <Eye className="h-5 w-5 text-primary" />
           <AlertTitle className="text-primary">How This Demo Works</AlertTitle>
           <AlertDescription className="text-muted-foreground space-y-1">
-            <p>The statistics on this page are from a live SpiteSpiral Tarpit instance identified by path segment <code className="text-xs bg-muted p-0.5 rounded">{DEMO_TARPIT_PATH_SEGMENT || "N/A"}</code>. Data is aggregated from <code className="text-xs bg-muted p-0.5 rounded">tarpit_analytics_summaries</code> for the last 30 days. Active instances count is for user <code className="text-xs bg-muted p-0.5 rounded">{DEMO_USER_ID || "N/A"}</code>.</p>
+            <p>
+              The statistics on this page are sourced from a live SpiteSpiral Tarpit, specifically configured for public demonstration.
+              Data reflects aggregated activity from this demo tarpit over the last 30 days.
+              The 'Active Instances' count shown is specific to the demo account's configuration.
+            </p>
           </AlertDescription>
         </Alert>
         <Alert variant="default" className="border-accent/20 bg-card/50 mb-6">
@@ -322,7 +326,7 @@ export default function DemoDashboardPage() {
             <Card className="border-primary/30 shadow-lg"><CardHeader className="pb-2"><div className="flex items-center gap-2"><Activity className="h-5 w-5 text-primary" /><CardTitle className="text-md font-medium text-primary">Total Hits</CardTitle></div></CardHeader><CardContent><div className="text-3xl font-bold text-foreground">{aggregatedDemoData?.totalHits ?? 0}</div><p className="text-xs text-muted-foreground mt-1">Across demo tarpits.</p></CardContent></Card>
             <Card className="border-accent/30 shadow-lg"><CardHeader className="pb-2"><div className="flex items-center gap-2"><Users className="h-5 w-5 text-accent" /><CardTitle className="text-md font-medium text-accent">Approx. Unique IPs</CardTitle></div></CardHeader><CardContent><div className="text-3xl font-bold text-foreground">{aggregatedDemoData?.approxUniqueIpCount ?? 0}</div><p className="text-xs text-muted-foreground mt-1">Sum from summaries.</p></CardContent></Card>
             <Card className="border-primary/30 shadow-lg"><CardHeader className="pb-2"><div className="flex items-center gap-1.5"><CardTitle className="text-sm font-medium text-primary">Illustrative Compute Wasted</CardTitle><TooltipProvider><Tooltip delayDuration={100}><TooltipTrigger asChild><Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" /></TooltipTrigger><TooltipContent><p className="text-xs">Each hit contributes $0.0001.</p></TooltipContent></Tooltip></TooltipProvider></div><DollarSign className="h-6 w-6 text-primary" /></CardHeader><CardContent><div className="text-3xl font-bold text-foreground">${aggregatedDemoData?.illustrativeCost ?? '0.0000'}</div><p className="text-xs text-muted-foreground mt-1">Based on total hits.</p></CardContent></Card>
-            <Card className="border-accent/30 shadow-lg"><CardHeader className="pb-2"><div className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-primary" /><CardTitle className="text-md font-medium text-accent">Active Demo Instances</CardTitle></div></CardHeader><CardContent><div className="text-3xl font-bold text-foreground">{aggregatedDemoData?.activeInstances ?? 0}</div><p className="text-xs text-muted-foreground mt-1">Configured for demo user.</p></CardContent></Card>
+            <Card className="border-accent/30 shadow-lg"><CardHeader className="pb-2"><div className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-primary" /><CardTitle className="text-md font-medium text-accent">Active Demo Instances</CardTitle></div></CardHeader><CardContent><div className="text-3xl font-bold text-foreground">{aggregatedDemoData?.activeInstances ?? 0}</div><p className="text-xs text-muted-foreground mt-1">Configured for demo account.</p></CardContent></Card>
         </section>
 
         <Separator className="my-8 border-primary/20" />
@@ -439,3 +443,5 @@ function aggregateDistribution(
   return totalDistribution;
 }
 
+
+    
