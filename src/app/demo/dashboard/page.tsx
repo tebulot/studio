@@ -308,50 +308,54 @@ export default function DemoDashboardPage() {
 
         <Separator className="my-8 border-primary/20" />
         <h2 className="text-2xl font-semibold text-primary mt-8 mb-4">Aggregated Analytics (Last 30 Days Demo Summary)</h2>
-        <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            <Card className="border-accent/30 shadow-lg">
-                <CardHeader><div className="flex items-center gap-2"><Globe className="h-5 w-5 text-accent" /><CardTitle className="text-md font-medium text-accent">Top Attacking Countries</CardTitle></div></CardHeader>
-                <CardContent className="min-h-[200px]">
-                  {aggregatedDemoData?.topCountries && aggregatedDemoData.topCountries.length > 0 ? <HorizontalBarChartDemo data={aggregatedDemoData.topCountries} nameKey="country" valueKey="hits" /> : <p className="text-xs text-muted-foreground">No country data.</p>}
-                </CardContent>
-            </Card>
-            <Card className="border-primary/30 shadow-lg">
-                <CardHeader><div className="flex items-center gap-2"><Fingerprint className="h-5 w-5 text-primary" /><CardTitle className="text-md font-medium text-primary">Top Attacker IPs</CardTitle></div></CardHeader>
-                <CardContent className="min-h-[200px]">
-                    {aggregatedDemoData?.topIPs && aggregatedDemoData.topIPs.length > 0 ? <HorizontalBarChartDemo data={aggregatedDemoData.topIPs} nameKey="ip" valueKey="hits" /> : <p className="text-xs text-muted-foreground">No IP data.</p>}
-                </CardContent>
-            </Card>
-            <Card className="border-accent/30 shadow-lg">
-                <CardHeader><div className="flex items-center gap-2"><ListFilter className="h-5 w-5 text-accent" /><CardTitle className="text-md font-medium text-accent">Top User Agents</CardTitle></div></CardHeader>
-                <CardContent className="min-h-[200px]">
-                     {aggregatedDemoData?.topUserAgents && aggregatedDemoData.topUserAgents.length > 0 ? <HorizontalBarChartDemo data={aggregatedDemoData.topUserAgents} nameKey="userAgent" valueKey="hits" /> : <p className="text-xs text-muted-foreground">No User Agent data.</p>}
-                </CardContent>
-            </Card>
-            <Card className="border-primary/30 shadow-lg">
-                <CardHeader><div className="flex items-center gap-2"><FileText className="h-5 w-5 text-primary" /><CardTitle className="text-md font-medium text-primary">Top Paths Hit</CardTitle></div></CardHeader>
-                <CardContent className="min-h-[150px]">
-                  {aggregatedDemoData?.topPaths && aggregatedDemoData.topPaths.length > 0 ? (
-                    <ul className="space-y-1 text-xs text-muted-foreground">{aggregatedDemoData.topPaths.slice(0,5).map((p,i) => <li key={i} className="flex justify-between"><span className="truncate max-w-[70%]">{p.path}</span> <span className="font-semibold">{p.hits} hits</span></li>)}</ul>
-                  ) : <p className="text-xs text-muted-foreground">No path data.</p>}
-                </CardContent>
-            </Card>
-            <Card className="border-accent/30 shadow-lg">
-                <CardHeader><div className="flex items-center gap-2"><Server className="h-5 w-5 text-accent" /><CardTitle className="text-md font-medium text-accent">HTTP Method Distribution</CardTitle></div></CardHeader>
-                <CardContent className="min-h-[150px]">
-                  {aggregatedDemoData?.methodDistribution && Object.keys(aggregatedDemoData.methodDistribution).length > 0 ? (
-                    <ul className="space-y-1 text-xs text-muted-foreground">{Object.entries(aggregatedDemoData.methodDistribution).sort(([,a],[,b])=>b-a).slice(0,5).map(([k,v],i) => <li key={i} className="flex justify-between"><span className="truncate max-w-[60%]">{k}</span> <span className="font-semibold">{v} hits</span></li>)}</ul>
-                  ) : <p className="text-xs text-muted-foreground">No method data.</p>}
-                </CardContent>
-            </Card>
-            <Card className="border-primary/30 shadow-lg">
-                <CardHeader><div className="flex items-center gap-2"><BarChart3 className="h-5 w-5 text-primary" /><CardTitle className="text-md font-medium text-primary">HTTP Status Code Distribution</CardTitle></div></CardHeader>
-                <CardContent className="min-h-[150px]">
-                    {aggregatedDemoData?.statusDistribution && Object.keys(aggregatedDemoData.statusDistribution).length > 0 ? (
-                      <ul className="space-y-1 text-xs text-muted-foreground">{Object.entries(aggregatedDemoData.statusDistribution).sort(([,a],[,b])=>b-a).slice(0,5).map(([k,v],i) => <li key={i} className="flex justify-between"><span className="truncate max-w-[60%]">{k}</span> <span className="font-semibold">{v} hits</span></li>)}</ul>
-                    ) : <p className="text-xs text-muted-foreground">No status data.</p>}
-                </CardContent>
-            </Card>
-        </section>
+        {aggregatedDemoData ? (
+          <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              <Card className="border-accent/30 shadow-lg">
+                  <CardHeader><div className="flex items-center gap-2"><Globe className="h-5 w-5 text-accent" /><CardTitle className="text-md font-medium text-accent">Top Attacking Countries</CardTitle></div></CardHeader>
+                  <CardContent className="min-h-[200px]">
+                    {aggregatedDemoData?.topCountries && aggregatedDemoData.topCountries.length > 0 ? <HorizontalBarChartDemo data={aggregatedDemoData.topCountries} nameKey="country" valueKey="hits" /> : <p className="text-xs text-muted-foreground">No country data.</p>}
+                  </CardContent>
+              </Card>
+              <Card className="border-primary/30 shadow-lg">
+                  <CardHeader><div className="flex items-center gap-2"><Fingerprint className="h-5 w-5 text-primary" /><CardTitle className="text-md font-medium text-primary">Top Attacker IPs</CardTitle></div></CardHeader>
+                  <CardContent className="min-h-[200px]">
+                      {aggregatedDemoData?.topIPs && aggregatedDemoData.topIPs.length > 0 ? <HorizontalBarChartDemo data={aggregatedDemoData.topIPs} nameKey="ip" valueKey="hits" /> : <p className="text-xs text-muted-foreground">No IP data.</p>}
+                  </CardContent>
+              </Card>
+              <Card className="border-accent/30 shadow-lg">
+                  <CardHeader><div className="flex items-center gap-2"><ListFilter className="h-5 w-5 text-accent" /><CardTitle className="text-md font-medium text-accent">Top User Agents</CardTitle></div></CardHeader>
+                  <CardContent className="min-h-[200px]">
+                       {aggregatedDemoData?.topUserAgents && aggregatedDemoData.topUserAgents.length > 0 ? <HorizontalBarChartDemo data={aggregatedDemoData.topUserAgents} nameKey="userAgent" valueKey="hits" /> : <p className="text-xs text-muted-foreground">No User Agent data.</p>}
+                  </CardContent>
+              </Card>
+              <Card className="border-primary/30 shadow-lg">
+                  <CardHeader><div className="flex items-center gap-2"><FileText className="h-5 w-5 text-primary" /><CardTitle className="text-md font-medium text-primary">Top Paths Hit</CardTitle></div></CardHeader>
+                  <CardContent className="min-h-[150px]">
+                    {aggregatedDemoData?.topPaths && aggregatedDemoData.topPaths.length > 0 ? (
+                      <ul className="space-y-1 text-xs text-muted-foreground">{aggregatedDemoData.topPaths.slice(0,5).map((p,i) => <li key={i} className="flex justify-between"><span className="truncate max-w-[70%]">{p.path}</span> <span className="font-semibold">{p.hits} hits</span></li>)}</ul>
+                    ) : <p className="text-xs text-muted-foreground">No path data.</p>}
+                  </CardContent>
+              </Card>
+              <Card className="border-accent/30 shadow-lg">
+                  <CardHeader><div className="flex items-center gap-2"><Server className="h-5 w-5 text-accent" /><CardTitle className="text-md font-medium text-accent">HTTP Method Distribution</CardTitle></div></CardHeader>
+                  <CardContent className="min-h-[150px]">
+                    {aggregatedDemoData?.methodDistribution && Object.keys(aggregatedDemoData.methodDistribution).length > 0 ? (
+                      <ul className="space-y-1 text-xs text-muted-foreground">{Object.entries(aggregatedDemoData.methodDistribution).sort(([,a],[,b])=>b-a).slice(0,5).map(([k,v],i) => <li key={i} className="flex justify-between"><span className="truncate max-w-[60%]">{k}</span> <span className="font-semibold">{v} hits</span></li>)}</ul>
+                    ) : <p className="text-xs text-muted-foreground">No method data.</p>}
+                  </CardContent>
+              </Card>
+              <Card className="border-primary/30 shadow-lg">
+                  <CardHeader><div className="flex items-center gap-2"><BarChart3 className="h-5 w-5 text-primary" /><CardTitle className="text-md font-medium text-primary">HTTP Status Code Distribution</CardTitle></div></CardHeader>
+                  <CardContent className="min-h-[150px]">
+                      {aggregatedDemoData?.statusDistribution && Object.keys(aggregatedDemoData.statusDistribution).length > 0 ? (
+                        <ul className="space-y-1 text-xs text-muted-foreground">{Object.entries(aggregatedDemoData.statusDistribution).sort(([,a],[,b])=>b-a).slice(0,5).map(([k,v],i) => <li key={i} className="flex justify-between"><span className="truncate max-w-[60%]">{k}</span> <span className="font-semibold">{v} hits</span></li>)}</ul>
+                      ) : <p className="text-xs text-muted-foreground">No status data.</p>}
+                  </CardContent>
+              </Card>
+          </section>
+        ) : (
+           <p className="text-muted-foreground text-center py-4">No demo summary data available to display.</p>
+        )}
 
         <Separator className="my-8 border-primary/20" />
         <section>
@@ -417,4 +421,3 @@ function aggregateDistribution(
   });
   return totalDistribution;
 }
-
