@@ -42,22 +42,22 @@ interface AnalyticsSummaryDocument {
   tarpitId: string;
   startTime: Timestamp;
   totalHits: number;
-  uniqueIpCount: number; // This field is in the Firestore doc
-  topCountries?: Array<{ item: string; hits: number }>; // Updated to 'item'
+  uniqueIpCount: number;
+  topCountries?: Array<{ item: string; hits: number }>;
   methodDistribution?: Record<string, number>;
   statusDistribution?: Record<string, number>;
-  topPaths?: Array<{ item: string; hits: number }>; // Updated to 'item'
-  topIPs?: Array<{ item: string; hits: number }>; // Updated to 'item'
-  topUserAgents?: Array<{ item: string; hits: number }>; // Updated to 'item'
+  topPaths?: Array<{ item: string; hits: number }>;
+  topIPs?: Array<{ item: string; hits: number }>;
+  topUserAgents?: Array<{ item: string; hits: number }>;
 }
 
 interface AggregatedAnalyticsData {
   totalHits: number;
   approxUniqueIpCount: number;
-  topCountries: Array<{ country: string; hits: number }>; // Output structure
-  topIPs: Array<{ ip: string; hits: number }>; // Output structure
-  topUserAgents: Array<{ userAgent: string; hits: number }>; // Output structure
-  topPaths: Array<{ path: string; hits: number }>; // Output structure
+  topCountries: Array<{ country: string; hits: number }>;
+  topIPs: Array<{ ip: string; hits: number }>;
+  topUserAgents: Array<{ userAgent: string; hits: number }>;
+  topPaths: Array<{ path: string; hits: number }>;
   methodDistribution: Record<string, number>;
   statusDistribution: Record<string, number>;
   summaryHitsOverTime?: Array<{ date: string; hits: number }>;
@@ -97,19 +97,19 @@ const PLACEHOLDER_SUMMARY_HITS_OVER_TIME_DEMO = (rangeHours: number): Array<{dat
      else { intervalPoints = eachDayOfInterval({ start: startDate, end: endDate }); }
     return intervalPoints.map(point => ({
         date: point.toISOString(),
-        hits: Math.floor(Math.random() * (rangeHours <=48 ? 20 : 200) + 5) // Random small numbers
+        hits: Math.floor(Math.random() * (rangeHours <=48 ? 20 : 200) + 5)
     }));
 };
 
 function aggregateTopList(
   summaries: AnalyticsSummaryDocument[],
   sourceArrayKey: "topCountries" | "topIPs" | "topUserAgents" | "topPaths",
-  outputNameKey: string, // e.g., "country", "ip", "userAgent", "path"
+  outputNameKey: string,
   limit: number = 5
 ): Array<{ [key: string]: string | number } & { hits: number }> {
   const counts: Record<string, number> = {};
   summaries.forEach(summary => {
-    const list = summary[sourceArrayKey] as Array<{ item: string; hits: number }> | undefined; // Process 'item' field
+    const list = summary[sourceArrayKey] as Array<{ item: string; hits: number }> | undefined;
     list?.forEach(subItem => {
       counts[subItem.item] = (counts[subItem.item] || 0) + subItem.hits;
     });
@@ -117,7 +117,7 @@ function aggregateTopList(
   return Object.entries(counts)
     .sort(([, a], [, b]) => b - a)
     .slice(0, limit)
-    .map(([val, hits]) => ({ [outputNameKey]: val, hits })); // Use outputNameKey for the resulting object
+    .map(([val, hits]) => ({ [outputNameKey]: val, hits }));
 }
 
 
@@ -185,22 +185,27 @@ export default function DashboardPage() {
   const [isAggregatedLoading, setIsAggregatedLoading] = useState(true);
   const [aggregatedError, setAggregatedError] = useState<string | null>(null);
 
-  const isSubscriptionActive = useMemo(() => userProfile?.subscriptionStatus === 'active' || userProfile?.subscriptionStatus === 'trialing', [userProfile]);
+  const isEffectivelySubscribedForFeatures = useMemo(() => {
+    if (!userProfile) return false;
+    return ['active', 'trialing', 'active_until_period_end', 'pending_downgrade'].includes(userProfile.subscriptionStatus || '');
+  }, [userProfile]);
 
   const isWindowShoppingTier = useMemo(() => {
-    if (!userProfile) return false;
-    return userProfile.activeTierId === 'window_shopping' || !isSubscriptionActive;
-  }, [userProfile, isSubscriptionActive]);
+    if (!userProfile) return true; // Default to window shopping if no profile
+    if (userProfile.activeTierId === 'window_shopping') return true;
+    return !isEffectivelySubscribedForFeatures; // If not effectively subscribed, treat as window shopping
+  }, [userProfile, isEffectivelySubscribedForFeatures]);
 
   const isSetAndForgetTier = useMemo(() => {
-    if (!userProfile || !isSubscriptionActive) return false;
-    return (userProfile.activeTierId === 'set_and_forget' || userProfile.activeTierId === 'price_1RTilPKPVCKvfVVwBUqudAnp') && isSubscriptionActive;
-  }, [userProfile, isSubscriptionActive]);
+    if (!userProfile || !isEffectivelySubscribedForFeatures || isWindowShoppingTier) return false;
+    return (userProfile.activeTierId === 'set_and_forget' || userProfile.activeTierId === 'price_1RTilPKPVCKvfVVwBUqudAnp');
+  }, [userProfile, isEffectivelySubscribedForFeatures, isWindowShoppingTier]);
 
   const isAnalyticsTier = useMemo(() => {
-    if (!userProfile || !isSubscriptionActive) return false;
-    return (userProfile.activeTierId === 'analytics' || userProfile.activeTierId === 'price_1RTim1KPVCKvfVVwDkc5G0at') && isSubscriptionActive;
-  }, [userProfile, isSubscriptionActive]);
+    if (!userProfile || !isEffectivelySubscribedForFeatures || isWindowShoppingTier) return false;
+    return (userProfile.activeTierId === 'analytics' || userProfile.activeTierId === 'price_1RTim1KPVCKvfVVwDkc5G0at');
+  }, [userProfile, isEffectivelySubscribedForFeatures, isWindowShoppingTier]);
+
 
   useEffect(() => {
     if (authLoading) { setIsLoadingInstancesCount(true); return; }
@@ -227,7 +232,7 @@ export default function DashboardPage() {
   }, [user, authLoading, toast]);
 
   useEffect(() => {
-    if (authLoading || !user || !isAnalyticsTier) {
+    if (authLoading || !user || !isAnalyticsTier) { // Only fetch API logs for Analytics tier
       setApiLoading(true);
       setApiLogsData([]);
       if (!user && !authLoading) { setApiLoading(false); }
@@ -272,7 +277,7 @@ export default function DashboardPage() {
   }, [user, authLoading, toast, selectedRangeHours, isAnalyticsTier]);
 
   useEffect(() => {
-    if (authLoading || !user || isWindowShoppingTier) {
+    if (authLoading || !user || isWindowShoppingTier) { // Don't fetch summaries for Window Shopping
       setIsAggregatedLoading(true);
       setAggregatedAnalytics(null);
       if(!user && !authLoading) setIsAggregatedLoading(false);
@@ -310,7 +315,7 @@ export default function DashboardPage() {
         const startDateTimestamp = Timestamp.fromDate(startDate);
         console.log(`${logPrefix} Calculated start date for summaries: ${startDate.toISOString()}`);
 
-        const MAX_IN_CLAUSE_VALUES = 30; // Firestore 'in' query limit is 30
+        const MAX_IN_CLAUSE_VALUES = 30;
         let allSummaries: AnalyticsSummaryDocument[] = [];
 
         for (let i = 0; i < userTarpitIds.length; i += MAX_IN_CLAUSE_VALUES) {
@@ -400,7 +405,7 @@ export default function DashboardPage() {
     if (isWindowShoppingTier) {
         return { totalHitsInRange: WINDOW_SHOPPING_PLACEHOLDER_COUNT_PRIMARY, uniqueAttackerIpsInRange: WINDOW_SHOPPING_PLACEHOLDER_COUNT_SECONDARY, mostProbedPath: { path: "/wp-login.php (Demo)", hits: WINDOW_SHOPPING_PLACEHOLDER_COUNT_PRIMARY / 2 }, uniqueUserAgentsInRange: WINDOW_SHOPPING_PLACEHOLDER_COUNT_SECONDARY / 2 };
     }
-    if (!isAnalyticsTier || !apiLogsData || apiLogsData.length === 0) {
+    if (!isAnalyticsTier || !apiLogsData || apiLogsData.length === 0) { // These KPIs are API-log specific
       return { totalHitsInRange: 0, uniqueAttackerIpsInRange: 0, mostProbedPath: { path: "N/A", hits: 0 }, uniqueUserAgentsInRange: 0 };
     }
     const uniqueIps = new Set(apiLogsData.map(log => log.source_ip)).size;
@@ -415,7 +420,14 @@ export default function DashboardPage() {
   const illustrativeCost = isWindowShoppingTier ? WINDOW_SHOPPING_PLACEHOLDER_COST : (apiKpiStats.totalHitsInRange * 0.0001).toFixed(4);
   const handleRangeChange = (value: string) => { setSelectedRangeHours(Number(value)); };
   
-  const isLoadingKpis = apiLoading && isAnalyticsTier;
+  const isLoadingKpis = apiLoading && isAnalyticsTier; // Specific to API-driven KPIs
+
+  const currentTierName = useMemo(() => {
+    if (isAnalyticsTier) return "Analytics";
+    if (isSetAndForgetTier) return "Set & Forget";
+    return "Window Shopping";
+  }, [isAnalyticsTier, isSetAndForgetTier]);
+
 
   const renderDistributionCard = (title: string, data: Record<string, number> | undefined, icon: React.ElementType, isLoading: boolean, error: string | null, showPercentages: boolean, tier: 'window' | 'setforget' | 'analytics') => {
     const IconComponent = icon;
@@ -537,7 +549,7 @@ export default function DashboardPage() {
           <h1 className="text-4xl font-bold tracking-tight text-primary glitch-text">Dashboard</h1>
           <p className="text-muted-foreground mt-2 text-lg">
             Overview of your SpiteSpiral Tarpit activity. Selected range: Last {selectedRangeHours} hours.
-            Current Tier: <span className="font-semibold text-accent">{isAnalyticsTier ? "Analytics" : isSetAndForgetTier ? "Set & Forget" : "Window Shopping"}</span>
+            Current Tier: <span className="font-semibold text-accent">{currentTierName}</span>
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -792,3 +804,4 @@ export default function DashboardPage() {
 }
     
 
+    
