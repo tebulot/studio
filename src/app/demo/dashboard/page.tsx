@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import TrappedCrawlersChart from "@/components/dashboard/TrappedCrawlersChart";
-import { ShieldCheck, Users, DollarSign, Info, Eye, Fingerprint } from "lucide-react";
+import { ShieldCheck, Users, DollarSign, Info, Eye, Fingerprint, Globe, ListFilter, BarChart3, Server, FileText } from "lucide-react"; // Added Globe, ListFilter, BarChart3, Server, FileText
 import { db } from "@/lib/firebase/clientApp";
 import { collection, query, where, onSnapshot, getDocs, type DocumentData, type QuerySnapshot, Timestamp, orderBy } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,264 +12,211 @@ import NextLink from "next/link";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { subDays, startOfDay } from "date-fns";
+import { subDays, startOfDay, eachDayOfInterval, format, startOfHour, eachHourOfInterval, parseISO } from "date-fns"; // Added for chart processing
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip as RechartsTooltip } from "recharts"; // Added for bar charts
 
 const DEMO_USER_ID = process.env.NEXT_PUBLIC_DEMO_USER_ID;
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes in milliseconds
 const DIRECT_TRAP_URL = "https://api.spitespiral.com/trap/b4b37b21-31b5-47f8-81a7-7a9f8a867911";
 
-interface ActivitySummaryDocForDemo {
+interface AnalyticsSummaryDocumentForDemo {
+  id?: string;
+  tarpitId: string;
   startTime: Timestamp;
-  uniqueIpCount: number;
   totalHits: number;
-  userId: string;
-  uniqueUserAgentCount?: number;
-  topUserAgents?: Array<{ userAgent: string; hits: number }>;
-  topPathsHit?: Array<{ path: string; hits: number }>;
+  uniqueIpCount: number;
+  topCountries?: Array<{ country: string; hits: number }>;
+  methodDistribution?: Record<string, number>;
+  statusDistribution?: Record<string, number>;
+  topPaths?: Array<{ path: string; hits: number }>;
   topIPs?: Array<{ ip: string; hits: number }>;
+  topUserAgents?: Array<{ userAgent: string; hits: number }>;
+  userId: string; // Ensure userId is part of the interface
 }
+
+interface AggregatedAnalyticsDataForDemo {
+  totalHits: number;
+  approxUniqueIpCount: number;
+  topCountries: Array<{ country: string; hits: number }>;
+  topIPs: Array<{ ip: string; hits: number }>;
+  topUserAgents: Array<{ userAgent: string; hits: number }>;
+  topPaths: Array<{ path: string; hits: number }>;
+  methodDistribution: Record<string, number>;
+  statusDistribution: Record<string, number>;
+  summaryHitsOverTime?: Array<{ date: string; hits: number }>;
+  activeInstances: number;
+  illustrativeCost: string;
+}
+
+// Placeholder for HorizontalBarChart component (simplified for demo context)
+const HorizontalBarChartDemo = ({ data, nameKey, valueKey }: { data: any[], nameKey: string, valueKey: string }) => {
+  if (!data || data.length === 0) return <p className="text-xs text-muted-foreground h-40 flex items-center justify-center">No data to display.</p>;
+  const chartData = data.map(item => ({ name: item[nameKey], value: item[valueKey] })).slice(0, 5);
+  return (
+    <ResponsiveContainer width="100%" height={chartData.length * 35 + 40}>
+      <BarChart data={chartData} layout="vertical" margin={{ top: 5, right: 20, left: 60, bottom: 5 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border)/0.3)" />
+        <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" allowDecimals={false} />
+        <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 10, width: 90, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} interval={0} stroke="hsl(var(--muted-foreground))" />
+        <RechartsTooltip
+          contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 'var(--radius)', fontSize: '12px' }}
+          labelStyle={{ color: 'hsl(var(--popover-foreground))', fontWeight: 'bold' }}
+          itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
+          cursor={{ fill: 'hsl(var(--accent)/0.1)' }}
+        />
+        <Bar dataKey="value" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} barSize={20} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+};
+
 
 export default function DemoDashboardPage() {
   const { toast } = useToast();
-  const [activeInstancesCount, setActiveInstancesCount] = useState<number | null>(null);
-  const [isLoadingInstancesCount, setIsLoadingInstancesCount] = useState(true);
-
-  const [demoUniqueCrawlersApproxCount, setDemoUniqueCrawlersApproxCount] = useState<number | null>(null);
-  const [isLoadingDemoUniqueCrawlers, setIsLoadingDemoUniqueCrawlers] = useState(true);
-
-  const [demoWastedComputeCost, setDemoWastedComputeCost] = useState<string | null>(null);
-  const [isLoadingDemoWastedCompute, setIsLoadingDemoWastedCompute] = useState(true);
-
-  const [demoSummedUniqueUserAgentCount, setDemoSummedUniqueUserAgentCount] = useState<number | null>(null);
-  const [demoLatestTopUserAgents, setDemoLatestTopUserAgents] = useState<Array<{ userAgent: string; hits: number }> | null>(null);
-  const [isLoadingDemoUserAgentStats, setIsLoadingDemoUserAgentStats] = useState(true);
-
+  const [aggregatedDemoData, setAggregatedDemoData] = useState<AggregatedAnalyticsDataForDemo | null>(null);
+  const [isLoadingDemoData, setIsLoadingDemoData] = useState(true);
+  const [demoDataError, setDemoDataError] = useState<string | null>(null);
   const [isDemoIdProperlyConfigured, setIsDemoIdProperlyConfigured] = useState(false);
 
   useEffect(() => {
-    console.log("DemoDashboardPage: Using DEMO_USER_ID:", DEMO_USER_ID);
+    const logPrefix = "DemoDashboardPage - Config Check:";
+    console.log(`${logPrefix} Using DEMO_USER_ID:`, DEMO_USER_ID);
     if (DEMO_USER_ID && DEMO_USER_ID !== "public-demo-user-id-placeholder") {
       setIsDemoIdProperlyConfigured(true);
+      console.log(`${logPrefix} Demo User ID is configured.`);
     } else {
       setIsDemoIdProperlyConfigured(false);
-      setIsLoadingInstancesCount(false);
-      setIsLoadingDemoUniqueCrawlers(false);
-      setIsLoadingDemoWastedCompute(false);
-      setIsLoadingDemoUserAgentStats(false);
-      setActiveInstancesCount(0);
-      setDemoUniqueCrawlersApproxCount(0);
-      setDemoWastedComputeCost("0.0000");
-      setDemoSummedUniqueUserAgentCount(0);
-      setDemoLatestTopUserAgents([]);
+      setIsLoadingDemoData(false);
+      console.error(`${logPrefix} Demo User ID is NOT configured or is placeholder.`);
     }
   }, []); 
 
-
   useEffect(() => {
-    if (!isDemoIdProperlyConfigured) {
-      return;
-    }
-    setIsLoadingInstancesCount(true);
-    const instancesQuery = query(collection(db, "tarpit_configs"), where("userId", "==", DEMO_USER_ID));
-    const unsubscribeInstances = onSnapshot(instancesQuery, (querySnapshot: QuerySnapshot<DocumentData>) => {
-      setActiveInstancesCount(querySnapshot.size);
-      setIsLoadingInstancesCount(false);
-    }, (error) => {
-      console.error("Error fetching demo active instances count:", error);
-      toast({
-        title: "Error Fetching Demo Instances",
-        description: `Could not fetch demo active tarpit instances. Ensure Firestore rules allow public read for data where userId is '${DEMO_USER_ID}' (this ID must be the literal string in your rules for demo access) and check DEMO_USER_ID configuration.`,
-        variant: "destructive",
-        duration: 10000
-      });
-      setActiveInstancesCount(0);
-      setIsLoadingInstancesCount(false);
-    });
-    return () => unsubscribeInstances();
-  }, [isDemoIdProperlyConfigured, toast]);
+    if (!isDemoIdProperlyConfigured) return;
 
-  useEffect(() => {
-    if (!isDemoIdProperlyConfigured) {
-      return;
-    }
-
-    const fetchDemoSummaryStats = async () => {
-      setIsLoadingDemoUniqueCrawlers(true);
-      setIsLoadingDemoWastedCompute(true);
-      setIsLoadingDemoUserAgentStats(true);
-
-      const cacheKeyBase = `spiteSpiral_summaryStats_${DEMO_USER_ID}`;
-      const cachedCrawlersKey = `${cacheKeyBase}_uniqueCrawlersApprox`;
-      const cachedCostKey = `${cacheKeyBase}_wastedComputeSummary`;
-      const cachedUACountKey = `${cacheKeyBase}_summedUACount`;
-      const cachedTopUAKey = `${cacheKeyBase}_latestTopUA`;
-      const timestampKey = `${cacheKeyBase}_timestamp`;
-      const logPrefix = `DemoDashboardPage (DEMO_USER_ID: ${DEMO_USER_ID ? DEMO_USER_ID.substring(0,5) : 'N/A'}...) - Demo Summary Stats:`;
+    const fetchAndAggregateDemoData = async () => {
+      setIsLoadingDemoData(true);
+      setDemoDataError(null);
+      const logPrefix = `DemoDashboardPage (DEMO_USER_ID: ${DEMO_USER_ID ? DEMO_USER_ID.substring(0,5) : 'N/A'}...) - Demo Data Fetch:`;
+      const cacheKey = `spiteSpiral_demoDashboardData_${DEMO_USER_ID}`;
+      const timestampKey = `${cacheKey}_timestamp`;
 
       try {
         const cachedTimestampStr = localStorage.getItem(timestampKey);
         const cachedTimestamp = cachedTimestampStr ? parseInt(cachedTimestampStr, 10) : 0;
         const now = Date.now();
-        const cacheAge = now - cachedTimestamp;
 
-        console.log(`${logPrefix} Cache check. Now: ${new Date(now).toISOString()}, Cached At: ${new Date(cachedTimestamp).toISOString()}, Age: ${cacheAge/1000}s, Max Age: ${CACHE_DURATION/1000}s`);
-
-        if (cacheAge < CACHE_DURATION) {
-          const cachedCrawlers = localStorage.getItem(cachedCrawlersKey);
-          const cachedCost = localStorage.getItem(cachedCostKey);
-          const cachedUACount = localStorage.getItem(cachedUACountKey);
-          const cachedTopUA = localStorage.getItem(cachedTopUAKey);
-          if (cachedCrawlers !== null && cachedCost !== null && cachedUACount !== null && cachedTopUA !== null) {
-            console.log(`${logPrefix} Using cached data for all demo summary stats.`);
-            setDemoUniqueCrawlersApproxCount(JSON.parse(cachedCrawlers));
-            setDemoWastedComputeCost(JSON.parse(cachedCost));
-            setDemoSummedUniqueUserAgentCount(JSON.parse(cachedUACount));
-            setDemoLatestTopUserAgents(JSON.parse(cachedTopUA));
-            setIsLoadingDemoUniqueCrawlers(false);
-            setIsLoadingDemoWastedCompute(false);
-            setIsLoadingDemoUserAgentStats(false);
+        if (now - cachedTimestamp < CACHE_DURATION) {
+          const cachedDataStr = localStorage.getItem(cacheKey);
+          if (cachedDataStr) {
+            console.log(`${logPrefix} Using cached demo data.`);
+            setAggregatedDemoData(JSON.parse(cachedDataStr));
+            setIsLoadingDemoData(false);
             return;
-          } else {
-             console.log(`${logPrefix} Demo cache valid by timestamp, but some data missing. Fetching fresh.`);
           }
-        } else {
-            console.log(`${logPrefix} Demo cache stale or not found. Fetching fresh data.`);
+        }
+        console.log(`${logPrefix} Cache stale or not found. Fetching fresh demo data.`);
+
+        // Fetch active instances count
+        let activeInstances = 0;
+        try {
+          const instancesQuery = query(collection(db, "tarpit_configs"), where("userId", "==", DEMO_USER_ID));
+          const instancesSnapshot = await getDocs(instancesQuery);
+          activeInstances = instancesSnapshot.size;
+          console.log(`${logPrefix} Fetched ${activeInstances} active instances for demo user.`);
+        } catch (instanceError) {
+            console.error(`${logPrefix} Error fetching demo active instances count:`, instanceError);
+            toast({ title: "Error (Demo Instances)", description: `Could not fetch demo active tarpit instances. Error: ${instanceError instanceof Error ? instanceError.message : 'Unknown error'}`, variant: "destructive" });
         }
 
-        const thirtyDaysAgoDate = startOfDay(subDays(new Date(), 29));
+        // Fetch summaries
+        const thirtyDaysAgoDate = startOfDay(subDays(new Date(), 29)); // Last 30 days including today
         const summariesQuery = query(
-          collection(db, "tarpit_activity_summaries"),
-          where("userId", "==", DEMO_USER_ID),
+          collection(db, "tarpit_analytics_summaries"),
+          where("tarpitId", "==", DEMO_USER_ID), // Query by tarpitId for summaries
           where("startTime", ">=", Timestamp.fromDate(thirtyDaysAgoDate)),
           orderBy("startTime", "asc")
         );
         const querySnapshot = await getDocs(summariesQuery);
         console.log(`${logPrefix} Fetched ${querySnapshot.size} summary documents from Firestore for demo user.`);
 
-        let summedUniqueIpCount = 0;
-        let totalHitsForCostCalc = 0;
-        let currentSummedUACount = 0;
-        let tempLatestTopUserAgents: Array<{ userAgent: string; hits: number }> | null = [];
-        let allFetchedSummaries: ActivitySummaryDocForDemo[] = [];
-
+        const allFetchedSummaries: AnalyticsSummaryDocumentForDemo[] = [];
         querySnapshot.forEach((doc) => {
-          const data = doc.data() as ActivitySummaryDocForDemo;
-           allFetchedSummaries.push(data);
-          if (data.uniqueIpCount) {
-            summedUniqueIpCount += data.uniqueIpCount;
-          }
-          if (data.totalHits) {
-            totalHitsForCostCalc += data.totalHits;
-          }
-          if (data.uniqueUserAgentCount) {
-            currentSummedUACount += data.uniqueUserAgentCount;
-          }
+          allFetchedSummaries.push({ id: doc.id, ...doc.data() } as AnalyticsSummaryDocumentForDemo);
         });
-        
-        if(allFetchedSummaries.length > 0) {
-            const sortedSummaries = [...allFetchedSummaries].sort((a, b) => b.startTime.toMillis() - a.startTime.toMillis());
-            if (sortedSummaries[0] && sortedSummaries[0].topUserAgents) {
-                tempLatestTopUserAgents = sortedSummaries[0].topUserAgents;
-            }
+
+        if (allFetchedSummaries.length === 0) {
+          console.log(`${logPrefix} No summaries found for demo user.`);
+          setAggregatedDemoData({
+            totalHits: 0, approxUniqueIpCount: 0, topCountries: [], topIPs: [], topUserAgents: [], topPaths: [],
+            methodDistribution: {}, statusDistribution: {}, summaryHitsOverTime: [], activeInstances, illustrativeCost: "0.0000"
+          });
+          setIsLoadingDemoData(false);
+          return;
         }
+        
+        const totalHits = allFetchedSummaries.reduce((sum, s) => sum + (s.totalHits || 0), 0);
+        const approxUniqueIpCount = allFetchedSummaries.reduce((sum, s) => sum + (s.uniqueIpCount || 0), 0);
+        
+        // Aggregate top lists
+        const topCountries = aggregateTopList(allFetchedSummaries as any, "topCountries", "country");
+        const topIPs = aggregateTopList(allFetchedSummaries as any, "topIPs", "ip");
+        const topUserAgents = aggregateTopList(allFetchedSummaries as any, "topUserAgents", "userAgent");
+        const topPaths = aggregateTopList(allFetchedSummaries as any, "topPaths", "path", 10);
 
-        const currentWastedCost = (totalHitsForCostCalc * 0.0001).toFixed(4);
-        console.log(`${logPrefix} Processed fresh data: UniqueIPsSum=${summedUniqueIpCount}, TotalHitsForCost=${totalHitsForCostCalc}, WastedCost=${currentWastedCost}, SummedUACount=${currentSummedUACount}, LatestTopUAs Count: ${tempLatestTopUserAgents?.length}`);
+        // Aggregate distributions
+        const methodDistribution = aggregateDistribution(allFetchedSummaries as any, "methodDistribution");
+        const statusDistribution = aggregateDistribution(allFetchedSummaries as any, "statusDistribution");
+        
+        // Process summaries for chart data
+        const hitsByInterval: { [key: string]: number } = {};
+        const chartRangeHours = 30 * 24; // 30 days for demo chart
+        const chartEndDate = new Date();
+        const chartStartDate = subDays(chartEndDate, 29);
+        const intervalPoints = eachDayOfInterval({ start: chartStartDate, end: chartEndDate });
+        const aggregationFormat = 'yyyy-MM-dd';
+        intervalPoints.forEach(point => { hitsByInterval[format(point, aggregationFormat)] = 0; });
+        allFetchedSummaries.forEach(summary => {
+            const summaryStartTime = summary.startTime.toDate();
+            const intervalKey = format(startOfDay(summaryStartTime), aggregationFormat);
+            if (hitsByInterval[intervalKey] !== undefined) { hitsByInterval[intervalKey] += summary.totalHits; }
+        });
+        const summaryHitsOverTimeData = intervalPoints.map(point => {
+            const key = format(point, aggregationFormat);
+            return { date: point.toISOString(), hits: hitsByInterval[key] || 0 };
+        });
 
-        setDemoUniqueCrawlersApproxCount(summedUniqueIpCount);
-        setDemoWastedComputeCost(currentWastedCost);
-        setDemoSummedUniqueUserAgentCount(currentSummedUACount);
-        setDemoLatestTopUserAgents(tempLatestTopUserAgents || []);
+        const illustrativeCost = (totalHits * 0.0001).toFixed(4);
 
-        localStorage.setItem(cachedCrawlersKey, JSON.stringify(summedUniqueIpCount));
-        localStorage.setItem(cachedCostKey, JSON.stringify(currentWastedCost));
-        localStorage.setItem(cachedUACountKey, JSON.stringify(currentSummedUACount));
-        localStorage.setItem(cachedTopUAKey, JSON.stringify(tempLatestTopUserAgents || []));
+        const finalAggregatedData: AggregatedAnalyticsDataForDemo = {
+            totalHits, approxUniqueIpCount, topCountries, topIPs, topUserAgents, topPaths,
+            methodDistribution, statusDistribution, summaryHitsOverTime: summaryHitsOverTimeData,
+            activeInstances, illustrativeCost
+        };
+
+        setAggregatedDemoData(finalAggregatedData);
+        localStorage.setItem(cacheKey, JSON.stringify(finalAggregatedData));
         localStorage.setItem(timestampKey, now.toString());
-        console.log(`${logPrefix} Updated demo cache with fresh data.`);
+        console.log(`${logPrefix} Processed and cached fresh demo data.`);
 
       } catch (error) {
-        console.error(`${logPrefix} Error fetching activity summaries:`, error);
-        toast({
-            title: "Error Fetching Demo Stats",
-            description: `Could not fetch demo crawler statistics. Ensure Firestore rules allow public read for data where userId is '${DEMO_USER_ID}' (this ID must be the literal string in your rules for demo access) and check DEMO_USER_ID configuration. Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
-            variant: "destructive",
-            duration: 10000
-        });
-        setDemoUniqueCrawlersApproxCount(0);
-        setDemoWastedComputeCost("0.0000");
-        setDemoSummedUniqueUserAgentCount(0);
-        setDemoLatestTopUserAgents([]);
+        console.error(`${logPrefix} Error fetching or processing demo data:`, error);
+        setDemoDataError(error instanceof Error ? error.message : "An unknown error occurred");
+        toast({ title: "Error Fetching Demo Data", description: `Could not load demo analytics. ${error instanceof Error ? error.message : ''}`, variant: "destructive" });
       } finally {
-        setIsLoadingDemoUniqueCrawlers(false);
-        setIsLoadingDemoWastedCompute(false);
-        setIsLoadingDemoUserAgentStats(false);
+        setIsLoadingDemoData(false);
       }
     };
-    fetchDemoSummaryStats();
+
+    fetchAndAggregateDemoData();
   }, [isDemoIdProperlyConfigured, toast]);
 
 
-  if (!isDemoIdProperlyConfigured && (isLoadingInstancesCount || isLoadingDemoUniqueCrawlers || isLoadingDemoWastedCompute || isLoadingDemoUserAgentStats )) {
-    return (
-      <>
-        {/* Invisible direct tarpit link for header area */}
-        <a
-          href={DIRECT_TRAP_URL}
-          rel="nofollow noopener noreferrer"
-          aria-hidden="true"
-          tabIndex={-1}
-          style={{
-            opacity: 0.01,
-            position: 'absolute',
-            left: '-9999px',
-            top: '-9999px',
-            fontSize: '1px',
-            color: 'transparent',
-            width: '1px',
-            height: '1px',
-            overflow: 'hidden',
-          }}
-          title="SpiteSpiral Internal Data - Demo Dashboard Loading"
-        >
-          .
-        </a>
-        <div className="flex flex-col items-center justify-center text-center space-y-4 p-8 rounded-lg bg-card border border-border shadow-lg">
-            <ShieldCheck className="h-16 w-16 text-primary animate-pulse" />
-            <h2 className="text-2xl font-semibold text-primary">Loading Demo...</h2>
-            <p className="text-muted-foreground max-w-md">
-                Verifying demo configuration...
-            </p>
-        </div>
-      </>
-    );
-  }
-
-  if (!isDemoIdProperlyConfigured) {
+  if (!isDemoIdProperlyConfigured && !isLoadingDemoData) {
       return (
         <>
-          {/* Invisible direct tarpit link for header area */}
-          <a
-            href={DIRECT_TRAP_URL}
-            rel="nofollow noopener noreferrer"
-            aria-hidden="true"
-            tabIndex={-1}
-            style={{
-              opacity: 0.01,
-              position: 'absolute',
-              left: '-9999px',
-              top: '-9999px',
-              fontSize: '1px',
-              color: 'transparent',
-              width: '1px',
-              height: '1px',
-              overflow: 'hidden',
-            }}
-            title="SpiteSpiral Internal Data - Demo Dashboard Config Error"
-          >
-            .
-          </a>
+          <a href={DIRECT_TRAP_URL} rel="nofollow noopener noreferrer" aria-hidden="true" tabIndex={-1} style={{ opacity: 0.01, position: 'absolute', left: '-9999px', top: '-9999px', fontSize: '1px', color: 'transparent', width: '1px', height: '1px', overflow: 'hidden' }} title="SpiteSpiral Internal Data - Demo Dashboard Config Error">.</a>
           <div className="flex flex-col items-center justify-center text-center space-y-4 p-8 rounded-lg bg-card border border-destructive shadow-lg">
               <ShieldCheck className="h-16 w-16 text-destructive" />
               <h2 className="text-2xl font-semibold text-destructive">Demo Not Configured</h2>
@@ -284,37 +231,52 @@ export default function DemoDashboardPage() {
         </>
       );
   }
+  
+  if (isLoadingDemoData) {
+     return (
+        <>
+            <a href={DIRECT_TRAP_URL} rel="nofollow noopener noreferrer" aria-hidden="true" tabIndex={-1} style={{ opacity: 0.01, position: 'absolute', left: '-9999px', top: '-9999px', fontSize: '1px', color: 'transparent', width: '1px', height: '1px', overflow: 'hidden' }} title="SpiteSpiral Internal Data - Demo Dashboard Loading">.</a>
+            <div className="space-y-8">
+                <header className="mb-10"><Skeleton className="h-10 w-3/4" /><Skeleton className="h-6 w-1/2 mt-2" /></header>
+                <Alert className="border-primary/20 bg-card/50 mb-6 shadow-lg"><Skeleton className="h-24 w-full" /></Alert>
+                <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4">
+                    {[...Array(4)].map((_,i) => <Skeleton key={i} className="h-32 w-full" />)}
+                </section>
+                <Separator className="my-8 border-primary/20" />
+                 <h2 className="text-2xl font-semibold text-primary mt-8 mb-4"><Skeleton className="h-8 w-1/2"/></h2>
+                 <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
+                    {[...Array(8)].map((_,i) => <Skeleton key={i} className="h-48 w-full" />)}
+                </section>
+                <Separator className="my-8 border-primary/20" />
+                <section><Skeleton className="h-96 w-full" /></section>
+            </div>
+        </>
+     )
+  }
+  
+  if (demoDataError) {
+      return (
+           <>
+            <a href={DIRECT_TRAP_URL} rel="nofollow noopener noreferrer" aria-hidden="true" tabIndex={-1} style={{ opacity: 0.01, position: 'absolute', left: '-9999px', top: '-9999px', fontSize: '1px', color: 'transparent', width: '1px', height: '1px', overflow: 'hidden' }} title="SpiteSpiral Internal Data - Demo Dashboard Error">.</a>
+            <Alert variant="destructive">
+                <ShieldCheck className="h-5 w-5" />
+                <AlertTitle>Error Loading Demo Data</AlertTitle>
+                <AlertDescription>{demoDataError}</AlertDescription>
+            </Alert>
+           </>
+      );
+  }
 
 
   return (
     <>
-      {/* Invisible direct tarpit link for header area */}
-      <a
-        href={DIRECT_TRAP_URL}
-        rel="nofollow noopener noreferrer"
-        aria-hidden="true"
-        tabIndex={-1}
-        style={{
-          opacity: 0.01,
-          position: 'absolute',
-          left: '-9999px',
-          top: '-9999px',
-          fontSize: '1px',
-          color: 'transparent',
-          width: '1px',
-          height: '1px',
-          overflow: 'hidden',
-        }}
-        title="SpiteSpiral Internal Data - Demo Dashboard"
-      >
-        .
-      </a>
+      <a href={DIRECT_TRAP_URL} rel="nofollow noopener noreferrer" aria-hidden="true" tabIndex={-1} style={{ opacity: 0.01, position: 'absolute', left: '-9999px', top: '-9999px', fontSize: '1px', color: 'transparent', width: '1px', height: '1px', overflow: 'hidden' }} title="SpiteSpiral Internal Data - Demo Dashboard">.</a>
       <div className="space-y-8">
         <header className="mb-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
               <h1 className="text-4xl font-bold tracking-tight text-primary glitch-text">Public Demo Dashboard</h1>
               <p className="text-muted-foreground mt-2 text-lg">
-              This is a public demonstration of SpiteSpiral Tarpit activity.
+              Public demonstration of SpiteSpiral Tarpit activity (data from last 30 days).
               </p>
           </div>
         </header>
@@ -323,143 +285,133 @@ export default function DemoDashboardPage() {
           <Eye className="h-5 w-5 text-primary" />
           <AlertTitle className="text-primary">How This Demo Works</AlertTitle>
           <AlertDescription className="text-muted-foreground space-y-1">
-            <p>The statistics you see on this page are generated by a real, live SpiteSpiral Tarpit!</p>
-            <p>
-              An invisible tracking pixel (an embed link like those provided to our users) is placed on the SpiteSpiral homepage.
-              This pixel is designed to be ignored by human visitors but is followed by many automated web crawlers and bots.
-            </p>
-            <p>
-              When bots access this link, their activity is logged and sent to our dashboard, just like it would be for a subscriber.
-              The data is aggregated (approximately every 30 minutes) to show trends and totals.
-            </p>
-            <p>
-              Crucially, this demo tarpit instance runs on separate, dedicated infrastructure—the same powerful infrastructure our users get.
-              This means the bot activity it handles doesn't impact the performance of the main SpiteSpiral website.
-            </p>
-            <p>
-              You can get your own isolated Tarpit instance to protect your website for a low monthly cost!
-            </p>
+            <p>The statistics on this page are from a live SpiteSpiral Tarpit instance dedicated to this demo (<code className="text-xs bg-muted p-0.5 rounded">{DEMO_USER_ID}</code>), triggered by bots visiting SpiteSpiral's own site. Data is aggregated from <code className="text-xs bg-muted p-0.5 rounded">tarpit_analytics_summaries</code> for the last 30 days and cached client-side for performance.</p>
           </AlertDescription>
         </Alert>
-
-         <Alert variant="default" className="border-accent/20 bg-card/50 mb-6">
+        <Alert variant="default" className="border-accent/20 bg-card/50 mb-6">
           <Info className="h-5 w-5 text-accent" />
           <AlertTitle className="text-accent">Data Refresh Notice</AlertTitle>
           <AlertDescription className="text-muted-foreground">
-            Aggregated statistics (Unique Crawlers, Compute Wasted, Activity Chart, User Agents) are based on summaries updated approximately every 30 minutes (by the backend). Active Tarpit Instances update in real-time. The dashboard itself refreshes these summarized stats from its cache or fetches new data if the cache is older than 30 minutes.
+            Aggregated statistics are based on summaries updated by the backend. This dashboard fetches and caches these summarized stats. The cache refreshes if older than {CACHE_DURATION / (60 * 1000)} minutes.
           </AlertDescription>
         </Alert>
 
-        <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
-          <Card className="border-primary/30 shadow-lg shadow-primary/10 hover:shadow-primary/20 transition-shadow duration-300">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-primary">Total Unique Crawlers (30-day approx. Demo)</CardTitle>
-              <Users className="h-6 w-6 text-accent" /> {/* Icon size updated */}
-            </CardHeader>
-            <CardContent>
-              {isLoadingDemoUniqueCrawlers ? (
-                <Skeleton className="h-8 w-1/2" />
-              ) : (
-                <div className="text-3xl font-bold text-foreground">{demoUniqueCrawlersApproxCount ?? 0}</div>
-              )}
-              <p className="text-xs text-muted-foreground mt-1">Sum of unique IPs from 30-day demo summaries.</p>
-            </CardContent>
-          </Card>
-          <Card className="border-accent/30 shadow-lg shadow-accent/10 hover:shadow-accent/20 transition-shadow duration-300">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-accent">Active Demo Tarpit Instances</CardTitle>
-              <ShieldCheck className="h-6 w-6 text-primary" /> {/* Icon size updated */}
-            </CardHeader>
-            <CardContent>
-              {isLoadingInstancesCount ? (
-                <Skeleton className="h-8 w-1/2" />
-              ) : (
-                <div className="text-3xl font-bold text-foreground">{activeInstancesCount ?? 0}</div>
-              )}
-              <p className="text-xs text-muted-foreground mt-1">Currently configured managed URLs for demo.</p>
-            </CardContent>
-          </Card>
-          <Card className="border-primary/30 shadow-lg shadow-primary/10 hover:shadow-primary/20 transition-shadow duration-300">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <div className="flex items-center gap-1.5">
-                  <CardTitle className="text-sm font-medium text-primary">Crawler Compute Wasted</CardTitle>
-                  <TooltipProvider>
-                      <Tooltip delayDuration={100}>
-                      <TooltipTrigger asChild>
-                          <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent className="bg-popover text-popover-foreground border-primary/50 max-w-xs">
-                          <p className="text-xs">
-                          Each hit from 30-day activity summaries contributes $0.0001 to this illustrative total.
-                          </p>
-                      </TooltipContent>
-                      </Tooltip>
-                  </TooltipProvider>
-              </div>
-              <DollarSign className="h-6 w-6 text-primary" /> {/* Icon size updated */}
-            </CardHeader>
-            <CardContent>
-              {isLoadingDemoWastedCompute ? (
-                <Skeleton className="h-8 w-1/2" />
-              ) : (
-                <div className="text-3xl font-bold text-foreground">${demoWastedComputeCost ?? '0.0000'}</div>
-              )}
-              <p className="text-xs text-muted-foreground mt-1">Illustrative cost based on total hits from 30-day demo summaries.</p>
-            </CardContent>
-          </Card>
-          <Card className="border-accent/30 shadow-lg shadow-accent/10 hover:shadow-accent/20 transition-shadow duration-300">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-accent">Demo User Agent Activity (30-day)</CardTitle>
-              <Fingerprint className="h-6 w-6 text-primary" /> {/* Icon size updated */}
-            </CardHeader>
-            <CardContent>
-              {isLoadingDemoUserAgentStats ? (
-                <>
-                  <Skeleton className="h-6 w-3/4 mb-1" />
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-5/6 mt-1" />
-                </>
-              ) : (
-                <>
-                  <div className="text-md font-semibold text-foreground">
-                    Approx. Unique Agents: {demoSummedUniqueUserAgentCount ?? 0}
-                  </div>
-                  {demoLatestTopUserAgents && demoLatestTopUserAgents.length > 0 ? (
-                    <>
-                      <p className="text-xs text-muted-foreground mt-1 mb-0.5">Top Agents (from latest summary):</p>
-                      <ul className="text-xs text-muted-foreground space-y-0.5 max-h-20 overflow-y-auto">
-                        {demoLatestTopUserAgents.slice(0, 3).map((ua, index) => (
-                          <li key={index} className="truncate">
-                            <span title={ua.userAgent}>{ua.userAgent}</span> ({ua.hits} hits)
-                          </li>
-                        ))}
-                      </ul>
-                    </>
-                  ) : (
-                    <p className="text-xs text-muted-foreground mt-1">No user agent data available in latest summary.</p>
-                  )}
-                </>
-              )}
-            </CardContent>
-          </Card>
+        <h2 className="text-2xl font-semibold text-primary mt-8 mb-4">Key Metrics (Last 30 Days Demo Summary)</h2>
+        <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4">
+            <Card className="border-primary/30 shadow-lg"><CardHeader className="pb-2"><div className="flex items-center gap-2"><Activity className="h-5 w-5 text-primary" /><CardTitle className="text-md font-medium text-primary">Total Hits</CardTitle></div></CardHeader><CardContent><div className="text-3xl font-bold text-foreground">{aggregatedDemoData?.totalHits ?? 0}</div><p className="text-xs text-muted-foreground mt-1">Across demo tarpits.</p></CardContent></Card>
+            <Card className="border-accent/30 shadow-lg"><CardHeader className="pb-2"><div className="flex items-center gap-2"><Users className="h-5 w-5 text-accent" /><CardTitle className="text-md font-medium text-accent">Approx. Unique IPs</CardTitle></div></CardHeader><CardContent><div className="text-3xl font-bold text-foreground">{aggregatedDemoData?.approxUniqueIpCount ?? 0}</div><p className="text-xs text-muted-foreground mt-1">Sum from summaries.</p></CardContent></Card>
+            <Card className="border-primary/30 shadow-lg"><CardHeader className="pb-2"><div className="flex items-center gap-1.5"><CardTitle className="text-sm font-medium text-primary">Illustrative Compute Wasted</CardTitle><TooltipProvider><Tooltip delayDuration={100}><TooltipTrigger asChild><Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" /></TooltipTrigger><TooltipContent><p className="text-xs">Each hit contributes $0.0001.</p></TooltipContent></Tooltip></TooltipProvider></div><DollarSign className="h-6 w-6 text-primary" /></CardHeader><CardContent><div className="text-3xl font-bold text-foreground">${aggregatedDemoData?.illustrativeCost ?? '0.0000'}</div><p className="text-xs text-muted-foreground mt-1">Based on total hits.</p></CardContent></Card>
+            <Card className="border-accent/30 shadow-lg"><CardHeader className="pb-2"><div className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-primary" /><CardTitle className="text-md font-medium text-accent">Active Demo Instances</CardTitle></div></CardHeader><CardContent><div className="text-3xl font-bold text-foreground">{aggregatedDemoData?.activeInstances ?? 0}</div><p className="text-xs text-muted-foreground mt-1">Configured for demo.</p></CardContent></Card>
         </section>
 
+        <Separator className="my-8 border-primary/20" />
+        <h2 className="text-2xl font-semibold text-primary mt-8 mb-4">Aggregated Analytics (Last 30 Days Demo Summary)</h2>
+        <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <Card className="border-accent/30 shadow-lg">
+                <CardHeader><div className="flex items-center gap-2"><Globe className="h-5 w-5 text-accent" /><CardTitle className="text-md font-medium text-accent">Top Attacking Countries</CardTitle></div></CardHeader>
+                <CardContent className="min-h-[200px]">
+                  {aggregatedDemoData?.topCountries && aggregatedDemoData.topCountries.length > 0 ? <HorizontalBarChartDemo data={aggregatedDemoData.topCountries} nameKey="country" valueKey="hits" /> : <p className="text-xs text-muted-foreground">No country data.</p>}
+                </CardContent>
+            </Card>
+            <Card className="border-primary/30 shadow-lg">
+                <CardHeader><div className="flex items-center gap-2"><Fingerprint className="h-5 w-5 text-primary" /><CardTitle className="text-md font-medium text-primary">Top Attacker IPs</CardTitle></div></CardHeader>
+                <CardContent className="min-h-[200px]">
+                    {aggregatedDemoData?.topIPs && aggregatedDemoData.topIPs.length > 0 ? <HorizontalBarChartDemo data={aggregatedDemoData.topIPs} nameKey="ip" valueKey="hits" /> : <p className="text-xs text-muted-foreground">No IP data.</p>}
+                </CardContent>
+            </Card>
+            <Card className="border-accent/30 shadow-lg">
+                <CardHeader><div className="flex items-center gap-2"><ListFilter className="h-5 w-5 text-accent" /><CardTitle className="text-md font-medium text-accent">Top User Agents</CardTitle></div></CardHeader>
+                <CardContent className="min-h-[200px]">
+                     {aggregatedDemoData?.topUserAgents && aggregatedDemoData.topUserAgents.length > 0 ? <HorizontalBarChartDemo data={aggregatedDemoData.topUserAgents} nameKey="userAgent" valueKey="hits" /> : <p className="text-xs text-muted-foreground">No User Agent data.</p>}
+                </CardContent>
+            </Card>
+            <Card className="border-primary/30 shadow-lg">
+                <CardHeader><div className="flex items-center gap-2"><FileText className="h-5 w-5 text-primary" /><CardTitle className="text-md font-medium text-primary">Top Paths Hit</CardTitle></div></CardHeader>
+                <CardContent className="min-h-[150px]">
+                  {aggregatedDemoData?.topPaths && aggregatedDemoData.topPaths.length > 0 ? (
+                    <ul className="space-y-1 text-xs text-muted-foreground">{aggregatedDemoData.topPaths.slice(0,5).map((p,i) => <li key={i} className="flex justify-between"><span className="truncate max-w-[70%]">{p.path}</span> <span className="font-semibold">{p.hits} hits</span></li>)}</ul>
+                  ) : <p className="text-xs text-muted-foreground">No path data.</p>}
+                </CardContent>
+            </Card>
+            <Card className="border-accent/30 shadow-lg">
+                <CardHeader><div className="flex items-center gap-2"><Server className="h-5 w-5 text-accent" /><CardTitle className="text-md font-medium text-accent">HTTP Method Distribution</CardTitle></div></CardHeader>
+                <CardContent className="min-h-[150px]">
+                  {aggregatedDemoData?.methodDistribution && Object.keys(aggregatedDemoData.methodDistribution).length > 0 ? (
+                    <ul className="space-y-1 text-xs text-muted-foreground">{Object.entries(aggregatedDemoData.methodDistribution).sort(([,a],[,b])=>b-a).slice(0,5).map(([k,v],i) => <li key={i} className="flex justify-between"><span className="truncate max-w-[60%]">{k}</span> <span className="font-semibold">{v} hits</span></li>)}</ul>
+                  ) : <p className="text-xs text-muted-foreground">No method data.</p>}
+                </CardContent>
+            </Card>
+            <Card className="border-primary/30 shadow-lg">
+                <CardHeader><div className="flex items-center gap-2"><BarChart3 className="h-5 w-5 text-primary" /><CardTitle className="text-md font-medium text-primary">HTTP Status Code Distribution</CardTitle></div></CardHeader>
+                <CardContent className="min-h-[150px]">
+                    {aggregatedDemoData?.statusDistribution && Object.keys(aggregatedDemoData.statusDistribution).length > 0 ? (
+                      <ul className="space-y-1 text-xs text-muted-foreground">{Object.entries(aggregatedDemoData.statusDistribution).sort(([,a],[,b])=>b-a).slice(0,5).map(([k,v],i) => <li key={i} className="flex justify-between"><span className="truncate max-w-[60%]">{k}</span> <span className="font-semibold">{v} hits</span></li>)}</ul>
+                    ) : <p className="text-xs text-muted-foreground">No status data.</p>}
+                </CardContent>
+            </Card>
+        </section>
+
+        <Separator className="my-8 border-primary/20" />
         <section>
           <Card className="shadow-lg border-primary/20">
             <CardHeader>
-              <CardTitle className="text-xl text-primary">Total Hits Over Time (Demo)</CardTitle>
-              <CardDescription>Total tarpit hits recorded daily in the last 30 days for demo from activity summaries.</CardDescription>
+              <CardTitle className="text-xl text-primary">Total Hits Over Time (Demo - Last 30 Days)</CardTitle>
+              <CardDescription>Total tarpit hits recorded daily from demo activity summaries.</CardDescription>
             </CardHeader>
             <CardContent>
-              {isDemoIdProperlyConfigured && <TrappedCrawlersChart userIdOverride={DEMO_USER_ID} />}
+              {isDemoIdProperlyConfigured && 
+                <TrappedCrawlersChart 
+                    apiLogs={[]} 
+                    summaryHitsOverTime={aggregatedDemoData?.summaryHitsOverTime}
+                    isLoading={isLoadingDemoData} 
+                    selectedRangeHours={30*24}
+                    tier="window" // Treat demo as 'window' for chart purposes
+                />
+              }
             </CardContent>
           </Card>
         </section>
-        {/* Invisible redirect tarpit link for footer area */}
         <div aria-hidden="true" style={{ position: 'absolute', left: '-9999px', top: '-9999px', opacity: 0, width: '1px', height: '1px', overflow: 'hidden' }}>
           <a href="/sneedsfeedandseed/" title="Internal Archive Redirect - Demo Dashboard" style={{ fontSize: '1px', color: 'transparent', display: 'inline-block' }}>.</a>
         </div>
       </div>
     </>
   );
+}
+
+// Helper functions (can be moved to a utils file if used elsewhere)
+function aggregateTopList<T extends { hits: number }, K extends keyof T>(
+  summaries: AnalyticsSummaryDocumentForDemo[],
+  keyField: K extends "country" ? "topCountries" : K extends "ip" ? "topIPs" : K extends "userAgent" ? "topUserAgents" : "topPaths",
+  valueField: K,
+  limit: number = 5
+): Array<{ [P in K]: T[P] } & { hits: number }> {
+  const counts: Record<string, number> = {};
+  summaries.forEach(summary => {
+    const list = summary[keyField] as Array<{ [P in K]: T[P] } & { hits: number }> | undefined;
+    list?.forEach(item => {
+      const itemValue = item[valueField] as string;
+      counts[itemValue] = (counts[itemValue] || 0) + item.hits;
+    });
+  });
+  return Object.entries(counts)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, limit)
+    .map(([val, hits]) => ({ [valueField]: val, hits } as any));
+}
+
+function aggregateDistribution(
+  summaries: AnalyticsSummaryDocumentForDemo[],
+  keyField: "methodDistribution" | "statusDistribution"
+): Record<string, number> {
+  const totalDistribution: Record<string, number> = {};
+  summaries.forEach(summary => {
+    const dist = summary[keyField];
+    if (dist) {
+      for (const key in dist) {
+        totalDistribution[key] = (totalDistribution[key] || 0) + dist[key];
+      }
+    }
+  });
+  return totalDistribution;
 }
