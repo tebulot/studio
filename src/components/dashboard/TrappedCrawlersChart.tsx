@@ -5,7 +5,7 @@ import { useMemo } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip as RechartsTooltip } from "recharts";
 import { ChartTooltipContent, ChartContainer, ChartConfig } from "@/components/ui/chart";
 import { Skeleton } from "@/components/ui/skeleton";
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, eachHourOfInterval, eachDayOfInterval, startOfHour, startOfDay } from 'date-fns';
 import { Info } from "lucide-react";
 
 interface ApiLogEntry {
@@ -69,6 +69,8 @@ export default function TrappedCrawlersChart({ apiLogs, summaryHitsOverTime, isL
         // Use pre-aggregated summaryHitsOverTime for Set & Forget or Window Shopping
         dataToProcess = summaryHitsOverTime;
     } else {
+        // For Window Shopping, if summaryHitsOverTime is specifically for demo and might be empty, 
+        // or for other tiers if data isn't ready yet.
         return [];
     }
     return dataToProcess;
@@ -157,4 +159,4 @@ export default function TrappedCrawlersChart({ apiLogs, summaryHitsOverTime, isL
   );
 }
 
-
+    
