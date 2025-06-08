@@ -10,7 +10,7 @@ import { useEffect, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const DEMO_USER_ID = process.env.NEXT_PUBLIC_DEMO_USER_ID;
-const DIRECT_TRAP_URL = "https://api.spitespiral.com/trap/e331ba20-a9fb-408e-b697-f7f2eeac6d98";
+const DIRECT_TRAP_URL = "https://api.spitespiral.com/trap/b4b37b21-31b5-47f8-81a7-7a9f8a867911";
 
 export default function DemoRequestLogsPage() {
   const [isDemoIdConfigured, setIsDemoIdConfigured] = useState(false);
@@ -186,6 +186,3 @@ export default function DemoRequestLogsPage() {
     </>
   );
 }
-
-
-    

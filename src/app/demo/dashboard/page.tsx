@@ -17,7 +17,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 
 const DEMO_USER_ID = process.env.NEXT_PUBLIC_DEMO_USER_ID;
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes in milliseconds
-const DIRECT_TRAP_URL = "https://api.spitespiral.com/trap/e331ba20-a9fb-408e-b697-f7f2eeac6d98";
+const DIRECT_TRAP_URL = "https://api.spitespiral.com/trap/b4b37b21-31b5-47f8-81a7-7a9f8a867911";
 
 interface ActivitySummaryDocForDemo {
   startTime: Timestamp;
