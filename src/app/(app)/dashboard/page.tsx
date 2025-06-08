@@ -39,8 +39,8 @@ interface ApiResponse {
 
 interface AnalyticsSummaryDocument {
   id?: string;
-  tarpitId: string; // Still needed for context if a user has multiple tarpits
-  userId?: string; // Expected to be added by the backend
+  tarpitId: string; 
+  userId?: string; 
   startTime: Timestamp;
   totalHits: number;
   uniqueIpCount: number;
@@ -299,12 +299,11 @@ export default function DashboardPage() {
         const startDateTimestamp = Timestamp.fromDate(startDate);
         console.log(`${logPrefix} Calculated start date for summaries: ${startDate.toISOString()}`);
         
-        // New query: Directly query tarpit_analytics_summaries by userId
         const summariesQuery = query(
             collection(db, "tarpit_analytics_summaries"),
-            where("userId", "==", user.uid), // Assumes userId field will be added to summaries
+            where("userId", "==", user.uid),
             where("startTime", ">=", startDateTimestamp),
-            orderBy("startTime", "asc") // Keep consistent ordering
+            orderBy("startTime", "asc") 
         );
         console.log(`${logPrefix} Executing Firestore query for summaries with userId: ${user.uid} and startTime >= ${startDate.toISOString()}`);
 
@@ -473,8 +472,8 @@ export default function DashboardPage() {
 
     if (tier === 'window') {
         cardIsLoading = false; cardError = null;
-        if (title.toLowerCase().includes("countries")) displayData = PLACEHOLDER_TOP_COUNTRIES_DEMO;
-        else if (title.toLowerCase().includes("ips")) displayData = PLACEHOLDER_TOP_IPS_DEMO;
+        if (title.toLowerCase().includes("countries") || title.toLowerCase().includes("country")) displayData = PLACEHOLDER_TOP_COUNTRIES_DEMO;
+        else if (title.toLowerCase().includes("ips") || title.toLowerCase().includes("ip activity")) displayData = PLACEHOLDER_TOP_IPS_DEMO;
         else if (title.toLowerCase().includes("user agents")) displayData = PLACEHOLDER_TOP_UAS_DEMO;
         else if (title.toLowerCase().includes("paths")) displayData = PLACEHOLDER_TOP_PATHS_DEMO;
     }
@@ -487,7 +486,7 @@ export default function DashboardPage() {
               <IconComponent className="h-5 w-5 text-accent" />
               <CardTitle className="text-md font-medium text-accent">{title}</CardTitle>
             </div>
-            {tier === 'setforget' && (title.includes("Countries") || title.includes("IPs") || title.includes("User Agents")) &&
+            {tier === 'setforget' && (title.includes("Countries") || title.includes("IPs") || title.includes("User Agents") || title.includes("Country") || title.includes("IP Activity")) &&
                 <TooltipProvider><Tooltip delayDuration={100}><TooltipTrigger asChild><Info className="h-4 w-4 text-muted-foreground cursor-help" /></TooltipTrigger><TooltipContent className="bg-popover text-popover-foreground border-primary/50 max-w-xs"><p className="text-xs">Full list and visual breakdown available in Analytics Tier.</p></TooltipContent></Tooltip></TooltipProvider>
             }
             {tier === 'window' && <TooltipProvider><Tooltip delayDuration={100}><TooltipTrigger asChild><Info className="h-4 w-4 text-muted-foreground cursor-help" /></TooltipTrigger><TooltipContent className="bg-popover text-popover-foreground border-primary/50 max-w-xs"><p className="text-xs">Live data and full lists available in paid tiers.</p></TooltipContent></Tooltip></TooltipProvider>}
@@ -678,7 +677,7 @@ export default function DashboardPage() {
           
           {isAnalyticsTier ? (
             <Card className="border-accent/30 shadow-lg">
-              <CardHeader><div className="flex items-center gap-2"><Globe className="h-5 w-5 text-accent" /><CardTitle className="text-md font-medium text-accent">Top Attacking Countries</CardTitle></div></CardHeader>
+              <CardHeader><div className="flex items-center gap-2"><Globe className="h-5 w-5 text-accent" /><CardTitle className="text-md font-medium text-accent">Activity by Country</CardTitle></div></CardHeader>
               <CardContent className="min-h-[150px]">
                 {isAggregatedLoading && !isWindowShoppingTier ? <Skeleton className="h-40 w-full" /> : aggregatedError ? <p className="text-xs text-destructive">{aggregatedError}</p> :
                  !aggregatedAnalytics?.topCountries || aggregatedAnalytics.topCountries.length === 0 ? <p className="text-xs text-muted-foreground">No data available.</p> :
@@ -686,12 +685,12 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           ) : ( 
-            renderTopListCard("Top Attacking Countries", aggregatedAnalytics?.topCountries, "country", Globe, isAggregatedLoading && !isWindowShoppingTier, aggregatedError, currentDashboardTier)
+            renderTopListCard("Activity by Country", aggregatedAnalytics?.topCountries, "country", Globe, isAggregatedLoading && !isWindowShoppingTier, aggregatedError, currentDashboardTier)
           )}
 
           {isAnalyticsTier ? (
             <Card className="border-primary/30 shadow-lg">
-              <CardHeader><div className="flex items-center gap-2"><Fingerprint className="h-5 w-5 text-primary" /><CardTitle className="text-md font-medium text-primary">Top Attacker IPs</CardTitle></div></CardHeader>
+              <CardHeader><div className="flex items-center gap-2"><Fingerprint className="h-5 w-5 text-primary" /><CardTitle className="text-md font-medium text-primary">IP Activity</CardTitle></div></CardHeader>
               <CardContent className="min-h-[150px]">
                 {isAggregatedLoading && !isWindowShoppingTier ? <Skeleton className="h-40 w-full" /> : aggregatedError ? <p className="text-xs text-destructive">{aggregatedError}</p> :
                  !aggregatedAnalytics?.topIPs || aggregatedAnalytics.topIPs.length === 0 ? <p className="text-xs text-muted-foreground">No data available.</p> :
@@ -699,7 +698,7 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           ) : ( 
-             renderTopListCard("Top Attacker IPs", aggregatedAnalytics?.topIPs, "ip", Fingerprint, isAggregatedLoading && !isWindowShoppingTier, aggregatedError, currentDashboardTier)
+             renderTopListCard("IP Activity", aggregatedAnalytics?.topIPs, "ip", Fingerprint, isAggregatedLoading && !isWindowShoppingTier, aggregatedError, currentDashboardTier)
           )}
 
           {isAnalyticsTier ? (

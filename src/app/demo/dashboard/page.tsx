@@ -19,7 +19,6 @@ import { Separator } from "@/components/ui/separator";
 
 const DEMO_USER_ID = process.env.NEXT_PUBLIC_DEMO_USER_ID;
 const DEMO_TARPIT_PATH_SEGMENT = process.env.NEXT_PUBLIC_DEMO_TARPIT_PATH_SEGMENT; 
-// const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds (currently disabled)
 const DIRECT_TRAP_URL = "https://api.spitespiral.com/trap/b4b37b21-31b5-47f8-81a7-7a9f8a867911";
 
 interface AnalyticsSummaryDocumentForDemo {
@@ -112,27 +111,9 @@ export default function DemoDashboardPage() {
       setDemoDataError(null);
       const logPrefix = `DemoDashboardPage (DEMO_TARPIT_PATH_SEGMENT: ${DEMO_TARPIT_PATH_SEGMENT ? DEMO_TARPIT_PATH_SEGMENT : 'N/A'}...) - Demo Data Fetch:`;
       
-      // Temporarily disabled localStorage caching for debugging
-      // const cacheKey = `spiteSpiral_demoDashboardData_${DEMO_TARPIT_PATH_SEGMENT}`;
-      // const timestampKey = `${cacheKey}_timestamp`;
       console.log(`${logPrefix} LocalStorage caching is TEMPORARILY DISABLED for debugging.`);
 
       try {
-        // const cachedTimestampStr = localStorage.getItem(timestampKey);
-        // const cachedTimestamp = cachedTimestampStr ? parseInt(cachedTimestampStr, 10) : 0;
-        // const now = Date.now();
-
-        // if (now - cachedTimestamp < CACHE_DURATION) {
-        //   const cachedDataStr = localStorage.getItem(cacheKey);
-        //   if (cachedDataStr) {
-        //     console.log(`${logPrefix} Using cached demo data.`);
-        //     setAggregatedDemoData(JSON.parse(cachedDataStr));
-        //     setIsLoadingDemoData(false);
-        //     return;
-        //   }
-        // }
-        // console.log(`${logPrefix} Cache stale or not found (or disabled). Fetching fresh demo data.`);
-
         let activeInstances = 0;
         if (DEMO_USER_ID) { 
           try {
@@ -150,7 +131,7 @@ export default function DemoDashboardPage() {
         }
 
         const thirtyDaysAgoDate = startOfDay(subDays(new Date(), 29));
-        console.log(`${logPrefix} Fetching summaries for tarpitId: ${DEMO_TARPIT_PATH_SEGMENT} starting from ${thirtyDaysAgoDate.toISOString()}`);
+        console.log(`${logPrefix} Fetching summaries with tarpitId: ${DEMO_TARPIT_PATH_SEGMENT} starting from ${thirtyDaysAgoDate.toISOString()}`);
         
         const summariesQuery = query(
           collection(db, "tarpit_analytics_summaries"),
@@ -190,9 +171,8 @@ export default function DemoDashboardPage() {
         const statusDistribution = aggregateDistribution(allFetchedSummaries, "statusDistribution");
         
         const hitsByInterval: { [key: string]: number } = {};
-        // const chartRangeHours = 30 * 24; // Already have thirtyDaysAgoDate logic for query
         const chartEndDate = new Date();
-        const chartStartDate = subDays(chartEndDate, 29); // Align chart with query range
+        const chartStartDate = subDays(chartEndDate, 29); 
         const intervalPoints = eachDayOfInterval({ start: chartStartDate, end: chartEndDate });
         const aggregationFormat = 'yyyy-MM-dd';
         intervalPoints.forEach(point => { hitsByInterval[format(point, aggregationFormat)] = 0; });
@@ -215,8 +195,6 @@ export default function DemoDashboardPage() {
         };
 
         setAggregatedDemoData(finalAggregatedData);
-        // localStorage.setItem(cacheKey, JSON.stringify(finalAggregatedData));
-        // localStorage.setItem(timestampKey, now.toString());
         console.log(`${logPrefix} Processed fresh demo data. Not caching to localStorage during debug.`);
 
       } catch (error) {
@@ -307,8 +285,8 @@ export default function DemoDashboardPage() {
           <AlertTitle className="text-primary">How This Demo Works</AlertTitle>
           <AlertDescription className="text-muted-foreground space-y-1">
             <p>
-              The statistics on this page are sourced from a live SpiteSpiral Tarpit, specifically configured for public demonstration.
-              Data reflects aggregated activity from this demo tarpit over the last 30 days.
+              The statistics on this page are sourced from a live SpiteSpiral Tarpit instance. 
+              Data is aggregated from activity summaries generated for this demo tarpit over the last 30 days.
               The 'Active Instances' count shown is specific to the demo account's configuration.
             </p>
           </AlertDescription>
@@ -334,13 +312,13 @@ export default function DemoDashboardPage() {
         {aggregatedDemoData && aggregatedDemoData.totalHits > 0 ? (
           <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               <Card className="border-accent/30 shadow-lg">
-                  <CardHeader><div className="flex items-center gap-2"><Globe className="h-5 w-5 text-accent" /><CardTitle className="text-md font-medium text-accent">Top Attacking Countries</CardTitle></div></CardHeader>
+                  <CardHeader><div className="flex items-center gap-2"><Globe className="h-5 w-5 text-accent" /><CardTitle className="text-md font-medium text-accent">Activity by Country</CardTitle></div></CardHeader>
                   <CardContent className="min-h-[200px]">
                     {aggregatedDemoData?.topCountries && aggregatedDemoData.topCountries.length > 0 ? <HorizontalBarChartDemo data={aggregatedDemoData.topCountries} nameKey="country" valueKey="hits" /> : <p className="text-xs text-muted-foreground">No country data.</p>}
                   </CardContent>
               </Card>
               <Card className="border-primary/30 shadow-lg">
-                  <CardHeader><div className="flex items-center gap-2"><Fingerprint className="h-5 w-5 text-primary" /><CardTitle className="text-md font-medium text-primary">Top Attacker IPs</CardTitle></div></CardHeader>
+                  <CardHeader><div className="flex items-center gap-2"><Fingerprint className="h-5 w-5 text-primary" /><CardTitle className="text-md font-medium text-primary">IP Activity</CardTitle></div></CardHeader>
                   <CardContent className="min-h-[200px]">
                       {aggregatedDemoData?.topIPs && aggregatedDemoData.topIPs.length > 0 ? <HorizontalBarChartDemo data={aggregatedDemoData.topIPs} nameKey="ip" valueKey="hits" /> : <p className="text-xs text-muted-foreground">No IP data.</p>}
                   </CardContent>
