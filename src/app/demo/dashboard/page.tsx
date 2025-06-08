@@ -16,9 +16,11 @@ import { subDays, startOfDay, eachDayOfInterval, format, startOfHour, eachHourOf
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip as RechartsTooltip } from "recharts";
 import { Separator } from "@/components/ui/separator";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const DEMO_USER_ID = process.env.NEXT_PUBLIC_DEMO_USER_ID;
-const DEMO_TARPIT_PATH_SEGMENT = process.env.NEXT_PUBLIC_DEMO_TARPIT_PATH_SEGMENT; 
+const DEMO_TARPIT_PATH_SEGMENT = process.env.NEXT_PUBLIC_DEMO_TARPIT_PATH_SEGMENT;
 const DIRECT_TRAP_URL = "https://api.spitespiral.com/trap/b4b37b21-31b5-47f8-81a7-7a9f8a867911";
 
 interface AnalyticsSummaryDocumentForDemo {
@@ -80,24 +82,24 @@ export default function DemoDashboardPage() {
 
   useEffect(() => {
     const logPrefix = "DemoDashboardPage - Config Check:";
-    console.log(`${logPrefix} Using DEMO_USER_ID:`, DEMO_USER_ID);
-    console.log(`${logPrefix} Using DEMO_TARPIT_PATH_SEGMENT:`, DEMO_TARPIT_PATH_SEGMENT);
+    // console.log(`${logPrefix} Using DEMO_USER_ID:`, DEMO_USER_ID);
+    // console.log(`${logPrefix} Using DEMO_TARPIT_PATH_SEGMENT:`, DEMO_TARPIT_PATH_SEGMENT);
 
     if (DEMO_USER_ID && DEMO_USER_ID !== "public-demo-user-id-placeholder" &&
         DEMO_TARPIT_PATH_SEGMENT && DEMO_TARPIT_PATH_SEGMENT !== "your-demo-tarpit-path-segment-placeholder") {
       setIsDemoConfigProperlySet(true);
-      console.log(`${logPrefix} Demo User ID and Tarpit Path Segment are configured.`);
+      // console.log(`${logPrefix} Demo User ID and Tarpit Path Segment are configured.`);
     } else {
       setIsDemoConfigProperlySet(false);
       setIsLoadingDemoData(false);
       let errorMsg = "";
       if (!DEMO_USER_ID || DEMO_USER_ID === "public-demo-user-id-placeholder") {
         errorMsg += "NEXT_PUBLIC_DEMO_USER_ID is not set or is placeholder. ";
-        console.error(`${logPrefix} NEXT_PUBLIC_DEMO_USER_ID missing or placeholder.`);
+        // console.error(`${logPrefix} NEXT_PUBLIC_DEMO_USER_ID missing or placeholder.`);
       }
       if (!DEMO_TARPIT_PATH_SEGMENT || DEMO_TARPIT_PATH_SEGMENT === "your-demo-tarpit-path-segment-placeholder") {
         errorMsg += "NEXT_PUBLIC_DEMO_TARPIT_PATH_SEGMENT is not set or is placeholder.";
-        console.error(`${logPrefix} NEXT_PUBLIC_DEMO_TARPIT_PATH_SEGMENT missing or placeholder.`);
+        // console.error(`${logPrefix} NEXT_PUBLIC_DEMO_TARPIT_PATH_SEGMENT missing or placeholder.`);
       }
       setDemoDataError(errorMsg.trim());
     }
@@ -110,47 +112,47 @@ export default function DemoDashboardPage() {
       setIsLoadingDemoData(true);
       setDemoDataError(null);
       const logPrefix = `DemoDashboardPage (DEMO_TARPIT_PATH_SEGMENT: ${DEMO_TARPIT_PATH_SEGMENT ? DEMO_TARPIT_PATH_SEGMENT : 'N/A'}...) - Demo Data Fetch:`;
-      
-      console.log(`${logPrefix} LocalStorage caching is TEMPORARILY DISABLED for debugging.`);
+
+      // console.log(`${logPrefix} LocalStorage caching is TEMPORARILY DISABLED for debugging.`);
 
       try {
         let activeInstances = 0;
-        if (DEMO_USER_ID) { 
+        if (DEMO_USER_ID) {
           try {
-            console.log(`${logPrefix} Fetching active instances for demo user ID: ${DEMO_USER_ID}`);
+            // console.log(`${logPrefix} Fetching active instances for demo user ID: ${DEMO_USER_ID}`);
             const instancesQuery = query(collection(db, "tarpit_configs"), where("userId", "==", DEMO_USER_ID));
             const instancesSnapshot = await getDocs(instancesQuery);
             activeInstances = instancesSnapshot.size;
-            console.log(`${logPrefix} Fetched ${activeInstances} active instances for demo user.`);
+            // console.log(`${logPrefix} Fetched ${activeInstances} active instances for demo user.`);
           } catch (instanceError) {
               console.error(`${logPrefix} Error fetching demo active instances count:`, instanceError);
               toast({ title: "Error (Demo Instances)", description: `Could not fetch demo active tarpit instances. Error: ${instanceError instanceof Error ? instanceError.message : 'Unknown error'}`, variant: "destructive" });
           }
         } else {
-          console.warn(`${logPrefix} DEMO_USER_ID not set, cannot fetch active instances count.`);
+          // console.warn(`${logPrefix} DEMO_USER_ID not set, cannot fetch active instances count.`);
         }
 
         const thirtyDaysAgoDate = startOfDay(subDays(new Date(), 29));
-        console.log(`${logPrefix} Fetching summaries with tarpitId: ${DEMO_TARPIT_PATH_SEGMENT} starting from ${thirtyDaysAgoDate.toISOString()}`);
-        
+        // console.log(`${logPrefix} Fetching summaries with tarpitId: ${DEMO_TARPIT_PATH_SEGMENT} starting from ${thirtyDaysAgoDate.toISOString()}`);
+
         const summariesQuery = query(
           collection(db, "tarpit_analytics_summaries"),
-          where("tarpitId", "==", DEMO_TARPIT_PATH_SEGMENT), 
+          where("tarpitId", "==", DEMO_TARPIT_PATH_SEGMENT),
           where("startTime", ">=", Timestamp.fromDate(thirtyDaysAgoDate)),
           orderBy("startTime", "asc")
         );
         const querySnapshot = await getDocs(summariesQuery);
-        console.log(`${logPrefix} Firestore query for summaries returned ${querySnapshot.size} documents. Query details: tarpitId = ${DEMO_TARPIT_PATH_SEGMENT}, startTime >= ${thirtyDaysAgoDate.toISOString()}`);
-        
+        // console.log(`${logPrefix} Firestore query for summaries returned ${querySnapshot.size} documents. Query details: tarpitId = ${DEMO_TARPIT_PATH_SEGMENT}, startTime >= ${thirtyDaysAgoDate.toISOString()}`);
+
         const allFetchedSummaries: AnalyticsSummaryDocumentForDemo[] = [];
         querySnapshot.forEach((doc) => {
           const data = doc.data();
-          console.log(`${logPrefix} Summary doc ${doc.id} data:`, JSON.parse(JSON.stringify(data))); 
+          // console.log(`${logPrefix} Summary doc ${doc.id} data:`, JSON.parse(JSON.stringify(data)));
           allFetchedSummaries.push({ id: doc.id, ...data } as AnalyticsSummaryDocumentForDemo);
         });
 
         if (allFetchedSummaries.length === 0) {
-          console.log(`${logPrefix} No summaries found for demo tarpit ID: ${DEMO_TARPIT_PATH_SEGMENT}.`);
+          // console.log(`${logPrefix} No summaries found for demo tarpit ID: ${DEMO_TARPIT_PATH_SEGMENT}.`);
           setAggregatedDemoData({
             totalHits: 0, approxUniqueIpCount: 0, topCountries: [], topIPs: [], topUserAgents: [], topPaths: [],
             methodDistribution: {}, statusDistribution: {}, summaryHitsOverTime: [], activeInstances, illustrativeCost: "0.0000"
@@ -158,21 +160,21 @@ export default function DemoDashboardPage() {
           setIsLoadingDemoData(false);
           return;
         }
-        
+
         const totalHits = allFetchedSummaries.reduce((sum, s) => sum + (s.totalHits || 0), 0);
         const approxUniqueIpCount = allFetchedSummaries.reduce((sum, s) => sum + (s.uniqueIpCount || 0), 0);
-        
+
         const topCountries = aggregateTopList(allFetchedSummaries, "topCountries", "country");
         const topIPs = aggregateTopList(allFetchedSummaries, "topIPs", "ip");
-        const topUserAgents = aggregateTopList(allFetchedSummaries, "topUserAgents", "userAgent");
+        const topUserAgents = aggregateTopList(allFetchedSummaries, "topUserAgents", "userAgent", 10); // Fetch more for table
         const topPaths = aggregateTopList(allFetchedSummaries, "topPaths", "path", 10);
 
         const methodDistribution = aggregateDistribution(allFetchedSummaries, "methodDistribution");
         const statusDistribution = aggregateDistribution(allFetchedSummaries, "statusDistribution");
-        
+
         const hitsByInterval: { [key: string]: number } = {};
         const chartEndDate = new Date();
-        const chartStartDate = subDays(chartEndDate, 29); 
+        const chartStartDate = subDays(chartEndDate, 29);
         const intervalPoints = eachDayOfInterval({ start: chartStartDate, end: chartEndDate });
         const aggregationFormat = 'yyyy-MM-dd';
         intervalPoints.forEach(point => { hitsByInterval[format(point, aggregationFormat)] = 0; });
@@ -195,7 +197,7 @@ export default function DemoDashboardPage() {
         };
 
         setAggregatedDemoData(finalAggregatedData);
-        console.log(`${logPrefix} Processed fresh demo data. Not caching to localStorage during debug.`);
+        // console.log(`${logPrefix} Processed fresh demo data. Not caching to localStorage during debug.`);
 
       } catch (error) {
         console.error(`${logPrefix} Error fetching or processing demo data:`, error);
@@ -208,7 +210,7 @@ export default function DemoDashboardPage() {
     };
 
     fetchAndAggregateDemoData();
-  }, [isDemoConfigProperlySet, toast, DEMO_TARPIT_PATH_SEGMENT]);
+  }, [isDemoConfigProperlySet, toast, DEMO_TARPIT_PATH_SEGMENT, DEMO_USER_ID]);
 
 
   if (!isDemoConfigProperlySet && !isLoadingDemoData) {
@@ -230,7 +232,7 @@ export default function DemoDashboardPage() {
         </>
       );
   }
-  
+
   if (isLoadingDemoData) {
      return (
         <>
@@ -244,16 +246,18 @@ export default function DemoDashboardPage() {
                 <Separator className="my-8 border-primary/20" />
                  <h2 className="text-2xl font-semibold text-primary mt-8 mb-4"><Skeleton className="h-8 w-1/2"/></h2>
                  <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
-                    {[...Array(8)].map((_,i) => <Skeleton key={i} className="h-48 w-full" />)}
+                    {[...Array(5)].map((_,i) => <Skeleton key={i} className="h-48 w-full" />)} {/* Adjusted skeleton count */}
                 </section>
                 <Separator className="my-8 border-primary/20" />
-                <section><Skeleton className="h-96 w-full" /></section>
+                <section><Skeleton className="h-80 w-full" /></section> {/* User Agent Table Skeleton */}
+                <Separator className="my-8 border-primary/20" />
+                <section><Skeleton className="h-96 w-full" /></section> {/* Hits Over Time Chart Skeleton */}
             </div>
         </>
      )
   }
-  
-  if (demoDataError && !aggregatedDemoData) { 
+
+  if (demoDataError && !aggregatedDemoData) {
       return (
            <>
             <a href={DIRECT_TRAP_URL} rel="nofollow noopener noreferrer" aria-hidden="true" tabIndex={-1} style={{ opacity: 0.01, position: 'absolute', left: '-9999px', top: '-9999px', fontSize: '1px', color: 'transparent', width: '1px', height: '1px', overflow: 'hidden' }} title="SpiteSpiral Internal Data - Demo Dashboard Error">.</a>
@@ -284,10 +288,10 @@ export default function DemoDashboardPage() {
           <Eye className="h-5 w-5 text-primary" />
           <AlertTitle className="text-primary">How This Demo Works</AlertTitle>
           <AlertDescription className="text-muted-foreground space-y-1">
-            <p>
-              The statistics on this page are sourced from a live SpiteSpiral Tarpit instance. 
-              Data is aggregated from activity summaries generated for this demo tarpit over the last 30 days.
-              The 'Active Instances' count shown is specific to the demo account's configuration.
+           <p>
+              The statistics on this page are sourced from a live SpiteSpiral Tarpit instance.
+              Data is aggregated from activity summaries generated for this specific demo tarpit over the last 30 days.
+              The 'Active Instances' count reflects configurations specific to the demo account.
             </p>
           </AlertDescription>
         </Alert>
@@ -323,12 +327,7 @@ export default function DemoDashboardPage() {
                       {aggregatedDemoData?.topIPs && aggregatedDemoData.topIPs.length > 0 ? <HorizontalBarChartDemo data={aggregatedDemoData.topIPs} nameKey="ip" valueKey="hits" /> : <p className="text-xs text-muted-foreground">No IP data.</p>}
                   </CardContent>
               </Card>
-              <Card className="border-accent/30 shadow-lg">
-                  <CardHeader><div className="flex items-center gap-2"><ListFilter className="h-5 w-5 text-accent" /><CardTitle className="text-md font-medium text-accent">Top User Agents</CardTitle></div></CardHeader>
-                  <CardContent className="min-h-[200px]">
-                       {aggregatedDemoData?.topUserAgents && aggregatedDemoData.topUserAgents.length > 0 ? <HorizontalBarChartDemo data={aggregatedDemoData.topUserAgents} nameKey="userAgent" valueKey="hits" /> : <p className="text-xs text-muted-foreground">No User Agent data.</p>}
-                  </CardContent>
-              </Card>
+              {/* Top User Agents card removed from here, will be a separate section */}
               <Card className="border-primary/30 shadow-lg">
                   <CardHeader><div className="flex items-center gap-2"><FileText className="h-5 w-5 text-primary" /><CardTitle className="text-md font-medium text-primary">Top Paths Hit</CardTitle></div></CardHeader>
                   <CardContent className="min-h-[150px]">
@@ -359,6 +358,59 @@ export default function DemoDashboardPage() {
         )}
 
         <Separator className="my-8 border-primary/20" />
+        <h2 className="text-2xl font-semibold text-primary mt-8 mb-4">Top User Agent Activity (Demo - Last 30 Days)</h2>
+        <Card className="shadow-lg border-accent/20">
+            <CardHeader>
+                <div className="flex items-center gap-2">
+                    <ListFilter className="h-6 w-6 text-accent" />
+                    <CardTitle className="text-xl text-accent">Top User Agent Activity</CardTitle>
+                </div>
+                <CardDescription>
+                    User agents with the most hits to the demo tarpit in the last 30 days. (Illustrative demo data)
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                {isLoadingDemoData ? (
+                     <div className="space-y-2"><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" /></div>
+                ) : demoDataError ? (
+                    <p className="text-xs text-destructive text-center py-4">{demoDataError}</p>
+                ) : !aggregatedDemoData?.topUserAgents || aggregatedDemoData.topUserAgents.length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-4">No User Agent data available for this period.</p>
+                ) : (
+                    <ScrollArea className="h-[300px] rounded-md border border-border">
+                        <Table>
+                            <TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
+                                <TableRow>
+                                    <TableHead className="text-accent">User Agent String</TableHead>
+                                    <TableHead className="text-accent text-right w-[100px]">Hits</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {aggregatedDemoData.topUserAgents.slice(0, 5).map((ua, index) => (
+                                    <TableRow key={index} className="hover:bg-muted/30">
+                                        <TableCell className="text-xs text-muted-foreground max-w-xs md:max-w-md lg:max-w-lg xl:max-w-xl truncate">
+                                            <TooltipProvider delayDuration={150}>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <span className="cursor-help">{ua.userAgent}</span>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent className="bg-popover text-popover-foreground border-primary/50 max-w-2xl p-3">
+                                                        <p className="text-xs whitespace-pre-wrap break-all">{ua.userAgent}</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                        </TableCell>
+                                        <TableCell className="text-right font-semibold text-foreground/90">{ua.hits}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </ScrollArea>
+                )}
+            </CardContent>
+        </Card>
+
+        <Separator className="my-8 border-primary/20" />
         <section>
           <Card className="shadow-lg border-primary/20">
             <CardHeader>
@@ -366,13 +418,13 @@ export default function DemoDashboardPage() {
               <CardDescription>Total tarpit hits recorded daily from demo activity summaries.</CardDescription>
             </CardHeader>
             <CardContent>
-              {isDemoConfigProperlySet && 
-                <TrappedCrawlersChart 
-                    apiLogs={[]} 
+              {isDemoConfigProperlySet &&
+                <TrappedCrawlersChart
+                    apiLogs={[]}
                     summaryHitsOverTime={aggregatedDemoData?.summaryHitsOverTime}
-                    isLoading={isLoadingDemoData} 
+                    isLoading={isLoadingDemoData}
                     selectedRangeHours={30*24}
-                    tier="window" 
+                    tier="window"
                 />
               }
             </CardContent>
@@ -420,6 +472,3 @@ function aggregateDistribution(
   });
   return totalDistribution;
 }
-
-
-    

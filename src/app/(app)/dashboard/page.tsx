@@ -18,6 +18,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip as RechartsTooltip } from "recharts";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { eachDayOfInterval, eachHourOfInterval, format, startOfDay, startOfHour, parseISO } from 'date-fns';
 
 interface ApiLogEntry {
@@ -39,8 +41,8 @@ interface ApiResponse {
 
 interface AnalyticsSummaryDocument {
   id?: string;
-  tarpitId: string; 
-  userId?: string; 
+  tarpitId: string;
+  userId?: string;
   startTime: Timestamp;
   totalHits: number;
   uniqueIpCount: number;
@@ -80,8 +82,8 @@ const PLACEHOLDER_TOP_IPS_DEMO = [
   { ip: "10.0.0.4 (Demo)", hits: 70 }, { ip: "10.0.0.5 (Demo)", hits: 50 },
 ];
 const PLACEHOLDER_TOP_UAS_DEMO = [
-  { userAgent: "DemoBot/1.0 (Demo)", hits: 200 }, { userAgent: "SampleScraper/2.x (Demo)", hits: 180 }, { userAgent: "TestCrawler/0.1 (Demo)", hits: 150 },
-  { userAgent: "PlaceholderUA (Demo)", hits: 100 }, { userAgent: "Botzilla-Demo (Demo)", hits: 80 },
+  { userAgent: "DemoBot/1.0 (Mozilla/5.0 compatible; Demo SuperCrawler) Example/Test", hits: 200 }, { userAgent: "SampleScraper/2.x (Linux; Android 10; SM-G960U) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Mobile Safari/537.36 (Demo)", hits: 180 }, { userAgent: "TestCrawler/0.1 CFNetwork/1209 Darwin/20.2.0 (Demo)", hits: 150 },
+  { userAgent: "PlaceholderUA (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/100.0 (Demo)", hits: 100 }, { userAgent: "Botzilla-Demo (compatible; SpecialBot/3.0; +http://example.com/bot)", hits: 80 },
 ];
 const PLACEHOLDER_TOP_PATHS_DEMO = [
   { path: "/demo-login.php (Demo)", hits: 220 }, { path: "/sample-admin/ (Demo)", hits: 190 }, { path: "/test-api/data (Demo)", hits: 160 },
@@ -188,13 +190,15 @@ export default function DashboardPage() {
 
   const isEffectivelySubscribedForFeatures = useMemo(() => {
     if (!userProfile) return false;
+    // User has access to paid features if their subscription status is active, trialing,
+    // or if it's active_until_period_end or pending_downgrade (meaning they still have access for the current paid period).
     return ['active', 'trialing', 'active_until_period_end', 'pending_downgrade'].includes(userProfile.subscriptionStatus || '');
   }, [userProfile]);
 
   const isWindowShoppingTier = useMemo(() => {
-    if (!userProfile) return true; 
-    if (userProfile.activeTierId === 'window_shopping') return true;
-    return !isEffectivelySubscribedForFeatures; 
+    if (!userProfile) return true; // Default to window shopping if no profile
+    if (userProfile.activeTierId === 'window_shopping') return true; // Explicitly on window shopping
+    return !isEffectivelySubscribedForFeatures; // If not effectively subscribed for features, they are on window shopping
   }, [userProfile, isEffectivelySubscribedForFeatures]);
 
   const isSetAndForgetTier = useMemo(() => {
@@ -213,12 +217,12 @@ export default function DashboardPage() {
     if (user) {
       setIsLoadingInstancesCount(true);
       const logPrefix = `DashboardPage (User: ${user.uid.substring(0,5)}...) - Tarpit Configs:`;
-      console.log(`${logPrefix} Subscribing to tarpit_configs for user ID: ${user.uid}`);
+      // console.log(`${logPrefix} Subscribing to tarpit_configs for user ID: ${user.uid}`);
       const instancesQuery = query(collection(db, "tarpit_configs"), where("userId", "==", user.uid));
       const unsubscribeInstances = onSnapshot(instancesQuery, (querySnapshot: QuerySnapshot<DocumentData>) => {
         setActiveInstancesCount(querySnapshot.size);
         setIsLoadingInstancesCount(false);
-        console.log(`${logPrefix} Fetched ${querySnapshot.size} active instances.`);
+        // console.log(`${logPrefix} Fetched ${querySnapshot.size} active instances.`);
       }, (error) => {
         console.error(`${logPrefix} Error fetching active instances count:`, error);
         toast({ title: "Error", description: "Could not fetch active tarpit instances.", variant: "destructive" });
@@ -233,7 +237,7 @@ export default function DashboardPage() {
   }, [user, authLoading, toast]);
 
   useEffect(() => {
-    if (authLoading || !user || !isAnalyticsTier) { 
+    if (authLoading || !user || !isAnalyticsTier) {
       setApiLoading(true);
       setApiLogsData([]);
       if (!user && !authLoading) { setApiLoading(false); }
@@ -243,11 +247,11 @@ export default function DashboardPage() {
     const fetchApiLogs = async () => {
       setApiLoading(true); setApiError(null);
       const logPrefix = `DashboardPage (User: ${user.uid.substring(0,5)}...) - API Logs:`;
-      console.log(`${logPrefix} Fetching API logs. Range: ${selectedRangeHours}h, Limit: ${LOG_FETCH_LIMIT}`);
+      // console.log(`${logPrefix} Fetching API logs. Range: ${selectedRangeHours}h, Limit: ${LOG_FETCH_LIMIT}`);
       try {
         const token = await user.getIdToken();
         const apiUrl = `https://api.spitespiral.com/v1/logs?range=${selectedRangeHours}&limit=${LOG_FETCH_LIMIT}&direction=backward`;
-        
+
         const response = await fetch(apiUrl, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -256,13 +260,13 @@ export default function DashboardPage() {
           throw new Error(errorData.message || `Failed to fetch logs. Status: ${response.status}`);
         }
         const result: ApiResponse = await response.json();
-        if (result.success && result.data) { 
-            setApiLogsData(result.data); 
-            console.log(`${logPrefix} Successfully fetched ${result.data.length} API log entries.`);
-        } 
+        if (result.success && result.data) {
+            setApiLogsData(result.data);
+            // console.log(`${logPrefix} Successfully fetched ${result.data.length} API log entries.`);
+        }
         else { throw new Error(result.message || "API returned success=false or no data."); }
       } catch (err) {
-        console.error(`${logPrefix} Full error object during fetchApiLogs:`, err);
+        // console.error(`${logPrefix} Full error object during fetchApiLogs:`, err);
         let userFriendlyMessage = "An unknown error occurred while fetching logs.";
         if (err instanceof Error) {
           if (err.message.toLowerCase().includes("failed to fetch")) {
@@ -291,31 +295,31 @@ export default function DashboardPage() {
       setAggregatedError(null);
       setAggregatedAnalytics(null);
       const logPrefix = `DashboardPage (User: ${user.uid.substring(0,5)}...) - Aggregated Analytics:`;
-      console.log(`${logPrefix} Starting fetch for aggregated analytics. Range: ${selectedRangeHours}h. Querying by userId: ${user.uid}`);
+      // console.log(`${logPrefix} Starting fetch for aggregated analytics. Range: ${selectedRangeHours}h. Querying by userId: ${user.uid}`);
 
       try {
         const rangeInMilliseconds = selectedRangeHours * 60 * 60 * 1000;
         const startDate = new Date(Date.now() - rangeInMilliseconds);
         const startDateTimestamp = Timestamp.fromDate(startDate);
-        console.log(`${logPrefix} Calculated start date for summaries: ${startDate.toISOString()}`);
-        
+        // console.log(`${logPrefix} Calculated start date for summaries: ${startDate.toISOString()}`);
+
         const summariesQuery = query(
             collection(db, "tarpit_analytics_summaries"),
-            where("userId", "==", user.uid),
+            where("userId", "==", user.uid), // Direct query by userId
             where("startTime", ">=", startDateTimestamp),
-            orderBy("startTime", "asc") 
+            orderBy("startTime", "asc")
         );
-        console.log(`${logPrefix} Executing Firestore query for summaries with userId: ${user.uid} and startTime >= ${startDate.toISOString()}`);
+        // console.log(`${logPrefix} Executing Firestore query for summaries with userId: ${user.uid} and startTime >= ${startDate.toISOString()}`);
 
         const summariesSnapshot = await getDocs(summariesQuery);
         const allSummaries: AnalyticsSummaryDocument[] = [];
         summariesSnapshot.forEach(doc => {
             const data = doc.data();
-            console.log(`${logPrefix} Summary doc ${doc.id} (tarpitId: ${data.tarpitId || 'N/A'}) data:`, JSON.parse(JSON.stringify(data)));
+            // console.log(`${logPrefix} Summary doc ${doc.id} (tarpitId: ${data.tarpitId || 'N/A'}, userId: ${data.userId || 'N/A'}) data:`, JSON.parse(JSON.stringify(data)));
             allSummaries.push({ id: doc.id, ...data } as AnalyticsSummaryDocument);
         });
-        console.log(`${logPrefix} Fetched ${allSummaries.length} summaries for user ${user.uid}.`);
-        
+        // console.log(`${logPrefix} Fetched ${allSummaries.length} summaries for user ${user.uid}.`);
+
         if (allSummaries.length === 0) {
            setAggregatedAnalytics({
             totalHits: 0, approxUniqueIpCount: 0, topCountries: [], topIPs: [],
@@ -323,8 +327,8 @@ export default function DashboardPage() {
             summaryHitsOverTime: [],
           });
           setIsAggregatedLoading(false);
-          console.log(`${logPrefix} No summaries found for user ${user.uid} and time range.`);
-          toast({ title: "No Summary Data", description: "No aggregated analytics data found for your tarpits in the selected range. This might also occur if the backend hasn't started adding 'userId' to summary documents yet.", variant: "default", duration: 8000});
+          // console.log(`${logPrefix} No summaries found for user ${user.uid} and time range.`);
+          toast({ title: "No Summary Data", description: "No aggregated analytics data found for your tarpits in the selected range. This might occur if the backend hasn't started adding 'userId' to summary documents yet, or if there's no activity.", variant: "default", duration: 8000});
           return;
         }
 
@@ -334,9 +338,9 @@ export default function DashboardPage() {
         const chartStartDate = new Date(now.getTime() - selectedRangeHours * 60 * 60 * 1000);
         let intervalPoints: Date[];
         let aggregationFormat: string;
-        if (selectedRangeHours <= 48) { 
+        if (selectedRangeHours <= 48) {
           intervalPoints = eachHourOfInterval({ start: chartStartDate, end: chartEndDate });
-          aggregationFormat = 'yyyy-MM-dd HH'; 
+          aggregationFormat = 'yyyy-MM-dd HH';
         } else {
           intervalPoints = eachDayOfInterval({ start: chartStartDate, end: chartEndDate });
           aggregationFormat = 'yyyy-MM-dd';
@@ -345,7 +349,7 @@ export default function DashboardPage() {
         allSummaries.forEach(summary => {
             const summaryStartTime = summary.startTime.toDate();
             let intervalKey: string;
-            if (selectedRangeHours <= 48) { intervalKey = format(startOfHour(summaryStartTime), aggregationFormat); } 
+            if (selectedRangeHours <= 48) { intervalKey = format(startOfHour(summaryStartTime), aggregationFormat); }
             else { intervalKey = format(startOfDay(summaryStartTime), aggregationFormat); }
             if (hitsByInterval[intervalKey] !== undefined) { hitsByInterval[intervalKey] += summary.totalHits; }
         });
@@ -359,14 +363,14 @@ export default function DashboardPage() {
           approxUniqueIpCount: allSummaries.reduce((sum, s) => sum + (s.uniqueIpCount || 0), 0),
           topCountries: aggregateTopList(allSummaries, "topCountries", "country"),
           topIPs: aggregateTopList(allSummaries, "topIPs", "ip"),
-          topUserAgents: aggregateTopList(allSummaries, "topUserAgents", "userAgent"),
+          topUserAgents: aggregateTopList(allSummaries, "topUserAgents", "userAgent", 10), // Fetch more for table display
           topPaths: aggregateTopList(allSummaries, "topPaths", "path", 10),
           methodDistribution: aggregateDistribution(allSummaries, "methodDistribution"),
           statusDistribution: aggregateDistribution(allSummaries, "statusDistribution"),
           summaryHitsOverTime: summaryHitsOverTimeData,
         };
         setAggregatedAnalytics(aggregatedData);
-        console.log(`${logPrefix} Successfully processed and aggregated ${allSummaries.length} summaries.`);
+        // console.log(`${logPrefix} Successfully processed and aggregated ${allSummaries.length} summaries.`);
 
       } catch (err) {
         console.error(`${logPrefix} Error fetching/processing aggregated analytics:`, err);
@@ -387,7 +391,7 @@ export default function DashboardPage() {
     if (isWindowShoppingTier) {
         return { totalHitsInRange: WINDOW_SHOPPING_PLACEHOLDER_COUNT_PRIMARY, uniqueAttackerIpsInRange: WINDOW_SHOPPING_PLACEHOLDER_COUNT_SECONDARY, mostProbedPath: { path: "/wp-login.php (Demo)", hits: WINDOW_SHOPPING_PLACEHOLDER_COUNT_PRIMARY / 2 }, uniqueUserAgentsInRange: WINDOW_SHOPPING_PLACEHOLDER_COUNT_SECONDARY / 2 };
     }
-    if (!isAnalyticsTier || !apiLogsData || apiLogsData.length === 0) { 
+    if (!isAnalyticsTier || !apiLogsData || apiLogsData.length === 0) {
       return { totalHitsInRange: 0, uniqueAttackerIpsInRange: 0, mostProbedPath: { path: "N/A", hits: 0 }, uniqueUserAgentsInRange: 0 };
     }
     const uniqueIps = new Set(apiLogsData.map(log => log.source_ip)).size;
@@ -401,8 +405,8 @@ export default function DashboardPage() {
 
   const illustrativeCost = isWindowShoppingTier ? WINDOW_SHOPPING_PLACEHOLDER_COST : (apiKpiStats.totalHitsInRange * 0.0001).toFixed(4);
   const handleRangeChange = (value: string) => { setSelectedRangeHours(Number(value)); };
-  
-  const isLoadingKpis = apiLoading && isAnalyticsTier; 
+
+  const isLoadingKpis = apiLoading && isAnalyticsTier;
 
   const currentTierName = useMemo(() => {
     if (isAnalyticsTier) return "Analytics";
@@ -424,7 +428,7 @@ export default function DashboardPage() {
 
     const sortedData = displayData ? Object.entries(displayData).sort(([,a],[,b]) => b-a).slice(0,5) : [];
     const totalHits = showPercentages ? sortedData.reduce((sum, [, value]) => sum + value, 0) : 0;
-    
+
     return (
       <Card className="border-primary/30 shadow-lg">
         <CardHeader>
@@ -463,7 +467,7 @@ export default function DashboardPage() {
       </Card>
     );
   };
-  
+
   const renderTopListCard = (title: string, data: Array<{ [key: string]: string | number, hits: number }> | undefined, itemKey: string, icon: React.ElementType, isLoading: boolean, error: string | null, tier: 'window' | 'setforget' | 'analytics') => {
     const IconComponent = icon;
     let displayData = data;
@@ -474,10 +478,11 @@ export default function DashboardPage() {
         cardIsLoading = false; cardError = null;
         if (title.toLowerCase().includes("countries") || title.toLowerCase().includes("country")) displayData = PLACEHOLDER_TOP_COUNTRIES_DEMO;
         else if (title.toLowerCase().includes("ips") || title.toLowerCase().includes("ip activity")) displayData = PLACEHOLDER_TOP_IPS_DEMO;
-        else if (title.toLowerCase().includes("user agents")) displayData = PLACEHOLDER_TOP_UAS_DEMO;
+        // Top User Agents will be handled by a separate table component/section now.
+        // else if (title.toLowerCase().includes("user agents")) displayData = PLACEHOLDER_TOP_UAS_DEMO;
         else if (title.toLowerCase().includes("paths")) displayData = PLACEHOLDER_TOP_PATHS_DEMO;
     }
-    
+
     return (
       <Card className="border-accent/30 shadow-lg">
         <CardHeader>
@@ -486,7 +491,7 @@ export default function DashboardPage() {
               <IconComponent className="h-5 w-5 text-accent" />
               <CardTitle className="text-md font-medium text-accent">{title}</CardTitle>
             </div>
-            {tier === 'setforget' && (title.includes("Countries") || title.includes("IPs") || title.includes("User Agents") || title.includes("Country") || title.includes("IP Activity")) &&
+            {tier === 'setforget' && (title.includes("Countries") || title.includes("IPs") || title.includes("Country") || title.includes("IP Activity")) &&
                 <TooltipProvider><Tooltip delayDuration={100}><TooltipTrigger asChild><Info className="h-4 w-4 text-muted-foreground cursor-help" /></TooltipTrigger><TooltipContent className="bg-popover text-popover-foreground border-primary/50 max-w-xs"><p className="text-xs">Full list and visual breakdown available in Analytics Tier.</p></TooltipContent></Tooltip></TooltipProvider>
             }
             {tier === 'window' && <TooltipProvider><Tooltip delayDuration={100}><TooltipTrigger asChild><Info className="h-4 w-4 text-muted-foreground cursor-help" /></TooltipTrigger><TooltipContent className="bg-popover text-popover-foreground border-primary/50 max-w-xs"><p className="text-xs">Live data and full lists available in paid tiers.</p></TooltipContent></Tooltip></TooltipProvider>}
@@ -519,10 +524,24 @@ export default function DashboardPage() {
     );
   };
 
-  const currentDashboardTier: 'window' | 'setforget' | 'analytics' = 
-    isAnalyticsTier ? 'analytics' : 
-    isSetAndForgetTier ? 'setforget' : 
+  const currentDashboardTier: 'window' | 'setforget' | 'analytics' =
+    isAnalyticsTier ? 'analytics' :
+    isSetAndForgetTier ? 'setforget' :
     'window';
+
+  let userAgentsToDisplay: Array<{ userAgent: string, hits: number }> = [];
+  let userAgentsDisplayLimit = 5; // Default for analytics tier
+
+  if (currentDashboardTier === 'window') {
+    userAgentsToDisplay = PLACEHOLDER_TOP_UAS_DEMO;
+  } else if (aggregatedAnalytics?.topUserAgents) {
+    userAgentsToDisplay = aggregatedAnalytics.topUserAgents;
+  }
+
+  if (currentDashboardTier === 'setforget') {
+    userAgentsDisplayLimit = 3;
+  }
+
 
   return (
     <div className="space-y-8">
@@ -558,7 +577,7 @@ export default function DashboardPage() {
           <p> • <strong className="text-primary">Analytics Tier:</strong> Full access to near real-time detailed logs (up to {LOG_FETCH_LIMIT} via API), aggregated summaries, and all advanced visualizations.</p>
         </AlertDescription>
       </Alert>
-      
+
       {apiError && isAnalyticsTier && (
          <Alert variant="destructive" className="mb-6">
           <Activity className="h-5 w-5" />
@@ -674,7 +693,7 @@ export default function DashboardPage() {
             <CardHeader className="pb-2"><div className="flex items-center gap-2"><Users className="h-5 w-5 text-accent" /><CardTitle className="text-md font-medium text-accent">Approx. Unique IPs (Summarized)</CardTitle></div></CardHeader>
             <CardContent><div className="text-3xl font-bold text-foreground">{isWindowShoppingTier ? WINDOW_SHOPPING_PLACEHOLDER_AGG_IPS : aggregatedAnalytics?.approxUniqueIpCount ?? 0}</div><p className="text-xs text-muted-foreground mt-1">Sum of unique IP counts from summaries.</p></CardContent>
           </Card>
-          
+
           {isAnalyticsTier ? (
             <Card className="border-accent/30 shadow-lg">
               <CardHeader><div className="flex items-center gap-2"><Globe className="h-5 w-5 text-accent" /><CardTitle className="text-md font-medium text-accent">Activity by Country</CardTitle></div></CardHeader>
@@ -684,7 +703,7 @@ export default function DashboardPage() {
                  <HorizontalBarChart data={aggregatedAnalytics.topCountries} nameKey="country" valueKey="hits" />}
               </CardContent>
             </Card>
-          ) : ( 
+          ) : (
             renderTopListCard("Activity by Country", aggregatedAnalytics?.topCountries, "country", Globe, isAggregatedLoading && !isWindowShoppingTier, aggregatedError, currentDashboardTier)
           )}
 
@@ -697,40 +716,86 @@ export default function DashboardPage() {
                  <HorizontalBarChart data={aggregatedAnalytics.topIPs} nameKey="ip" valueKey="hits" />}
               </CardContent>
             </Card>
-          ) : ( 
+          ) : (
              renderTopListCard("IP Activity", aggregatedAnalytics?.topIPs, "ip", Fingerprint, isAggregatedLoading && !isWindowShoppingTier, aggregatedError, currentDashboardTier)
           )}
 
-          {isAnalyticsTier ? (
-            <Card className="border-accent/30 shadow-lg">
-              <CardHeader><div className="flex items-center gap-2"><ListFilter className="h-5 w-5 text-accent" /><CardTitle className="text-md font-medium text-accent">Top User Agents</CardTitle></div></CardHeader>
-              <CardContent className="min-h-[150px]">
-                {isAggregatedLoading && !isWindowShoppingTier ? <Skeleton className="h-40 w-full" /> : aggregatedError ? <p className="text-xs text-destructive">{aggregatedError}</p> :
-                 !aggregatedAnalytics?.topUserAgents || aggregatedAnalytics.topUserAgents.length === 0 ? <p className="text-xs text-muted-foreground">No data available.</p> :
-                 <HorizontalBarChart data={aggregatedAnalytics.topUserAgents} nameKey="userAgent" valueKey="hits" />}
-              </CardContent>
-            </Card>
-          ) : ( 
-            renderTopListCard("Top User Agents", aggregatedAnalytics?.topUserAgents, "userAgent", ListFilter, isAggregatedLoading && !isWindowShoppingTier, aggregatedError, currentDashboardTier)
-          )}
-          
+           {/* Top User Agents card is now handled in a separate section below */}
            {renderTopListCard("Top Paths Hit", aggregatedAnalytics?.topPaths, "path", FileText, isAggregatedLoading && !isWindowShoppingTier, aggregatedError, currentDashboardTier)}
            {renderDistributionCard("HTTP Method Distribution", aggregatedAnalytics?.methodDistribution, Server, isAggregatedLoading && !isWindowShoppingTier, aggregatedError, isAnalyticsTier, currentDashboardTier)}
            {renderDistributionCard("HTTP Status Code Distribution", aggregatedAnalytics?.statusDistribution, BarChart3, isAggregatedLoading && !isWindowShoppingTier, aggregatedError, isAnalyticsTier, currentDashboardTier)}
         </section>
       ) : (isAggregatedLoading && !isWindowShoppingTier) ? (
            <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
-              {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-48 w-full" />)}
+              {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-48 w-full" />)}
           </section>
       ) : (
         <p className="text-muted-foreground text-center py-4">No aggregated summary data found for the selected range, or data is still loading.</p>
       )}
-      
+
+
+      <Separator className="my-8 border-primary/20" />
+      <h2 className="text-2xl font-semibold text-primary mt-8 mb-4">Top User Agent Activity (Summarized for Selected Range)</h2>
+      <Card className="shadow-lg border-accent/20">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <ListFilter className="h-6 w-6 text-accent" />
+            <CardTitle className="text-xl text-accent">Top User Agent Activity</CardTitle>
+          </div>
+          <CardDescription>
+            User agents with the most hits to your tarpits in the selected range.
+            {currentDashboardTier === 'setforget' && <span className="block text-xs text-amber-500 mt-1">Limited view (top {userAgentsDisplayLimit}). Full details available in Analytics Tier.</span>}
+            {currentDashboardTier === 'window' && " (This is illustrative demo data)"}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {(isAggregatedLoading && !isWindowShoppingTier) ? (
+            <div className="space-y-2">
+                {[...Array(5)].map((_, index) => (<Skeleton key={index} className="h-10 w-full" />))}
+            </div>
+          ) : aggregatedError && !isWindowShoppingTier ? (
+            <p className="text-xs text-destructive text-center py-4">{aggregatedError}</p>
+          ) : !userAgentsToDisplay || userAgentsToDisplay.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-4">No User Agent data available for this period.</p>
+          ) : (
+            <ScrollArea className="h-[300px] rounded-md border border-border">
+              <Table>
+                <TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
+                  <TableRow>
+                    <TableHead className="text-accent">User Agent String</TableHead>
+                    <TableHead className="text-accent text-right w-[100px]">Hits</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {userAgentsToDisplay.slice(0, userAgentsDisplayLimit).map((ua, index) => (
+                    <TableRow key={index} className="hover:bg-muted/30">
+                      <TableCell className="text-xs text-muted-foreground max-w-xs md:max-w-md lg:max-w-lg xl:max-w-xl truncate">
+                        <TooltipProvider delayDuration={150}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="cursor-help">{ua.userAgent}</span>
+                            </TooltipTrigger>
+                            <TooltipContent className="bg-popover text-popover-foreground border-primary/50 max-w-2xl p-3">
+                              <p className="text-xs whitespace-pre-wrap break-all">{ua.userAgent}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </TableCell>
+                      <TableCell className="text-right font-semibold text-foreground/90">{ua.hits}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </ScrollArea>
+          )}
+        </CardContent>
+      </Card>
+
 
       <Separator className="my-8 border-primary/20" />
       <h2 className="text-2xl font-semibold text-primary mt-8 mb-4">
-        {isWindowShoppingTier ? "Activity Details (Demo Data)" : 
-         isSetAndForgetTier ? "Activity Hits Over Time (Summarized)" : 
+        {isWindowShoppingTier ? "Activity Details (Demo Data)" :
+         isSetAndForgetTier ? "Activity Hits Over Time (Summarized)" :
          "Recent Activity Details (from latest " + LOG_FETCH_LIMIT + " API logs - Analytics Tier)"}
       </h2>
       <section>
@@ -746,17 +811,17 @@ export default function DashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <TrappedCrawlersChart 
-                apiLogs={isAnalyticsTier ? apiLogsData : []} 
+            <TrappedCrawlersChart
+                apiLogs={isAnalyticsTier ? apiLogsData : []}
                 summaryHitsOverTime={isWindowShoppingTier ? PLACEHOLDER_SUMMARY_HITS_OVER_TIME_DEMO(selectedRangeHours) : (isSetAndForgetTier || isAnalyticsTier ) ? aggregatedAnalytics?.summaryHitsOverTime : []}
-                isLoading={isAnalyticsTier ? apiLoading : (isSetAndForgetTier ? isAggregatedLoading : false)} 
+                isLoading={isAnalyticsTier ? apiLoading : (isSetAndForgetTier ? isAggregatedLoading : false)}
                 selectedRangeHours={selectedRangeHours}
                 tier={currentDashboardTier}
             />
           </CardContent>
         </Card>
       </section>
-      
+
       {isAnalyticsTier && (
         <section className="mt-8">
             <Card className="shadow-lg border-accent/20">
@@ -783,8 +848,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-    
-
-    
-
-    
