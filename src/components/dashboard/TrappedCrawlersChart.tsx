@@ -5,7 +5,7 @@ import { useMemo } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip as RechartsTooltip } from "recharts";
 import { ChartTooltipContent, ChartContainer, ChartConfig } from "@/components/ui/chart";
 import { Skeleton } from "@/components/ui/skeleton";
-import { format, parseISO, eachHourOfInterval, eachDayOfInterval, startOfHour, startOfDay } from 'date-fns';
+import { format, parseISO, eachHourOfInterval, eachDayOfInterval, startOfHour, startOfDay } from 'date-fns'; // Ensure this line is uncommented
 import { Info } from "lucide-react";
 
 interface ApiLogEntry {
