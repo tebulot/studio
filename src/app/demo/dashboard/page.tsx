@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import TrappedCrawlersChart from "@/components/dashboard/TrappedCrawlersChart";
-import { ShieldCheck, Users, DollarSign, Info, Eye, Fingerprint, Globe, ListFilter, BarChart3, Server, Activity } from "lucide-react"; // Removed FileText
+import { ShieldCheck, Users, DollarSign, Info, Eye, Fingerprint, Globe, ListFilter, BarChart3, Server, Activity } from "lucide-react";
 import { db } from "@/lib/firebase/clientApp";
 import { collection, query, where, onSnapshot, getDocs, type DocumentData, type QuerySnapshot, Timestamp, orderBy } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -20,19 +20,18 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 const DEMO_USER_ID = process.env.NEXT_PUBLIC_DEMO_USER_ID;
-const DEMO_TARPIT_PATH_SEGMENT = process.env.NEXT_PUBLIC_DEMO_TARPIT_PATH_SEGMENT;
+// DEMO_TARPIT_PATH_SEGMENT is no longer used for summary fetching, DEMO_USER_ID is used for the tarpitId field in summaries.
 const DIRECT_TRAP_URL = "https://api.spitespiral.com/trap/b4b37b21-31b5-47f8-81a7-7a9f8a867911";
 
 interface AnalyticsSummaryDocumentForDemo {
   id?: string;
-  tarpitId: string;
+  tarpitId: string; // This should match DEMO_USER_ID for demo summaries
   startTime: Timestamp;
   totalHits: number;
   uniqueIpCount: number;
   topCountries?: Array<{ item: string; hits: number }>;
   methodDistribution?: Record<string, number>;
   statusDistribution?: Record<string, number>;
-  topPaths?: Array<{ item: string; hits: number }>; // Kept for data structure, but not displayed
   topIPs?: Array<{ item: string; hits: number }>;
   topUserAgents?: Array<{ item: string; hits: number }>;
 }
@@ -43,7 +42,6 @@ interface AggregatedAnalyticsDataForDemo {
   topCountries: Array<{ country: string; hits: number }>;
   topIPs: Array<{ ip: string; hits: number }>;
   topUserAgents: Array<{ userAgent: string; hits: number }>;
-  // topPaths: Array<{ path: string; hits: number }>; // Not needed in aggregated display
   methodDistribution: Record<string, number>;
   statusDistribution: Record<string, number>;
   summaryHitsOverTime?: Array<{ date: string; hits: number }>;
@@ -83,12 +81,10 @@ export default function DemoDashboardPage() {
   useEffect(() => {
     const logPrefix = "DemoDashboardPage - Config Check:";
     // console.log(`${logPrefix} Using DEMO_USER_ID:`, DEMO_USER_ID);
-    // console.log(`${logPrefix} Using DEMO_TARPIT_PATH_SEGMENT:`, DEMO_TARPIT_PATH_SEGMENT);
 
-    if (DEMO_USER_ID && DEMO_USER_ID !== "public-demo-user-id-placeholder" &&
-        DEMO_TARPIT_PATH_SEGMENT && DEMO_TARPIT_PATH_SEGMENT !== "your-demo-tarpit-path-segment-placeholder") {
+    if (DEMO_USER_ID && DEMO_USER_ID !== "public-demo-user-id-placeholder") {
       setIsDemoConfigProperlySet(true);
-      // console.log(`${logPrefix} Demo User ID and Tarpit Path Segment are configured.`);
+      // console.log(`${logPrefix} Demo User ID is configured.`);
     } else {
       setIsDemoConfigProperlySet(false);
       setIsLoadingDemoData(false);
@@ -96,10 +92,6 @@ export default function DemoDashboardPage() {
       if (!DEMO_USER_ID || DEMO_USER_ID === "public-demo-user-id-placeholder") {
         errorMsg += "NEXT_PUBLIC_DEMO_USER_ID is not set or is placeholder. ";
         // console.error(`${logPrefix} NEXT_PUBLIC_DEMO_USER_ID missing or placeholder.`);
-      }
-      if (!DEMO_TARPIT_PATH_SEGMENT || DEMO_TARPIT_PATH_SEGMENT === "your-demo-tarpit-path-segment-placeholder") {
-        errorMsg += "NEXT_PUBLIC_DEMO_TARPIT_PATH_SEGMENT is not set or is placeholder.";
-        // console.error(`${logPrefix} NEXT_PUBLIC_DEMO_TARPIT_PATH_SEGMENT missing or placeholder.`);
       }
       setDemoDataError(errorMsg.trim());
     }
@@ -111,9 +103,8 @@ export default function DemoDashboardPage() {
     const fetchAndAggregateDemoData = async () => {
       setIsLoadingDemoData(true);
       setDemoDataError(null);
-      const logPrefix = `DemoDashboardPage (DEMO_TARPIT_PATH_SEGMENT: ${DEMO_TARPIT_PATH_SEGMENT ? DEMO_TARPIT_PATH_SEGMENT : 'N/A'}...) - Demo Data Fetch:`;
+      const logPrefix = `DemoDashboardPage (DEMO_USER_ID: ${DEMO_USER_ID ? DEMO_USER_ID : 'N/A'}) - Demo Data Fetch:`;
 
-      // console.log(`${logPrefix} LocalStorage caching is TEMPORARILY DISABLED for debugging.`);
 
       try {
         let activeInstances = 0;
@@ -133,26 +124,26 @@ export default function DemoDashboardPage() {
         }
 
         const thirtyDaysAgoDate = startOfDay(subDays(new Date(), 29));
-        // console.log(`${logPrefix} Fetching summaries with tarpitId: ${DEMO_TARPIT_PATH_SEGMENT} starting from ${thirtyDaysAgoDate.toISOString()}`);
+        console.log(`${logPrefix} Fetching summaries with tarpitId (matching DEMO_USER_ID): ${DEMO_USER_ID} starting from ${thirtyDaysAgoDate.toISOString()}`);
 
         const summariesQuery = query(
           collection(db, "tarpit_analytics_summaries"),
-          where("tarpitId", "==", DEMO_TARPIT_PATH_SEGMENT),
+          where("tarpitId", "==", DEMO_USER_ID), // Querying by DEMO_USER_ID in the tarpitId field
           where("startTime", ">=", Timestamp.fromDate(thirtyDaysAgoDate)),
           orderBy("startTime", "asc")
         );
         const querySnapshot = await getDocs(summariesQuery);
-        // console.log(`${logPrefix} Firestore query for summaries returned ${querySnapshot.size} documents. Query details: tarpitId = ${DEMO_TARPIT_PATH_SEGMENT}, startTime >= ${thirtyDaysAgoDate.toISOString()}`);
+        console.log(`${logPrefix} Firestore query for summaries returned ${querySnapshot.size} documents. Query details: tarpitId = ${DEMO_USER_ID}, startTime >= ${thirtyDaysAgoDate.toISOString()}`);
 
         const allFetchedSummaries: AnalyticsSummaryDocumentForDemo[] = [];
-        querySnapshot.forEach((doc) => {
+        querySnapshot.forEach((doc, index) => {
           const data = doc.data();
-          // console.log(`${logPrefix} Summary doc ${doc.id} data:`, JSON.parse(JSON.stringify(data)));
+           if(index < 5) { console.log(`${logPrefix} Summary doc ${doc.id} data:`, JSON.parse(JSON.stringify(data))); }
           allFetchedSummaries.push({ id: doc.id, ...data } as AnalyticsSummaryDocumentForDemo);
         });
 
         if (allFetchedSummaries.length === 0) {
-          // console.log(`${logPrefix} No summaries found for demo tarpit ID: ${DEMO_TARPIT_PATH_SEGMENT}.`);
+          console.log(`${logPrefix} No summaries found for demo tarpit (tarpitId matching DEMO_USER_ID: ${DEMO_USER_ID}).`);
           setAggregatedDemoData({
             totalHits: 0, approxUniqueIpCount: 0, topCountries: [], topIPs: [], topUserAgents: [],
             methodDistribution: {}, statusDistribution: {}, summaryHitsOverTime: [], activeInstances, illustrativeCost: "0.0000"
@@ -166,8 +157,7 @@ export default function DemoDashboardPage() {
 
         const topCountries = aggregateTopList(allFetchedSummaries, "topCountries", "country");
         const topIPs = aggregateTopList(allFetchedSummaries, "topIPs", "ip");
-        const topUserAgents = aggregateTopList(allFetchedSummaries, "topUserAgents", "userAgent", 10); // Fetch more for table
-        // const topPaths = aggregateTopList(allFetchedSummaries, "topPaths", "path", 10); // Not displayed
+        const topUserAgents = aggregateTopList(allFetchedSummaries, "topUserAgents", "userAgent", 10);
 
         const methodDistribution = aggregateDistribution(allFetchedSummaries, "methodDistribution");
         const statusDistribution = aggregateDistribution(allFetchedSummaries, "statusDistribution");
@@ -197,7 +187,7 @@ export default function DemoDashboardPage() {
         };
 
         setAggregatedDemoData(finalAggregatedData);
-        // console.log(`${logPrefix} Processed fresh demo data. Not caching to localStorage during debug.`);
+        console.log(`${logPrefix} Processed demo data using DEMO_USER_ID for tarpitId field. Aggregated data:`, finalAggregatedData);
 
       } catch (error) {
         console.error(`${logPrefix} Error fetching or processing demo data:`, error);
@@ -210,7 +200,7 @@ export default function DemoDashboardPage() {
     };
 
     fetchAndAggregateDemoData();
-  }, [isDemoConfigProperlySet, toast, DEMO_TARPIT_PATH_SEGMENT, DEMO_USER_ID]);
+  }, [isDemoConfigProperlySet, toast, DEMO_USER_ID]);
 
 
   if (!isDemoConfigProperlySet && !isLoadingDemoData) {
@@ -221,9 +211,9 @@ export default function DemoDashboardPage() {
               <ShieldCheck className="h-16 w-16 text-destructive" />
               <h2 className="text-2xl font-semibold text-destructive">Demo Not Configured</h2>
               <p className="text-muted-foreground max-w-md">
-                  The environment variables <code className="bg-muted px-1.5 py-0.5 rounded-sm font-semibold text-accent">NEXT_PUBLIC_DEMO_USER_ID</code> and/or <code className="bg-muted px-1.5 py-0.5 rounded-sm font-semibold text-accent">NEXT_PUBLIC_DEMO_TARPIT_PATH_SEGMENT</code> are not set or are still using placeholder values.
-                  Please configure these in your <code className="bg-muted px-1.5 py-0.5 rounded-sm font-semibold text-accent">.env</code> file (e.g., <code className="bg-muted px-1 py-0.5 rounded text-xs">NEXT_PUBLIC_DEMO_TARPIT_PATH_SEGMENT="b4b37b21-31b5-47f8-81a7-7a9f8a867911"</code>) and ensure corresponding data and Firestore rules exist.
-                  <br/><br/>Current error: {demoDataError || "Configuration variables missing."}
+                  The environment variable <code className="bg-muted px-1.5 py-0.5 rounded-sm font-semibold text-accent">NEXT_PUBLIC_DEMO_USER_ID</code> is not set or is still using placeholder values.
+                  Please configure this in your <code className="bg-muted px-1.5 py-0.5 rounded-sm font-semibold text-accent">.env</code> file and ensure corresponding data (where `tarpitId` in summaries matches this User ID) and Firestore rules exist.
+                  <br/><br/>Current error: {demoDataError || "NEXT_PUBLIC_DEMO_USER_ID missing."}
               </p>
                <Button asChild>
                   <NextLink href="/">Return to Homepage</NextLink>
@@ -297,7 +287,7 @@ export default function DemoDashboardPage() {
           <Info className="h-5 w-5 text-accent" />
           <AlertTitle className="text-accent">Data Refresh Notice</AlertTitle>
           <AlertDescription className="text-muted-foreground">
-            Aggregated statistics are based on summaries updated by the backend. This dashboard fetches these summarized stats. Caching is currently disabled for debugging.
+            Aggregated statistics are based on summaries updated by the backend. This dashboard fetches these summarized stats.
           </AlertDescription>
         </Alert>
 
@@ -429,7 +419,7 @@ export default function DemoDashboardPage() {
 
 function aggregateTopList(
   summaries: AnalyticsSummaryDocumentForDemo[],
-  sourceArrayKey: "topCountries" | "topIPs" | "topUserAgents" | "topPaths",
+  sourceArrayKey: "topCountries" | "topIPs" | "topUserAgents", // Removed "topPaths"
   outputNameKey: string,
   limit: number = 5
 ): Array<{ [key: string]: string | number } & { hits: number }> {
@@ -462,3 +452,6 @@ function aggregateDistribution(
   return totalDistribution;
 }
 
+    
+
+    
