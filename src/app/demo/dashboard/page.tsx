@@ -20,12 +20,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 const DEMO_USER_ID = process.env.NEXT_PUBLIC_DEMO_USER_ID;
-// DEMO_TARPIT_PATH_SEGMENT is no longer used for summary fetching, DEMO_USER_ID is used for the tarpitId field in summaries.
-const DIRECT_TRAP_URL = "https://api.spitespiral.com/trap/b4b37b21-31b5-47f8-81a7-7a9f8a867911";
+const DIRECT_TRAP_URL = "https://api.spitespiral.com/trap/0499e104-1990-4036-bb32-53ea1e7573e7";
 
 interface AnalyticsSummaryDocumentForDemo {
   id?: string;
-  tarpitId: string; // This should match DEMO_USER_ID for demo summaries
+  tarpitId: string; 
   startTime: Timestamp;
   totalHits: number;
   uniqueIpCount: number;
@@ -80,18 +79,14 @@ export default function DemoDashboardPage() {
 
   useEffect(() => {
     const logPrefix = "DemoDashboardPage - Config Check:";
-    // console.log(`${logPrefix} Using DEMO_USER_ID:`, DEMO_USER_ID);
-
     if (DEMO_USER_ID && DEMO_USER_ID !== "public-demo-user-id-placeholder") {
       setIsDemoConfigProperlySet(true);
-      // console.log(`${logPrefix} Demo User ID is configured.`);
     } else {
       setIsDemoConfigProperlySet(false);
       setIsLoadingDemoData(false);
       let errorMsg = "";
       if (!DEMO_USER_ID || DEMO_USER_ID === "public-demo-user-id-placeholder") {
         errorMsg += "NEXT_PUBLIC_DEMO_USER_ID is not set or is placeholder. ";
-        // console.error(`${logPrefix} NEXT_PUBLIC_DEMO_USER_ID missing or placeholder.`);
       }
       setDemoDataError(errorMsg.trim());
     }
@@ -105,45 +100,34 @@ export default function DemoDashboardPage() {
       setDemoDataError(null);
       const logPrefix = `DemoDashboardPage (DEMO_USER_ID: ${DEMO_USER_ID ? DEMO_USER_ID : 'N/A'}) - Demo Data Fetch:`;
 
-
       try {
         let activeInstances = 0;
         if (DEMO_USER_ID) {
           try {
-            // console.log(`${logPrefix} Fetching active instances for demo user ID: ${DEMO_USER_ID}`);
             const instancesQuery = query(collection(db, "tarpit_configs"), where("userId", "==", DEMO_USER_ID));
             const instancesSnapshot = await getDocs(instancesQuery);
             activeInstances = instancesSnapshot.size;
-            // console.log(`${logPrefix} Fetched ${activeInstances} active instances for demo user.`);
           } catch (instanceError) {
               console.error(`${logPrefix} Error fetching demo active instances count:`, instanceError);
               toast({ title: "Error (Demo Instances)", description: `Could not fetch demo active tarpit instances. Error: ${instanceError instanceof Error ? instanceError.message : 'Unknown error'}`, variant: "destructive" });
           }
-        } else {
-          // console.warn(`${logPrefix} DEMO_USER_ID not set, cannot fetch active instances count.`);
         }
 
         const thirtyDaysAgoDate = startOfDay(subDays(new Date(), 29));
-        console.log(`${logPrefix} Fetching summaries with tarpitId (matching DEMO_USER_ID): ${DEMO_USER_ID} starting from ${thirtyDaysAgoDate.toISOString()}`);
-
         const summariesQuery = query(
           collection(db, "tarpit_analytics_summaries"),
-          where("tarpitId", "==", DEMO_USER_ID), // Querying by DEMO_USER_ID in the tarpitId field
+          where("tarpitId", "==", DEMO_USER_ID), 
           where("startTime", ">=", Timestamp.fromDate(thirtyDaysAgoDate)),
           orderBy("startTime", "asc")
         );
         const querySnapshot = await getDocs(summariesQuery);
-        console.log(`${logPrefix} Firestore query for summaries returned ${querySnapshot.size} documents. Query details: tarpitId = ${DEMO_USER_ID}, startTime >= ${thirtyDaysAgoDate.toISOString()}`);
 
         const allFetchedSummaries: AnalyticsSummaryDocumentForDemo[] = [];
-        querySnapshot.forEach((doc, index) => {
-          const data = doc.data();
-           if(index < 5) { console.log(`${logPrefix} Summary doc ${doc.id} data:`, JSON.parse(JSON.stringify(data))); }
-          allFetchedSummaries.push({ id: doc.id, ...data } as AnalyticsSummaryDocumentForDemo);
+        querySnapshot.forEach((doc) => {
+          allFetchedSummaries.push({ id: doc.id, ...doc.data() } as AnalyticsSummaryDocumentForDemo);
         });
 
         if (allFetchedSummaries.length === 0) {
-          console.log(`${logPrefix} No summaries found for demo tarpit (tarpitId matching DEMO_USER_ID: ${DEMO_USER_ID}).`);
           setAggregatedDemoData({
             totalHits: 0, approxUniqueIpCount: 0, topCountries: [], topIPs: [], topUserAgents: [],
             methodDistribution: {}, statusDistribution: {}, summaryHitsOverTime: [], activeInstances, illustrativeCost: "0.0000"
@@ -187,7 +171,6 @@ export default function DemoDashboardPage() {
         };
 
         setAggregatedDemoData(finalAggregatedData);
-        console.log(`${logPrefix} Processed demo data using DEMO_USER_ID for tarpitId field. Aggregated data:`, finalAggregatedData);
 
       } catch (error) {
         console.error(`${logPrefix} Error fetching or processing demo data:`, error);
@@ -279,7 +262,7 @@ export default function DemoDashboardPage() {
           <AlertTitle className="text-primary">How This Demo Works</AlertTitle>
           <AlertDescription className="text-muted-foreground space-y-1">
            <p>
-              The statistics on this page are sourced from a live SpiteSpiral Tarpit instance. This demo showcases data aggregated from activity summaries generated for this specific demo tarpit over the last 30 days. The 'Active Instances' count reflects configurations specific to the demo account.
+              The statistics on this page are sourced from a live SpiteSpiral Tarpit instance. This demo showcases data aggregated from activity summaries generated for the public demo tarpit over the last 30 days. The 'Active Instances' count reflects configurations associated with the public demo account.
             </p>
           </AlertDescription>
         </Alert>
@@ -419,7 +402,7 @@ export default function DemoDashboardPage() {
 
 function aggregateTopList(
   summaries: AnalyticsSummaryDocumentForDemo[],
-  sourceArrayKey: "topCountries" | "topIPs" | "topUserAgents", // Removed "topPaths"
+  sourceArrayKey: "topCountries" | "topIPs" | "topUserAgents", 
   outputNameKey: string,
   limit: number = 5
 ): Array<{ [key: string]: string | number } & { hits: number }> {
@@ -451,7 +434,3 @@ function aggregateDistribution(
   });
   return totalDistribution;
 }
-
-    
-
-    

@@ -23,12 +23,12 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/sneedsfeedandseed', // Next.js matches without trailing slash too
-        destination: 'https://api.spitespiral.com/trap/b4b37b21-31b5-47f8-81a7-7a9f8a867911',
+        destination: 'https://api.spitespiral.com/trap/0499e104-1990-4036-bb32-53ea1e7573e7',
         permanent: true, // 308 redirect
       },
       {
         source: '/sneedsfeedandseed/', // Explicitly match with trailing slash
-        destination: 'https://api.spitespiral.com/trap/b4b37b21-31b5-47f8-81a7-7a9f8a867911',
+        destination: 'https://api.spitespiral.com/trap/0499e104-1990-4036-bb32-53ea1e7573e7',
         permanent: true, // 308 redirect
       },
     ];

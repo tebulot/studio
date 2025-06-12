@@ -100,7 +100,7 @@ const faqData = [
 
 export default function HomePage() {
   const [isMounted, setIsMounted] = useState(false);
-  const directTarpitUrl = "https://api.spitespiral.com/trap/b4b37b21-31b5-47f8-81a7-7a9f8a867911";
+  const directTarpitUrl = "https://api.spitespiral.com/trap/0499e104-1990-4036-bb32-53ea1e7573e7";
 
   useEffect(() => {
     setIsMounted(true);
