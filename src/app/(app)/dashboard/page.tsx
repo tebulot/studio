@@ -5,10 +5,10 @@ import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import TrappedCrawlersChart from "@/components/dashboard/TrappedCrawlersChart";
 import ApiLogTable from "@/components/dashboard/ApiLogTable";
-import { ShieldCheck, Users, DollarSign, Info, Fingerprint, ListFilter, Activity, Globe, Server, BarChart3, AlertCircle, Eye, Lock } from "lucide-react"; // Removed FileText
+import { ShieldCheck, Users, DollarSign, Info, Fingerprint, ListFilter, Activity, Globe, Server, BarChart3, AlertCircle, Eye, Lock } from "lucide-react";
 import { useAuth, type UserProfile } from "@/contexts/AuthContext";
 import { db } from "@/lib/firebase/clientApp";
-import { collection, query, where, onSnapshot, type DocumentData, type QuerySnapshot, Timestamp, getDocs, orderBy } from "firebase/firestore"; // Added orderBy
+import { collection, query, where, onSnapshot, type DocumentData, type QuerySnapshot, Timestamp, getDocs, orderBy } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -41,15 +41,14 @@ interface ApiResponse {
 
 interface AnalyticsSummaryDocument {
   id?: string;
-  tarpitId: string; // This can now be considered secondary if userId is primary for fetching
-  userId?: string;    // Primary key for fetching user's summaries
+  tarpitId: string;
+  userId?: string;
   startTime: Timestamp;
   totalHits: number;
   uniqueIpCount: number;
   topCountries?: Array<{ item: string; hits: number }>;
   methodDistribution?: Record<string, number>;
   statusDistribution?: Record<string, number>;
-  // topPaths?: Array<{ item: string; hits: number }>; // Removed
   topIPs?: Array<{ item: string; hits: number }>;
   topUserAgents?: Array<{ item: string; hits: number }>;
 }
@@ -60,7 +59,6 @@ interface AggregatedAnalyticsData {
   topCountries: Array<{ country: string; hits: number }>;
   topIPs: Array<{ ip: string; hits: number }>;
   topUserAgents: Array<{ userAgent: string; hits: number }>;
-  // topPaths: Array<{ path: string; hits: number }>; // Removed
   methodDistribution: Record<string, number>;
   statusDistribution: Record<string, number>;
   summaryHitsOverTime?: Array<{ date: string; hits: number }>;
@@ -102,7 +100,7 @@ const PLACEHOLDER_SUMMARY_HITS_OVER_TIME_DEMO = (rangeHours: number): Array<{dat
 
 function aggregateTopList(
   summaries: AnalyticsSummaryDocument[],
-  sourceArrayKey: "topCountries" | "topIPs" | "topUserAgents", // Removed "topPaths"
+  sourceArrayKey: "topCountries" | "topIPs" | "topUserAgents",
   outputNameKey: string,
   limit: number = 5
 ): Array<{ [key: string]: string | number } & { hits: number }> {
@@ -169,7 +167,7 @@ const HorizontalBarChart = ({ data, nameKey, valueKey, layout = 'vertical' }: { 
 
 
 export default function DashboardPage() {
-  const { user, userProfile, loading: authLoading } = useAuth();
+  const { user, userProfile, loading: authContextLoading } = useAuth();
   const { toast } = useToast();
 
   const [activeInstancesCount, setActiveInstancesCount] = useState<number | null>(null);
@@ -190,9 +188,9 @@ export default function DashboardPage() {
   }, [userProfile]);
 
   const isWindowShoppingTier = useMemo(() => {
-    if (!userProfile) return true; // If no profile, default to window shopping
+    if (!userProfile) return true; 
     if (userProfile.activeTierId === 'window_shopping') return true;
-    return !isEffectivelySubscribedForFeatures; // If not effectively subscribed, it's window shopping
+    return !isEffectivelySubscribedForFeatures;
   }, [userProfile, isEffectivelySubscribedForFeatures]);
 
   const isSetAndForgetTier = useMemo(() => {
@@ -205,20 +203,18 @@ export default function DashboardPage() {
     return (userProfile.activeTierId === 'analytics' || userProfile.activeTierId === 'price_1RTim1KPVCKvfVVwDkc5G0at');
   }, [userProfile, isEffectivelySubscribedForFeatures, isWindowShoppingTier]);
 
+  const authLoading = authContextLoading;
 
   useEffect(() => {
     if (authLoading) { setIsLoadingInstancesCount(true); return; }
     if (user) {
       setIsLoadingInstancesCount(true);
-      const logPrefix = `DashboardPage (User: ${user.uid.substring(0,5)}...) - Tarpit Configs:`;
-      // console.log(`${logPrefix} Subscribing to tarpit_configs for user ID: ${user.uid}`);
       const instancesQuery = query(collection(db, "tarpit_configs"), where("userId", "==", user.uid));
       const unsubscribeInstances = onSnapshot(instancesQuery, (querySnapshot: QuerySnapshot<DocumentData>) => {
         setActiveInstancesCount(querySnapshot.size);
         setIsLoadingInstancesCount(false);
-        // console.log(`${logPrefix} Fetched ${querySnapshot.size} active instances.`);
       }, (error) => {
-        console.error(`${logPrefix} Error fetching active instances count:`, error);
+        console.error(`Error fetching active instances count:`, error);
         toast({ title: "Error", description: "Could not fetch active tarpit instances.", variant: "destructive" });
         setActiveInstancesCount(0);
         setIsLoadingInstancesCount(false);
@@ -240,8 +236,6 @@ export default function DashboardPage() {
     }
     const fetchApiLogs = async () => {
       setApiLoading(true); setApiError(null);
-      const logPrefix = `DashboardPage (User: ${user.uid.substring(0,5)}...) - API Logs:`;
-      // console.log(`${logPrefix} Fetching API logs. Range: ${selectedRangeHours}h, Limit: ${LOG_FETCH_LIMIT}`);
       try {
         const token = await user.getIdToken();
         const apiUrl = `https://api.spitespiral.com/v1/logs?range=${selectedRangeHours}&limit=${LOG_FETCH_LIMIT}&direction=backward`;
@@ -256,11 +250,9 @@ export default function DashboardPage() {
         const result: ApiResponse = await response.json();
         if (result.success && result.data) {
             setApiLogsData(result.data);
-            // console.log(`${logPrefix} Successfully fetched ${result.data.length} API log entries.`);
         }
         else { throw new Error(result.message || "API returned success=false or no data."); }
       } catch (err) {
-        // console.error(`${logPrefix} Full error object during fetchApiLogs:`, err);
         let userFriendlyMessage = "An unknown error occurred while fetching logs.";
         if (err instanceof Error) {
           if (err.message.toLowerCase().includes("failed to fetch")) {
@@ -287,35 +279,36 @@ export default function DashboardPage() {
     const fetchAggregatedAnalytics = async () => {
       setIsAggregatedLoading(true);
       setAggregatedError(null);
-      setAggregatedAnalytics(null);
-      const logPrefix = `DashboardPage (User: ${user.uid.substring(0,5)}...) - Aggregated Analytics:`;
-      console.log(`${logPrefix} Starting fetch. Range: ${selectedRangeHours}h. Querying by userId: ${user.uid}`);
+      setAggregatedAnalytics(null); // Clear previous data
+      console.log(`DashboardPage (User: ${user.uid.substring(0,5)}...) - Aggregated Analytics: Starting fetch. Range: ${selectedRangeHours}h. Querying by userId: ${user.uid}`);
 
       try {
         const rangeInMilliseconds = selectedRangeHours * 60 * 60 * 1000;
         const startDate = new Date(Date.now() - rangeInMilliseconds);
         const startDateTimestamp = Timestamp.fromDate(startDate);
-        console.log(`${logPrefix} Calculated start date for summaries: ${startDate.toISOString()}`);
+        
+        console.log(`DashboardPage (User: ${user.uid.substring(0,5)}...) - Aggregated Analytics: Executing Firestore query for summaries with userId: ${user.uid} and startTime >= ${startDate.toISOString()}`);
 
-        // Primary query using userId for summaries
         const summariesQuery = query(
             collection(db, "tarpit_analytics_summaries"),
             where("userId", "==", user.uid),
             where("startTime", ">=", startDateTimestamp),
             orderBy("startTime", "asc")
         );
-        console.log(`${logPrefix} Executing Firestore query for summaries with userId: ${user.uid} and startTime >= ${startDate.toISOString()}. Check browser console for Firestore permission errors or missing index links.`);
 
         const summariesSnapshot = await getDocs(summariesQuery);
         const allSummaries: AnalyticsSummaryDocument[] = [];
-        summariesSnapshot.forEach(doc => {
+        
+        console.log(`DashboardPage (User: ${user.uid.substring(0,5)}...) - Aggregated Analytics: Fetched ${summariesSnapshot.size} summary documents for user ${user.uid}.`);
+
+        summariesSnapshot.forEach((doc, index) => {
             const data = doc.data();
-            // More detailed log for each fetched summary
-            console.log(`${logPrefix} Summary doc ${doc.id} (tarpitId: ${data.tarpitId || 'N/A'}, userId: ${data.userId || 'N/A'}, startTime: ${data.startTime?.toDate().toISOString() || 'N/A'}) - Raw Data:`, JSON.parse(JSON.stringify(data)));
+            if(index < 5) { // Log first 5 raw documents
+                 console.log(`DashboardPage (User: ${user.uid.substring(0,5)}...) - Aggregated Analytics: Summary doc ${doc.id} (userId: ${data.userId || 'N/A'}, startTime: ${data.startTime?.toDate().toISOString() || 'N/A'}) - Raw Data:`, JSON.parse(JSON.stringify(data)));
+            }
             allSummaries.push({ id: doc.id, ...data } as AnalyticsSummaryDocument);
         });
-        console.log(`${logPrefix} Fetched ${allSummaries.length} summary documents for user ${user.uid}.`);
-
+        
         if (allSummaries.length === 0) {
            setAggregatedAnalytics({
             totalHits: 0, approxUniqueIpCount: 0, topCountries: [], topIPs: [],
@@ -323,8 +316,7 @@ export default function DashboardPage() {
             summaryHitsOverTime: [],
           });
           setIsAggregatedLoading(false);
-          console.warn(`${logPrefix} No summaries found for user ${user.uid} and time range. Ensure 'userId' field exists on summaries and Firestore rules/indexes are correct.`);
-          toast({ title: "No Summary Data", description: "No aggregated analytics data found for your tarpits in the selected range. Ensure your backend is adding 'userId' to summary documents, and check Firestore indexes if this persists.", variant: "default", duration: 10000});
+          toast({ title: "No Summary Data", description: "No aggregated analytics data found for your tarpits in the selected time range. This could be due to no activity, or if your test data's timestamps fall outside the selected period.", variant: "default", duration: 10000});
           return;
         }
 
@@ -365,10 +357,10 @@ export default function DashboardPage() {
           summaryHitsOverTime: summaryHitsOverTimeData,
         };
         setAggregatedAnalytics(aggregatedData);
-        console.log(`${logPrefix} Successfully processed and aggregated ${allSummaries.length} summaries. Final aggregated data:`, aggregatedData);
+        console.log(`DashboardPage (User: ${user.uid.substring(0,5)}...) - Aggregated Analytics: Successfully processed and aggregated ${allSummaries.length} summaries. Final aggregated data:`, aggregatedData);
 
       } catch (err) {
-        console.error(`${logPrefix} Error fetching/processing aggregated analytics:`, err);
+        console.error(`DashboardPage (User: ${user.uid.substring(0,5)}...) - Aggregated Analytics: Error fetching/processing aggregated analytics:`, err);
         const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
         setAggregatedError(errorMessage);
         toast({ title: "Summary Error", description: `Could not load aggregated analytics. ${errorMessage}`, variant: "destructive" });
@@ -379,6 +371,10 @@ export default function DashboardPage() {
 
     if (isSetAndForgetTier || isAnalyticsTier) {
         fetchAggregatedAnalytics();
+    } else {
+      // If not on a tier that should fetch, ensure loading is false and data is null
+      setIsAggregatedLoading(false);
+      setAggregatedAnalytics(null);
     }
   }, [user, authLoading, selectedRangeHours, toast, isWindowShoppingTier, isSetAndForgetTier, isAnalyticsTier]);
 
@@ -522,7 +518,7 @@ export default function DashboardPage() {
     'window';
 
   let userAgentsToDisplay: Array<{ userAgent: string, hits: number }> = [];
-  let userAgentsDisplayLimit = 5; // Default for analytics tier
+  let userAgentsDisplayLimit = 5; 
 
   if (currentDashboardTier === 'window') {
     userAgentsToDisplay = PLACEHOLDER_TOP_UAS_DEMO;
@@ -675,7 +671,15 @@ export default function DashboardPage() {
 
       <Separator className="my-8 border-primary/20" />
       <h2 className="text-2xl font-semibold text-primary mt-8 mb-4">Overall Aggregated Analytics (Summarized for Selected Range)</h2>
-      {(!isAggregatedLoading || isWindowShoppingTier) && (aggregatedAnalytics || isWindowShoppingTier) ? (
+      {user && !authLoading && !isAggregatedLoading && !isWindowShoppingTier && !isSetAndForgetTier && !isAnalyticsTier ? (
+        <Alert variant="default" className="border-accent/20 bg-card/50 mb-6">
+          <Info className="h-5 w-5 text-accent" />
+          <AlertTitle className="text-accent">Feature Not Available for Current Tier</AlertTitle>
+          <AlertDescription className="text-muted-foreground">
+            Aggregated analytics summaries are available on the Set & Forget or Analytics tiers. Please check your Account page to upgrade your subscription.
+          </AlertDescription>
+        </Alert>
+      ) : (!isAggregatedLoading || isWindowShoppingTier) && (aggregatedAnalytics || isWindowShoppingTier) ? (
         <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
           <Card className="border-primary/30 shadow-lg">
             <CardHeader className="pb-2"><div className="flex items-center gap-2"><Activity className="h-5 w-5 text-primary" /><CardTitle className="text-md font-medium text-primary">Total Hits (Summarized)</CardTitle></div></CardHeader>
