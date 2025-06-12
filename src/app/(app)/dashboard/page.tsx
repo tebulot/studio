@@ -41,15 +41,15 @@ interface ApiResponse {
 
 interface AnalyticsSummaryDocument {
   id?: string;
-  tarpitId: string;
-  userId?: string;
+  tarpitId: string; // This can now be considered secondary if userId is primary for fetching
+  userId?: string;    // Primary key for fetching user's summaries
   startTime: Timestamp;
   totalHits: number;
   uniqueIpCount: number;
   topCountries?: Array<{ item: string; hits: number }>;
   methodDistribution?: Record<string, number>;
   statusDistribution?: Record<string, number>;
-  topPaths?: Array<{ item: string; hits: number }>; // Kept for data structure, but not displayed
+  // topPaths?: Array<{ item: string; hits: number }>; // Removed
   topIPs?: Array<{ item: string; hits: number }>;
   topUserAgents?: Array<{ item: string; hits: number }>;
 }
@@ -60,7 +60,7 @@ interface AggregatedAnalyticsData {
   topCountries: Array<{ country: string; hits: number }>;
   topIPs: Array<{ ip: string; hits: number }>;
   topUserAgents: Array<{ userAgent: string; hits: number }>;
-  // topPaths: Array<{ path: string; hits: number }>; // Not needed in aggregated display
+  // topPaths: Array<{ path: string; hits: number }>; // Removed
   methodDistribution: Record<string, number>;
   statusDistribution: Record<string, number>;
   summaryHitsOverTime?: Array<{ date: string; hits: number }>;
@@ -85,7 +85,6 @@ const PLACEHOLDER_TOP_UAS_DEMO = [
   { userAgent: "DemoBot/1.0 (Mozilla/5.0 compatible; Demo SuperCrawler) Example/Test", hits: 200 }, { userAgent: "SampleScraper/2.x (Linux; Android 10; SM-G960U) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Mobile Safari/537.36 (Demo)", hits: 180 }, { userAgent: "TestCrawler/0.1 CFNetwork/1209 Darwin/20.2.0 (Demo)", hits: 150 },
   { userAgent: "PlaceholderUA (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/100.0 (Demo)", hits: 100 }, { userAgent: "Botzilla-Demo (compatible; SpecialBot/3.0; +http://example.com/bot)", hits: 80 },
 ];
-// const PLACEHOLDER_TOP_PATHS_DEMO = [...] removed as not used
 const PLACEHOLDER_METHOD_DIST_DEMO = { "GET (Demo)": 600, "POST (Demo)": 300, "PUT (Demo)": 50, "DELETE (Demo)": 20, "OPTIONS (Demo)": 30 };
 const PLACEHOLDER_STATUS_DIST_DEMO = { "200 (Demo)": 700, "404 (Demo)": 150, "403 (Demo)": 100, "500 (Demo)": 30, "301 (Demo)": 20 };
 const PLACEHOLDER_SUMMARY_HITS_OVER_TIME_DEMO = (rangeHours: number): Array<{date: string, hits: number}> => {
@@ -103,7 +102,7 @@ const PLACEHOLDER_SUMMARY_HITS_OVER_TIME_DEMO = (rangeHours: number): Array<{dat
 
 function aggregateTopList(
   summaries: AnalyticsSummaryDocument[],
-  sourceArrayKey: "topCountries" | "topIPs" | "topUserAgents" | "topPaths",
+  sourceArrayKey: "topCountries" | "topIPs" | "topUserAgents", // Removed "topPaths"
   outputNameKey: string,
   limit: number = 5
 ): Array<{ [key: string]: string | number } & { hits: number }> {
@@ -191,9 +190,9 @@ export default function DashboardPage() {
   }, [userProfile]);
 
   const isWindowShoppingTier = useMemo(() => {
-    if (!userProfile) return true;
+    if (!userProfile) return true; // If no profile, default to window shopping
     if (userProfile.activeTierId === 'window_shopping') return true;
-    return !isEffectivelySubscribedForFeatures;
+    return !isEffectivelySubscribedForFeatures; // If not effectively subscribed, it's window shopping
   }, [userProfile, isEffectivelySubscribedForFeatures]);
 
   const isSetAndForgetTier = useMemo(() => {
@@ -280,8 +279,8 @@ export default function DashboardPage() {
     if (authLoading || !user || isWindowShoppingTier) {
       setIsAggregatedLoading(true);
       setAggregatedAnalytics(null);
-      if(!user && !authLoading) setIsAggregatedLoading(false);
-      if(isWindowShoppingTier && user && !authLoading) { setIsAggregatedLoading(false); }
+      if (!user && !authLoading) setIsAggregatedLoading(false);
+      if (isWindowShoppingTier && user && !authLoading) setIsAggregatedLoading(false);
       return;
     }
 
@@ -290,30 +289,32 @@ export default function DashboardPage() {
       setAggregatedError(null);
       setAggregatedAnalytics(null);
       const logPrefix = `DashboardPage (User: ${user.uid.substring(0,5)}...) - Aggregated Analytics:`;
-      // console.log(`${logPrefix} Starting fetch for aggregated analytics. Range: ${selectedRangeHours}h. Querying by userId: ${user.uid}`);
+      console.log(`${logPrefix} Starting fetch. Range: ${selectedRangeHours}h. Querying by userId: ${user.uid}`);
 
       try {
         const rangeInMilliseconds = selectedRangeHours * 60 * 60 * 1000;
         const startDate = new Date(Date.now() - rangeInMilliseconds);
         const startDateTimestamp = Timestamp.fromDate(startDate);
-        // console.log(`${logPrefix} Calculated start date for summaries: ${startDate.toISOString()}`);
+        console.log(`${logPrefix} Calculated start date for summaries: ${startDate.toISOString()}`);
 
+        // Primary query using userId for summaries
         const summariesQuery = query(
             collection(db, "tarpit_analytics_summaries"),
-            where("userId", "==", user.uid), 
+            where("userId", "==", user.uid),
             where("startTime", ">=", startDateTimestamp),
             orderBy("startTime", "asc")
         );
-        // console.log(`${logPrefix} Executing Firestore query for summaries with userId: ${user.uid} and startTime >= ${startDate.toISOString()}`);
+        console.log(`${logPrefix} Executing Firestore query for summaries with userId: ${user.uid} and startTime >= ${startDate.toISOString()}. Check browser console for Firestore permission errors or missing index links.`);
 
         const summariesSnapshot = await getDocs(summariesQuery);
         const allSummaries: AnalyticsSummaryDocument[] = [];
         summariesSnapshot.forEach(doc => {
             const data = doc.data();
-            // console.log(`${logPrefix} Summary doc ${doc.id} (tarpitId: ${data.tarpitId || 'N/A'}, userId: ${data.userId || 'N/A'}) data:`, JSON.parse(JSON.stringify(data)));
+            // More detailed log for each fetched summary
+            console.log(`${logPrefix} Summary doc ${doc.id} (tarpitId: ${data.tarpitId || 'N/A'}, userId: ${data.userId || 'N/A'}, startTime: ${data.startTime?.toDate().toISOString() || 'N/A'}) - Raw Data:`, JSON.parse(JSON.stringify(data)));
             allSummaries.push({ id: doc.id, ...data } as AnalyticsSummaryDocument);
         });
-        // console.log(`${logPrefix} Fetched ${allSummaries.length} summaries for user ${user.uid}.`);
+        console.log(`${logPrefix} Fetched ${allSummaries.length} summary documents for user ${user.uid}.`);
 
         if (allSummaries.length === 0) {
            setAggregatedAnalytics({
@@ -322,8 +323,8 @@ export default function DashboardPage() {
             summaryHitsOverTime: [],
           });
           setIsAggregatedLoading(false);
-          // console.log(`${logPrefix} No summaries found for user ${user.uid} and time range.`);
-          toast({ title: "No Summary Data", description: "No aggregated analytics data found for your tarpits in the selected range. This might occur if the backend hasn't started adding 'userId' to summary documents yet, or if there's no activity.", variant: "default", duration: 8000});
+          console.warn(`${logPrefix} No summaries found for user ${user.uid} and time range. Ensure 'userId' field exists on summaries and Firestore rules/indexes are correct.`);
+          toast({ title: "No Summary Data", description: "No aggregated analytics data found for your tarpits in the selected range. Ensure your backend is adding 'userId' to summary documents, and check Firestore indexes if this persists.", variant: "default", duration: 10000});
           return;
         }
 
@@ -359,13 +360,12 @@ export default function DashboardPage() {
           topCountries: aggregateTopList(allSummaries, "topCountries", "country"),
           topIPs: aggregateTopList(allSummaries, "topIPs", "ip"),
           topUserAgents: aggregateTopList(allSummaries, "topUserAgents", "userAgent", 10),
-          // topPaths: aggregateTopList(allSummaries, "topPaths", "path", 10), // Not displayed
           methodDistribution: aggregateDistribution(allSummaries, "methodDistribution"),
           statusDistribution: aggregateDistribution(allSummaries, "statusDistribution"),
           summaryHitsOverTime: summaryHitsOverTimeData,
         };
         setAggregatedAnalytics(aggregatedData);
-        // console.log(`${logPrefix} Successfully processed and aggregated ${allSummaries.length} summaries.`);
+        console.log(`${logPrefix} Successfully processed and aggregated ${allSummaries.length} summaries. Final aggregated data:`, aggregatedData);
 
       } catch (err) {
         console.error(`${logPrefix} Error fetching/processing aggregated analytics:`, err);
@@ -473,7 +473,6 @@ export default function DashboardPage() {
         cardIsLoading = false; cardError = null;
         if (title.toLowerCase().includes("countries") || title.toLowerCase().includes("country")) displayData = PLACEHOLDER_TOP_COUNTRIES_DEMO;
         else if (title.toLowerCase().includes("ips") || title.toLowerCase().includes("ip activity")) displayData = PLACEHOLDER_TOP_IPS_DEMO;
-        // Top User Agents and Top Paths are handled by separate components/sections now.
     }
 
     return (
@@ -840,3 +839,4 @@ export default function DashboardPage() {
   );
 }
 
+    
