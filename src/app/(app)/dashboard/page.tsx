@@ -31,6 +31,7 @@ interface ApiLogEntry {
   method: string;
   path: string;
   status_code: number;
+  // Potentially: asn_info?: { asn: string; name: string; domain: string; type: string };
 }
 
 interface ApiResponse {
@@ -49,7 +50,7 @@ interface AnalyticsSummaryDocument {
   topCountries?: Array<{ item: string; hits: number }>;
   methodDistribution?: Record<string, number>;
   statusDistribution?: Record<string, number>;
-  topIPs?: Array<{ item: string; hits: number }>;
+  topIPs?: Array<{ item: string; hits: number; asn?: string }>; // Added optional ASN here
   topUserAgents?: Array<{ item: string; hits: number }>;
 }
 
@@ -57,7 +58,7 @@ interface AggregatedAnalyticsData {
   totalHits: number;
   approxUniqueIpCount: number;
   topCountries: Array<{ country: string; hits: number }>;
-  topIPs: Array<{ ip: string; hits: number }>;
+  topIPs: Array<{ ip: string; hits: number; asn?: string }>; // Added optional ASN here
   topUserAgents: Array<{ userAgent: string; hits: number }>;
   methodDistribution: Record<string, number>;
   statusDistribution: Record<string, number>;
@@ -75,9 +76,9 @@ const PLACEHOLDER_TOP_COUNTRIES_DEMO = [
   { country: "Atlantis (Demo)", hits: 300 }, { country: "El Dorado (Demo)", hits: 250 }, { country: "Shangri-La (Demo)", hits: 200 },
   { country: "Avalon (Demo)", hits: 150 }, { country: "Lyonesse (Demo)", hits: 100 },
 ];
-const PLACEHOLDER_TOP_IPS_DEMO = [
-  { ip: "10.0.0.1 (Demo)", hits: 150 }, { ip: "10.0.0.2 (Demo)", hits: 120 }, { ip: "10.0.0.3 (Demo)", hits: 90 },
-  { ip: "10.0.0.4 (Demo)", hits: 70 }, { ip: "10.0.0.5 (Demo)", hits: 50 },
+const PLACEHOLDER_TOP_IPS_DEMO = [ // Adding illustrative ASN data
+  { ip: "10.0.0.1 (Demo)", hits: 150, asn: "AS15169 (Google Demo)" }, { ip: "10.0.0.2 (Demo)", hits: 120, asn: "AS14618 (Amazon Demo)" }, { ip: "10.0.0.3 (Demo)", hits: 90, asn: "AS7922 (Comcast Demo)" },
+  { ip: "10.0.0.4 (Demo)", hits: 70, asn: "AS20115 (DigitalOcean Demo)" }, { ip: "10.0.0.5 (Demo)", hits: 50, asn: "AS3356 (Level3 Demo)" },
 ];
 const PLACEHOLDER_TOP_UAS_DEMO = [
   { userAgent: "DemoBot/1.0 (Mozilla/5.0 compatible; Demo SuperCrawler) Example/Test", hits: 200 }, { userAgent: "SampleScraper/2.x (Linux; Android 10; SM-G960U) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Mobile Safari/537.36 (Demo)", hits: 180 }, { userAgent: "TestCrawler/0.1 CFNetwork/1209 Darwin/20.2.0 (Demo)", hits: 150 },
@@ -103,18 +104,24 @@ function aggregateTopList(
   sourceArrayKey: "topCountries" | "topIPs" | "topUserAgents",
   outputNameKey: string,
   limit: number = 5
-): Array<{ [key: string]: string | number } & { hits: number }> {
-  const counts: Record<string, number> = {};
+): Array<{ [key: string]: string | number } & { hits: number; asn?: string }> { // Added asn to return type
+  const counts: Record<string, { hits: number; asn?: string }> = {}; // Store hits and ASN
   summaries.forEach(summary => {
-    const list = summary[sourceArrayKey] as Array<{ item: string; hits: number }> | undefined;
+    const list = summary[sourceArrayKey] as Array<{ item: string; hits: number; asn?: string }> | undefined;
     list?.forEach(subItem => {
-      counts[subItem.item] = (counts[subItem.item] || 0) + subItem.hits;
+      if (!counts[subItem.item]) {
+        counts[subItem.item] = { hits: 0 };
+      }
+      counts[subItem.item].hits += subItem.hits;
+      if (subItem.asn && !counts[subItem.item].asn) { // Store first ASN encountered for an IP
+        counts[subItem.item].asn = subItem.asn;
+      }
     });
   });
   return Object.entries(counts)
-    .sort(([, a], [, b]) => b - a)
+    .sort(([, a], [, b]) => b.hits - a.hits)
     .slice(0, limit)
-    .map(([val, hits]) => ({ [outputNameKey]: val, hits }));
+    .map(([val, data]) => ({ [outputNameKey]: val, hits: data.hits, asn: data.asn }));
 }
 
 
@@ -134,14 +141,19 @@ function aggregateDistribution(
   return totalDistribution;
 }
 
-const HorizontalBarChart = ({ data, nameKey, valueKey, layout = 'vertical' }: { data: any[], nameKey: string, valueKey: string, layout?: 'horizontal' | 'vertical' }) => {
+const HorizontalBarChart = ({ data, nameKey, valueKey, valueSuffixKey, layout = 'vertical' }: { data: any[], nameKey: string, valueKey: string, valueSuffixKey?: string, layout?: 'horizontal' | 'vertical' }) => {
   if (!data || data.length === 0) return <p className="text-xs text-muted-foreground h-40 flex items-center justify-center">No data to display.</p>;
-  const chartData = data.map(item => ({ name: item[nameKey], value: item[valueKey] })).slice(0, 5);
-  const containerHeight = layout === 'vertical' ? (chartData.length * 35 + 40) : 200;
+  
+  const chartData = data.map(item => ({
+    name: item[nameKey] + (valueSuffixKey && item[valueSuffixKey] ? ` (${item[valueSuffixKey]})` : ''), // Append suffix if available
+    value: item[valueKey]
+  })).slice(0, 5);
+
+  const containerHeight = layout === 'vertical' ? (chartData.length * 45 + 40) : 200; // Increased item height
 
   return (
     <ResponsiveContainer width="100%" height={containerHeight}>
-      <BarChart data={chartData} layout={layout} margin={{ top: 5, right: 20, left: layout === 'vertical' ? 60 : 5, bottom: 5 }}>
+      <BarChart data={chartData} layout={layout} margin={{ top: 5, right: 20, left: layout === 'vertical' ? 100 : 5, bottom: 5 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border)/0.3)" />
         {layout === 'horizontal' ? (
           <XAxis dataKey="name" type="category" scale="band" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" interval={0} />
@@ -151,15 +163,19 @@ const HorizontalBarChart = ({ data, nameKey, valueKey, layout = 'vertical' }: { 
         {layout === 'horizontal' ? (
           <YAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" allowDecimals={false}/>
         ) : (
-          <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 10, width: 90, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} interval={0} stroke="hsl(var(--muted-foreground))" />
+          <YAxis dataKey="name" type="category" width={150} tick={{ fontSize: 10, width: 140, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} interval={0} stroke="hsl(var(--muted-foreground))" />
         )}
         <RechartsTooltip
           contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 'var(--radius)', fontSize: '12px' }}
           labelStyle={{ color: 'hsl(var(--popover-foreground))', fontWeight: 'bold' }}
           itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
           cursor={{ fill: 'hsl(var(--accent)/0.1)' }}
+          formatter={(value, name, props) => {
+            const originalName = props.payload.name; // This will include the ASN if appended
+            return [value, originalName];
+          }}
         />
-        <Bar dataKey="value" fill="hsl(var(--primary))" radius={layout === 'vertical' ? [0, 4, 4, 0] : [4, 4, 0, 0]} barSize={layout === 'vertical' ? 20 : undefined} />
+        <Bar dataKey="value" fill="hsl(var(--primary))" radius={layout === 'vertical' ? [0, 4, 4, 0] : [4, 4, 0, 0]} barSize={layout === 'vertical' ? 25 : undefined} />
       </BarChart>
     </ResponsiveContainer>
   );
@@ -215,7 +231,7 @@ export default function DashboardPage() {
         setIsLoadingInstancesCount(false);
       }, (error) => {
         console.error(`Error fetching active instances count:`, error);
-        toast({ title: "Error", description: "Could not fetch active tarpit instances.", variant: "destructive" });
+        toast({ title: "Error", description: "Could not fetch active Nightmare v2 tarpit instances.", variant: "destructive" });
         setActiveInstancesCount(0);
         setIsLoadingInstancesCount(false);
       });
@@ -280,14 +296,15 @@ export default function DashboardPage() {
       setIsAggregatedLoading(true);
       setAggregatedError(null);
       setAggregatedAnalytics(null); // Clear previous data
-      console.log(`DashboardPage (User: ${user.uid.substring(0,5)}...) - Aggregated Analytics: Starting fetch. Range: ${selectedRangeHours}h. Querying by userId: ${user.uid}`);
+      const logPrefix = `DashboardPage (User: ${user.uid.substring(0,5)}...) - Aggregated Analytics:`;
+      console.log(`${logPrefix} Starting fetch. Range: ${selectedRangeHours}h. Querying by userId: ${user.uid}`);
 
       try {
         const rangeInMilliseconds = selectedRangeHours * 60 * 60 * 1000;
         const startDate = new Date(Date.now() - rangeInMilliseconds);
         const startDateTimestamp = Timestamp.fromDate(startDate);
         
-        console.log(`DashboardPage (User: ${user.uid.substring(0,5)}...) - Aggregated Analytics: Executing Firestore query for summaries with userId: ${user.uid} and startTime >= ${startDate.toISOString()}`);
+        console.log(`${logPrefix} Executing Firestore query for summaries with userId: ${user.uid} and startTime >= ${startDate.toISOString()}`);
 
         const summariesQuery = query(
             collection(db, "tarpit_analytics_summaries"),
@@ -299,12 +316,12 @@ export default function DashboardPage() {
         const summariesSnapshot = await getDocs(summariesQuery);
         const allSummaries: AnalyticsSummaryDocument[] = [];
         
-        console.log(`DashboardPage (User: ${user.uid.substring(0,5)}...) - Aggregated Analytics: Fetched ${summariesSnapshot.size} summary documents for user ${user.uid}.`);
+        console.log(`${logPrefix} Fetched ${summariesSnapshot.size} summary documents for user ${user.uid}.`);
 
         summariesSnapshot.forEach((doc, index) => {
             const data = doc.data();
-            if(index < 5) { // Log first 5 raw documents
-                 console.log(`DashboardPage (User: ${user.uid.substring(0,5)}...) - Aggregated Analytics: Summary doc ${doc.id} (userId: ${data.userId || 'N/A'}, startTime: ${data.startTime?.toDate().toISOString() || 'N/A'}) - Raw Data:`, JSON.parse(JSON.stringify(data)));
+            if(index < 5) { 
+                 console.log(`${logPrefix} Summary doc ${doc.id} (userId: ${data.userId || 'N/A'}, startTime: ${data.startTime?.toDate().toISOString() || 'N/A'}) - Raw Data:`, JSON.parse(JSON.stringify(data)));
             }
             allSummaries.push({ id: doc.id, ...data } as AnalyticsSummaryDocument);
         });
@@ -316,7 +333,7 @@ export default function DashboardPage() {
             summaryHitsOverTime: [],
           });
           setIsAggregatedLoading(false);
-          toast({ title: "No Summary Data", description: "No aggregated analytics data found for your tarpits in the selected time range. This could be due to no activity, or if your test data's timestamps fall outside the selected period.", variant: "default", duration: 10000});
+          toast({ title: "No Summary Data", description: "No aggregated analytics data found for your Nightmare v2 tarpits in the selected time range. This could be due to no activity, or if your test data's timestamps fall outside the selected period.", variant: "default", duration: 10000});
           return;
         }
 
@@ -357,10 +374,10 @@ export default function DashboardPage() {
           summaryHitsOverTime: summaryHitsOverTimeData,
         };
         setAggregatedAnalytics(aggregatedData);
-        console.log(`DashboardPage (User: ${user.uid.substring(0,5)}...) - Aggregated Analytics: Successfully processed and aggregated ${allSummaries.length} summaries. Final aggregated data:`, aggregatedData);
+        console.log(`${logPrefix} Successfully processed and aggregated ${allSummaries.length} summaries. Final aggregated data:`, aggregatedData);
 
       } catch (err) {
-        console.error(`DashboardPage (User: ${user.uid.substring(0,5)}...) - Aggregated Analytics: Error fetching/processing aggregated analytics:`, err);
+        console.error(`${logPrefix} Error fetching/processing aggregated analytics:`, err);
         const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
         setAggregatedError(errorMessage);
         toast({ title: "Summary Error", description: `Could not load aggregated analytics. ${errorMessage}`, variant: "destructive" });
@@ -372,7 +389,6 @@ export default function DashboardPage() {
     if (isSetAndForgetTier || isAnalyticsTier) {
         fetchAggregatedAnalytics();
     } else {
-      // If not on a tier that should fetch, ensure loading is false and data is null
       setIsAggregatedLoading(false);
       setAggregatedAnalytics(null);
     }
@@ -459,7 +475,7 @@ export default function DashboardPage() {
     );
   };
 
-  const renderTopListCard = (title: string, data: Array<{ [key: string]: string | number, hits: number }> | undefined, itemKey: string, icon: React.ElementType, isLoading: boolean, error: string | null, tier: 'window' | 'setforget' | 'analytics') => {
+  const renderTopListCard = (title: string, data: Array<{ [key: string]: string | number, hits: number, asn?: string }> | undefined, itemKey: string, icon: React.ElementType, isLoading: boolean, error: string | null, tier: 'window' | 'setforget' | 'analytics', showAsn: boolean = false) => {
     const IconComponent = icon;
     let displayData = data;
     let cardIsLoading = isLoading;
@@ -480,7 +496,7 @@ export default function DashboardPage() {
               <CardTitle className="text-md font-medium text-accent">{title}</CardTitle>
             </div>
             {tier === 'setforget' && (title.includes("Countries") || title.includes("IPs") || title.includes("Country") || title.includes("IP Activity")) &&
-                <TooltipProvider><Tooltip delayDuration={100}><TooltipTrigger asChild><Info className="h-4 w-4 text-muted-foreground cursor-help" /></TooltipTrigger><TooltipContent className="bg-popover text-popover-foreground border-primary/50 max-w-xs"><p className="text-xs">Full list and visual breakdown available in Analytics Tier.</p></TooltipContent></Tooltip></TooltipProvider>
+                <TooltipProvider><Tooltip delayDuration={100}><TooltipTrigger asChild><Info className="h-4 w-4 text-muted-foreground cursor-help" /></TooltipTrigger><TooltipContent className="bg-popover text-popover-foreground border-primary/50 max-w-xs"><p className="text-xs">Full list and visual breakdown (including ASN for IPs) available in Analytics Tier.</p></TooltipContent></Tooltip></TooltipProvider>
             }
             {tier === 'window' && <TooltipProvider><Tooltip delayDuration={100}><TooltipTrigger asChild><Info className="h-4 w-4 text-muted-foreground cursor-help" /></TooltipTrigger><TooltipContent className="bg-popover text-popover-foreground border-primary/50 max-w-xs"><p className="text-xs">Live data and full lists available in paid tiers.</p></TooltipContent></Tooltip></TooltipProvider>}
           </div>
@@ -495,10 +511,14 @@ export default function DashboardPage() {
                   <TooltipProvider delayDuration={100}>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <span className="truncate max-w-[70%] cursor-help">{item[itemKey] as string}</span>
+                        <span className="truncate max-w-[70%] cursor-help">
+                          {item[itemKey] as string}
+                          {showAsn && item.asn && <span className="ml-1 text-accent/70">({item.asn.split(' ')[0]})</span>}
+                        </span>
                       </TooltipTrigger>
                       <TooltipContent className="bg-popover text-popover-foreground border-primary/50 max-w-xs">
                         <p>{item[itemKey] as string}</p>
+                        {showAsn && item.asn && <p className="text-xs text-accent">{item.asn}</p>}
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -537,7 +557,7 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-4xl font-bold tracking-tight text-primary glitch-text">Dashboard</h1>
           <p className="text-muted-foreground mt-2 text-lg">
-            Overview of your SpiteSpiral Tarpit activity. Selected range: Last {selectedRangeHours} hours.
+            Overview of your SpiteSpiral Nightmare v2 Tarpit activity. Selected range: Last {selectedRangeHours} hours.
             Current Tier: <span className="font-semibold text-accent">{currentTierName}</span>
           </p>
         </div>
@@ -561,8 +581,8 @@ export default function DashboardPage() {
         <AlertTitle className="text-accent">Dashboard Data Sources & Tier Features</AlertTitle>
         <AlertDescription className="text-muted-foreground space-y-1">
           <p> • <strong className="text-primary">Window Shopping Tier:</strong> Displays static, illustrative demo data. Upgrade for live analytics!</p>
-          <p> • <strong className="text-primary">Set & Forget Tier:</strong> Shows aggregated statistics from your tarpits (updated periodically from Firestore summaries). Limited visual details. Upgrade to Analytics for real-time logs and full visualizations.</p>
-          <p> • <strong className="text-primary">Analytics Tier:</strong> Full access to near real-time detailed logs (up to {LOG_FETCH_LIMIT} via API), aggregated summaries, and all advanced visualizations.</p>
+          <p> • <strong className="text-primary">Set & Forget Tier:</strong> Shows aggregated statistics from your Nightmare v2 tarpits (updated periodically from Firestore summaries). Limited visual details. Upgrade to Analytics for real-time logs and full visualizations including ASN (network provider) data for IPs.</p>
+          <p> • <strong className="text-primary">Analytics Tier:</strong> Full access to near real-time detailed logs (up to {LOG_FETCH_LIMIT} via API), aggregated summaries, and all advanced visualizations including ASN (network provider) data.</p>
         </AlertDescription>
       </Alert>
 
@@ -602,7 +622,7 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardContent>
                     {isLoadingKpis ? <Skeleton className="h-8 w-1/2" /> : <div className="text-3xl font-bold text-foreground">{apiKpiStats.uniqueAttackerIpsInRange}</div>}
-                    <p className="text-xs text-muted-foreground mt-1">Unique source IPs from API logs.</p>
+                    <p className="text-xs text-muted-foreground mt-1">Unique source IPs from API logs. ASN data available.</p>
                 </CardContent>
                 </Card>
                 <Card className="border-primary/30 shadow-lg">
@@ -625,7 +645,7 @@ export default function DashboardPage() {
                     </CardHeader>
                     <CardContent>
                         {isLoadingInstancesCount ? <Skeleton className="h-8 w-1/2" /> : <div className="text-3xl font-bold text-foreground">{activeInstancesCount ?? 0}</div>}
-                        <p className="text-xs text-muted-foreground mt-1">Currently configured managed URLs.</p>
+                        <p className="text-xs text-muted-foreground mt-1">Currently configured Nightmare v2 URLs.</p>
                     </CardContent>
                 </Card>
             </section>
@@ -652,7 +672,7 @@ export default function DashboardPage() {
             <Lock className="h-5 w-5 text-primary" />
             <AlertTitle className="text-primary">Analytics Tier Features</AlertTitle>
             <AlertDescription className="text-muted-foreground">
-                Recent Activity Insights (from real-time API logs), detailed log table, and advanced chart visualizations are available in the <strong className="text-accent">Analytics Tier</strong>.
+                Recent Activity Insights (from real-time API logs), detailed log table, ASN (network provider) data for IPs, and advanced chart visualizations are available in the <strong className="text-accent">Analytics Tier</strong>.
             </AlertDescription>
         </Alert>
       )}
@@ -661,7 +681,7 @@ export default function DashboardPage() {
             <h2 className="text-2xl font-semibold text-primary mt-8 mb-4">Recent Activity Insights (Demo Data)</h2>
              <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4">
                  <Card className="border-primary/30 shadow-lg"><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium text-primary">Total Hits (Demo)</CardTitle><Users className="h-6 w-6 text-accent" /></CardHeader><CardContent><div className="text-3xl font-bold text-foreground">{WINDOW_SHOPPING_PLACEHOLDER_COUNT_PRIMARY}</div><p className="text-xs text-muted-foreground mt-1">Illustrative demo data.</p></CardContent></Card>
-                 <Card className="border-accent/30 shadow-lg"><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium text-accent">Unique IPs (Demo)</CardTitle><Fingerprint className="h-6 w-6 text-primary" /></CardHeader><CardContent><div className="text-3xl font-bold text-foreground">{WINDOW_SHOPPING_PLACEHOLDER_COUNT_SECONDARY}</div><p className="text-xs text-muted-foreground mt-1">Illustrative demo data.</p></CardContent></Card>
+                 <Card className="border-accent/30 shadow-lg"><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium text-accent">Unique IPs (Demo)</CardTitle><Fingerprint className="h-6 w-6 text-primary" /></CardHeader><CardContent><div className="text-3xl font-bold text-foreground">{WINDOW_SHOPPING_PLACEHOLDER_COUNT_SECONDARY}</div><p className="text-xs text-muted-foreground mt-1">Illustrative demo data. (Paid tiers include ASN info)</p></CardContent></Card>
                  <Card className="border-primary/30 shadow-lg"><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><div className="flex items-center gap-1.5"><CardTitle className="text-sm font-medium text-primary">Compute Wasted (Demo)</CardTitle></div><DollarSign className="h-6 w-6 text-primary" /></CardHeader><CardContent><div className="text-3xl font-bold text-foreground">${WINDOW_SHOPPING_PLACEHOLDER_COST}</div><p className="text-xs text-muted-foreground mt-1">Illustrative demo data.</p></CardContent></Card>
                  <Card className="border-accent/30 shadow-lg"><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium text-accent">Active Tarpit Instances</CardTitle><ShieldCheck className="h-6 w-6 text-primary" /></CardHeader><CardContent>{isLoadingInstancesCount ? <Skeleton className="h-8 w-1/2" /> : <div className="text-3xl font-bold text-foreground">{activeInstancesCount ?? 0}</div>}<p className="text-xs text-muted-foreground mt-1">Your configured URLs.</p></CardContent></Card>
             </section>
@@ -676,17 +696,22 @@ export default function DashboardPage() {
           <Info className="h-5 w-5 text-accent" />
           <AlertTitle className="text-accent">Feature Not Available for Current Tier</AlertTitle>
           <AlertDescription className="text-muted-foreground">
-            Aggregated analytics summaries are available on the Set & Forget or Analytics tiers. Please check your Account page to upgrade your subscription.
+            Aggregated analytics summaries are available on the Set & Forget or Analytics tiers. Please check your Account page to upgrade your subscription. Analytics Tier includes ASN data for IPs.
           </AlertDescription>
         </Alert>
       ) : (!isAggregatedLoading || isWindowShoppingTier) && (aggregatedAnalytics || isWindowShoppingTier) ? (
         <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
           <Card className="border-primary/30 shadow-lg">
             <CardHeader className="pb-2"><div className="flex items-center gap-2"><Activity className="h-5 w-5 text-primary" /><CardTitle className="text-md font-medium text-primary">Total Hits (Summarized)</CardTitle></div></CardHeader>
-            <CardContent><div className="text-3xl font-bold text-foreground">{isWindowShoppingTier ? WINDOW_SHOPPING_PLACEHOLDER_AGG_HITS : aggregatedAnalytics?.totalHits ?? 0}</div><p className="text-xs text-muted-foreground mt-1">Across your tarpits for the range.</p></CardContent>
+            <CardContent><div className="text-3xl font-bold text-foreground">{isWindowShoppingTier ? WINDOW_SHOPPING_PLACEHOLDER_AGG_HITS : aggregatedAnalytics?.totalHits ?? 0}</div><p className="text-xs text-muted-foreground mt-1">Across your Nightmare v2 tarpits for the range.</p></CardContent>
           </Card>
           <Card className="border-accent/30 shadow-lg">
-            <CardHeader className="pb-2"><div className="flex items-center gap-2"><Users className="h-5 w-5 text-accent" /><CardTitle className="text-md font-medium text-accent">Approx. Unique IPs (Summarized)</CardTitle></div></CardHeader>
+            <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2"><Users className="h-5 w-5 text-accent" /><CardTitle className="text-md font-medium text-accent">Approx. Unique IPs (Summarized)</CardTitle></div>
+                     {isAnalyticsTier && <TooltipProvider><Tooltip delayDuration={100}><TooltipTrigger asChild><Info className="h-4 w-4 text-muted-foreground cursor-help" /></TooltipTrigger><TooltipContent className="bg-popover text-popover-foreground border-primary/50 max-w-xs"><p className="text-xs">Includes ASN (network provider) data.</p></TooltipContent></Tooltip></TooltipProvider>}
+                </div>
+            </CardHeader>
             <CardContent><div className="text-3xl font-bold text-foreground">{isWindowShoppingTier ? WINDOW_SHOPPING_PLACEHOLDER_AGG_IPS : aggregatedAnalytics?.approxUniqueIpCount ?? 0}</div><p className="text-xs text-muted-foreground mt-1">Sum of unique IP counts from summaries.</p></CardContent>
           </Card>
 
@@ -705,15 +730,15 @@ export default function DashboardPage() {
 
           {isAnalyticsTier ? (
             <Card className="border-primary/30 shadow-lg">
-              <CardHeader><div className="flex items-center gap-2"><Fingerprint className="h-5 w-5 text-primary" /><CardTitle className="text-md font-medium text-primary">IP Activity</CardTitle></div></CardHeader>
+              <CardHeader><div className="flex items-center gap-2"><Fingerprint className="h-5 w-5 text-primary" /><CardTitle className="text-md font-medium text-primary">IP Activity (with ASN)</CardTitle></div></CardHeader>
               <CardContent className="min-h-[150px]">
                 {isAggregatedLoading && !isWindowShoppingTier ? <Skeleton className="h-40 w-full" /> : aggregatedError ? <p className="text-xs text-destructive">{aggregatedError}</p> :
                  !aggregatedAnalytics?.topIPs || aggregatedAnalytics.topIPs.length === 0 ? <p className="text-xs text-muted-foreground">No data available.</p> :
-                 <HorizontalBarChart data={aggregatedAnalytics.topIPs} nameKey="ip" valueKey="hits" />}
+                 <HorizontalBarChart data={aggregatedAnalytics.topIPs} nameKey="ip" valueKey="hits" valueSuffixKey="asn" />}
               </CardContent>
             </Card>
           ) : (
-             renderTopListCard("IP Activity", aggregatedAnalytics?.topIPs, "ip", Fingerprint, isAggregatedLoading && !isWindowShoppingTier, aggregatedError, currentDashboardTier)
+             renderTopListCard("IP Activity", aggregatedAnalytics?.topIPs, "ip", Fingerprint, isAggregatedLoading && !isWindowShoppingTier, aggregatedError, currentDashboardTier, isAnalyticsTier)
           )}
 
            {renderDistributionCard("HTTP Method Distribution", aggregatedAnalytics?.methodDistribution, Server, isAggregatedLoading && !isWindowShoppingTier, aggregatedError, isAnalyticsTier, currentDashboardTier)}
@@ -737,7 +762,7 @@ export default function DashboardPage() {
             <CardTitle className="text-xl text-accent">Top User Agent Activity</CardTitle>
           </div>
           <CardDescription>
-            User agents with the most hits to your tarpits in the selected range.
+            User agents with the most hits to your Nightmare v2 tarpits in the selected range.
             {currentDashboardTier === 'setforget' && <span className="block text-xs text-amber-500 mt-1">Limited view (top {userAgentsDisplayLimit}). Full details available in Analytics Tier.</span>}
             {currentDashboardTier === 'window' && " (This is illustrative demo data)"}
           </CardDescription>
@@ -799,9 +824,9 @@ export default function DashboardPage() {
                 {isWindowShoppingTier ? " (Demo)" : isSetAndForgetTier ? " (Summarized)" : " (API Range)"}
             </CardTitle>
             <CardDescription>
-                {isWindowShoppingTier ? "Illustrative demo of tarpit hits." :
-                 isSetAndForgetTier ? "Total tarpit hits from aggregated summaries for the selected range." :
-                 `Total tarpit hits from API logs for the selected range (Analytics Tier).`}
+                {isWindowShoppingTier ? "Illustrative demo of Nightmare v2 tarpit hits." :
+                 isSetAndForgetTier ? "Total Nightmare v2 tarpit hits from aggregated summaries for the selected range." :
+                 `Total Nightmare v2 tarpit hits from API logs for the selected range (Analytics Tier).`}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -821,7 +846,7 @@ export default function DashboardPage() {
             <Card className="shadow-lg border-accent/20">
             <CardHeader>
                 <div className="flex items-center gap-2"> <ListFilter className="h-6 w-6 text-accent" /> <CardTitle className="text-xl text-accent">Detailed Activity Logs (Last {LOG_FETCH_LIMIT} for range)</CardTitle> </div>
-                <CardDescription>Raw log entries from your tarpit instances for the selected range (via API - Analytics Tier).</CardDescription>
+                <CardDescription>Raw log entries from your Nightmare v2 tarpit instances for the selected range (via API - Analytics Tier). Includes ASN data where available.</CardDescription>
             </CardHeader>
             <CardContent>
                 <ApiLogTable logs={apiLogsData} isLoading={apiLoading} error={apiError} />
@@ -832,9 +857,9 @@ export default function DashboardPage() {
       {(isSetAndForgetTier || isWindowShoppingTier) && (
           <Alert variant="default" className="border-primary/20 bg-card/50 my-8">
             <Lock className="h-5 w-5 text-primary" />
-            <AlertTitle className="text-primary">Detailed Logs - Analytics Tier Feature</AlertTitle>
+            <AlertTitle className="text-primary">Detailed Logs & ASN Data - Analytics Tier Feature</AlertTitle>
             <AlertDescription className="text-muted-foreground">
-                Access to the detailed raw activity log table is available in the <strong className="text-accent">Analytics Tier</strong>.
+                Access to the detailed raw activity log table and ASN (network provider) data for IPs is available in the <strong className="text-accent">Analytics Tier</strong>.
                 {isWindowShoppingTier && " Upgrade to a paid plan to unlock live data and detailed logs!"}
             </AlertDescription>
         </Alert>
@@ -842,5 +867,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    

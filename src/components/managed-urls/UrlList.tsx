@@ -70,30 +70,30 @@ const SnippetDisplay = ({ title, snippet, explanation, onCopy }: { title: string
 // Trap Configuration Options
 const intensityOptions = [
   { value: 'low', label: 'Low', description: "Slower introduction of delays, slightly less dense linking." },
-  { value: 'medium', label: 'Medium (Recommended)', description: "Balanced approach." },
-  { value: 'high', label: 'High', description: "Quicker introduction of significant delays, denser internal linking." },
-  { value: 'extreme', label: 'Extreme', description: "Very aggressive delays and link density." },
+  { value: 'medium', label: 'Medium (Recommended)', description: "Balanced approach for Procedurally Generated Content." },
+  { value: 'high', label: 'High', description: "Quicker introduction of significant delays, denser internal linking in PCG layouts." },
+  { value: 'extreme', label: 'Extreme', description: "Very aggressive delays and link density in PCG layouts." },
 ];
 
 const themeOptions = [
-  { value: 'generic', label: 'Generic (Default)', description: "A broad mix of plausible-sounding text." },
-  { value: 'tech', label: 'Generic Tech', description: "Content mimicking the tech industry." },
+  { value: 'generic', label: 'Generic (Default)', description: "A broad mix of plausible-sounding N-gram generated text." },
+  { value: 'tech', label: 'Generic Tech', description: "N-gram text mimicking the tech industry." },
 ];
 
 const entryStealthOptions = [
-  { value: 'generic', label: 'Generic Entry', description: "Standard base URL structure." },
-  { value: 'deep', label: 'Deep Page Simulation', description: "URL appears like a deep internal page." },
+  { value: 'generic', label: 'Generic Entry', description: "Standard base URL structure for Nightmare v2." },
+  { value: 'deep', label: 'Deep Page Simulation', description: "URL appears like a deep internal page, leading to PCG content." },
 ];
 
 const lureSpeedOptions = [
-  { value: 'normal', label: 'Normal Delay (Default)', description: "Standard delay for the first page." },
-  { value: 'fast_intro', label: 'Slightly Faster Initial Page', description: "Minimal delay on the first page to 'hook' bots." },
+  { value: 'normal', label: 'Normal Delay (Default)', description: "Standard delay for the first page of PCG content." },
+  { value: 'fast_intro', label: 'Slightly Faster Initial Page', description: "Minimal delay on the first PCG page to 'hook' bots." },
 ];
 
 // Snippet generating functions
 const robotsTxtTemplate = (yourSiteTrapPath: string) => `# Add this to your website's robots.txt file:
 # Replace '${yourSiteTrapPath}' with the actual path you configure on your site
-# that will redirect to the SpiteSpiral URL.
+# that will redirect to the SpiteSpiral Nightmare v2 URL.
 
 User-agent: Googlebot
 Disallow: ${yourSiteTrapPath}
@@ -107,15 +107,15 @@ Disallow: ${yourSiteTrapPath}
 # Ensure this doesn't block your whole site if you have a wider User-agent: * block.
 # Malicious bots that ignore these rules are our target.`;
 
-const simpleHtmlLinkSnippet = (yourSiteTrapPath: string) => `<a href="${yourSiteTrapPath}" title="Archival Data Access">Internal Data Archives</a>`;
-const tinyHtmlLinkSnippet = (yourSiteTrapPath: string) => `<a href="${yourSiteTrapPath}" style="font-size:1px; color:transparent;" aria-hidden="true" tabindex="-1">.</a>`;
+const simpleHtmlLinkSnippet = (yourSiteTrapPath: string) => `<a href="${yourSiteTrapPath}" title="Archival Data Access (Nightmare v2 Trap)">Internal Data Archives</a>`;
+const tinyHtmlLinkSnippet = (yourSiteTrapPath: string) => `<a href="${yourSiteTrapPath}" style="font-size:1px; color:transparent;" aria-hidden="true" tabindex="-1" title="Nightmare v2 Trap">.</a>`;
 const sitemapEntrySnippet = (yourSiteTrapPath: string) => `<url>
   <loc>https://yourwebsite.com${yourSiteTrapPath.startsWith('/') ? yourSiteTrapPath : '/' + yourSiteTrapPath}</loc>
   <lastmod>${new Date().toISOString().split('T')[0]}</lastmod> 
   <priority>0.1</priority>
 </url>`;
 
-const getCssClassLinkSnippet = (spiteSpiralUrl: string) => `<a href="${spiteSpiralUrl}" class="spite-link" rel="nofollow">Hidden Archive</a>`;
+const getCssClassLinkSnippet = (spiteSpiralUrl: string) => `<a href="${spiteSpiralUrl}" class="spite-link" rel="nofollow" title="Nightmare v2 Trap Link">Hidden Archive</a>`;
 const cssClassStyleSnippet = `.spite-link {
   position: absolute;
   left: -9999px;
@@ -125,7 +125,7 @@ const getJsInjectionSnippet = (spiteSpiralUrl: string) => `<div id="spite-contai
   document.addEventListener('DOMContentLoaded', function() {
     const spiteLink = document.createElement('a');
     spiteLink.href = "${spiteSpiralUrl}";
-    spiteLink.innerHTML = "Diagnostic Data";
+    spiteLink.innerHTML = "Diagnostic Data (Nightmare v2)";
     spiteLink.setAttribute('aria-hidden', 'true');
     spiteLink.setAttribute('rel', 'nofollow');
     spiteLink.style.opacity = '0.01';
@@ -135,7 +135,7 @@ const getJsInjectionSnippet = (spiteSpiralUrl: string) => `<div id="spite-contai
   });
 </script>`;
 
-const getExtremelyBasicLinkSnippet = (spiteSpiralUrl: string) => `<a href="${spiteSpiralUrl}" rel="nofollow noopener noreferrer" aria-hidden="true" tabindex="-1" style="opacity:0.01; position:absolute; left:-9999px; top:-9999px; font-size:1px; color:transparent;" title="Data Archive (Internal Use Only)">Internal Resources</a>`;
+const getExtremelyBasicLinkSnippet = (spiteSpiralUrl: string) => `<a href="${spiteSpiralUrl}" rel="nofollow noopener noreferrer" aria-hidden="true" tabindex="-1" style="opacity:0.01; position:absolute; left:-9999px; top:-9999px; font-size:1px; color:transparent;" title="Nightmare v2 Data Archive (Internal Use Only)">Internal Resources</a>`;
 
 
 export default function UrlList() {
@@ -315,7 +315,7 @@ export default function UrlList() {
               </CardDescription>
             </CardHeader>
             <CardContent className="flex-grow">
-              <p className="text-xs text-muted-foreground break-words min-w-0">Instance ID: {url.instanceId || "N/A"}</p>
+              <p className="text-xs text-muted-foreground break-words min-w-0">Instance ID: {url.instanceId || "N/A (Legacy or error)"}</p>
               <p className="text-sm text-foreground/90 break-words min-w-0 mt-1">
                 <span className="font-semibold text-muted-foreground">Full URL: </span>
                 <a href={url.fullUrl} target="_blank" rel="noopener noreferrer" className="hover:underline text-accent">{url.fullUrl}</a>
@@ -345,7 +345,7 @@ export default function UrlList() {
               <Settings2 className="mr-3 h-6 w-6"/>Setup &amp; Embedding Guide for: <span className="text-accent ml-2 truncate max-w-xs">{currentUrlForSetupGuide?.name}</span>
             </DialogTitle>
             <DialogDescription className="pt-1">
-              Follow these steps to integrate this specific SpiteSpiral trap (<code className="text-xs bg-muted p-0.5 rounded text-accent break-all">{currentUrlForSetupGuide?.fullUrl}</code>) and protect your website.
+              Follow these steps to integrate this specific SpiteSpiral Nightmare v2 trap (<code className="text-xs bg-muted p-0.5 rounded text-accent break-all">{currentUrlForSetupGuide?.fullUrl}</code>) and protect your website. Our engine uses Procedural Content Generation and N-gram text to effectively ensnare bots.
             </DialogDescription>
           </DialogHeader>
           <ScrollArea className="max-h-[70vh]">
@@ -355,7 +355,7 @@ export default function UrlList() {
                 <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">Step 1: Safeguard Your SEO with `robots.txt`</AccordionTrigger>
                 <AccordionContent className="space-y-4 pt-3">
                   <p className="text-muted-foreground">
-                    Crucial! To ensure search engines (like Google) crawl your site properly, tell them to ignore the path you'll use for this SpiteSpiral trap. Malicious bots usually ignore these instructions.
+                    Crucial! To ensure search engines (like Google) crawl your site properly, tell them to ignore the path you'll use for this SpiteSpiral Nightmare v2 trap. Malicious bots usually ignore these instructions.
                   </p>
                   <div>
                     <Label className="text-foreground/80 font-semibold">Your Website's Trap Path (Placeholder)</Label>
@@ -378,7 +378,7 @@ export default function UrlList() {
                             <AccordionTrigger className="font-semibold text-sm text-accent border border-accent/50 rounded-md px-3 py-2 hover:no-underline [&>svg]:h-4 [&>svg]:w-4">What is `robots.txt` and why is this important?</AccordionTrigger>
                             <AccordionContent className="text-xs pt-2 space-y-1 text-muted-foreground">
                               <p><code className="text-xs bg-muted p-0.5 rounded">robots.txt</code> (at <code className="text-xs bg-muted p-0.5 rounded">yourwebsite.com/robots.txt</code>) tells 'good' crawlers which pages they shouldn't crawl.</p>
-                              <p>We want good bots to crawl your real content, but *not* the path you dedicate for this SpiteSpiral trap. Malicious bots often ignore `robots.txt`.</p>
+                              <p>We want good bots to crawl your real content, but *not* the path you dedicate for this SpiteSpiral Nightmare v2 trap. Malicious bots often ignore `robots.txt`.</p>
                               <p className="font-semibold text-destructive">CRITICAL: Be careful! Always test `robots.txt` changes.</p>
                             </AccordionContent>
                           </AccordionItem>
@@ -391,13 +391,10 @@ export default function UrlList() {
               </AccordionItem>
 
                <AccordionItem value="step-2-configure">
-                <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">Step 2: Advanced Trap Settings (Informational)</AccordionTrigger>
+                <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">Step 2: Trap Behavior Customization (Conceptual)</AccordionTrigger>
                  <AccordionContent className="space-y-6 pt-3">
-                   <span className="text-sm text-muted-foreground font-normal mb-4 block">
-                      Current tarpits are modified Nepenthes tarpits that, while functional, do not support these features yet.
-                   </span>
                   <p className="text-muted-foreground">
-                    The following options demonstrate future capabilities for fine-tuning newer types of traps. The URL generated below is an *example* of how parameters *could* be appended to your current URL for such future trap types.
+                    The Nightmare v2 engine is highly configurable. While direct UI controls for these parameters are evolving, this section illustrates conceptual settings that influence the trap's behavior, such as its Procedurally Generated Content (PCG) layouts and N-gram text generation. Your current tarpit URL directly activates the default Nightmare v2 configuration optimized for effectiveness.
                   </p>
                   <TooltipProvider>
                       <div className="space-y-2">
@@ -407,7 +404,7 @@ export default function UrlList() {
                         </RadioGroup>
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="ex-babble-theme" className="text-foreground/80 font-semibold">Content "Babble" Theme (Example)</Label>
+                        <Label htmlFor="ex-babble-theme" className="text-foreground/80 font-semibold">N-gram Content Theme (Example)</Label>
                         <Select value={exampleTheme} onValueChange={setExampleTheme} disabled>
                           <SelectTrigger id="ex-babble-theme" className="w-full md:w-[300px] bg-input border-border focus:ring-primary" disabled><SelectValue placeholder="Select theme" /></SelectTrigger>
                           <SelectContent>{themeOptions.map(option => (<SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>))}</SelectContent>
@@ -433,7 +430,7 @@ export default function UrlList() {
                       <Input id="generated-example-url" value={generatedExampleAdvancedUrl} readOnly className="flex-grow bg-input border-2 border-primary focus:ring-primary text-sm" />
                       <Button onClick={() => handleCopy(generatedExampleAdvancedUrl, "Example SpiteSpiral URL")} variant="outline" className="text-accent border-accent hover:bg-accent/10"><Copy className="mr-2 h-4 w-4" /> Copy Example</Button>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">This demonstrates how parameters for future features *could* look. For actual deployment of *this* tarpit, use its direct Full URL: <code className="text-xs bg-muted p-0.5 rounded text-accent break-all">{currentUrlForSetupGuide?.fullUrl}</code>.</p>
+                    <p className="text-xs text-muted-foreground mt-1">This demonstrates how parameters for future Nightmare v2 features *could* look. For actual deployment of *this* tarpit, use its direct Full URL: <code className="text-xs bg-muted p-0.5 rounded text-accent break-all">{currentUrlForSetupGuide?.fullUrl}</code>.</p>
                   </div>
                 </AccordionContent>
               </AccordionItem>
@@ -442,31 +439,31 @@ export default function UrlList() {
                 <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">Step 3: Embedding Strategies</AccordionTrigger>
                 <AccordionContent className="space-y-4 pt-3">
                   <p className="text-muted-foreground">
-                     Choose a method to place the SpiteSpiral link on your site. You can link *directly* to your SpiteSpiral URL (<code className="text-xs bg-muted p-0.5 rounded text-accent break-all">{currentUrlForSetupGuide?.fullUrl}</code>) or use a path on your domain (e.g., <code className="bg-muted px-1 py-0.5 rounded text-xs">{USER_TRAP_PATH_PLACEHOLDER}</code>) that <strong className="text-accent">redirects (HTTP 301 or 302)</strong> to it. Direct linking or redirects are preferred to avoid load on your server. Proxying is not recommended as it places load on your server.
+                     Choose a method to place the SpiteSpiral Nightmare v2 link on your site. You can link *directly* to your SpiteSpiral URL (<code className="text-xs bg-muted p-0.5 rounded text-accent break-all">{currentUrlForSetupGuide?.fullUrl}</code>) or use a path on your domain (e.g., <code className="bg-muted px-1 py-0.5 rounded text-xs">{USER_TRAP_PATH_PLACEHOLDER}</code>) that <strong className="text-accent">redirects (HTTP 301 or 302)</strong> to it. Direct linking or redirects are preferred to avoid load on your server. Proxying is not recommended.
                   </p>
                   
                   <h3 className="text-lg font-semibold text-accent mt-6 mb-2">Easy Embedding Methods</h3>
                   <Accordion type="single" collapsible className="w-full">
                     <AccordionItem value="embed-simplest-html-direct">
-                      <AccordionTrigger>Simplest HTML Link (Direct to SpiteSpiral)</AccordionTrigger>
+                      <AccordionTrigger>Simplest HTML Link (Direct to SpiteSpiral Nightmare v2)</AccordionTrigger>
                       <AccordionContent className="space-y-2 pt-2">
-                        <p className="text-sm text-muted-foreground">Easiest method. Paste this HTML snippet into your website (e.g., footer). Links *directly* to <span className="font-semibold text-accent">this SpiteSpiral URL</span>. Invisible to users.</p>
-                        <SnippetDisplay title="Simplest Hidden HTML Link (Direct to SpiteSpiral)" snippet={getExtremelyBasicLinkSnippet(currentUrlForSetupGuide?.fullUrl || '')} explanation={<>Uses <strong className="text-accent">this specific SpiteSpiral URL</strong>.</>} onCopy={handleCopy} />
+                        <p className="text-sm text-muted-foreground">Easiest method. Paste this HTML snippet into your website (e.g., footer). Links *directly* to <span className="font-semibold text-accent">this SpiteSpiral Nightmare v2 URL</span>. Invisible to users.</p>
+                        <SnippetDisplay title="Simplest Hidden HTML Link (Direct to SpiteSpiral)" snippet={getExtremelyBasicLinkSnippet(currentUrlForSetupGuide?.fullUrl || '')} explanation={<>Uses <strong className="text-accent">this specific SpiteSpiral Nightmare v2 URL</strong>.</>} onCopy={handleCopy} />
                       </AccordionContent>
                     </AccordionItem>
                     <AccordionItem value="embed-standard-html-redirect">
-                      <AccordionTrigger>HTML Link on Your Site (Requires Redirect)</AccordionTrigger>
+                      <AccordionTrigger>HTML Link on Your Site (Requires Redirect to Nightmare v2)</AccordionTrigger>
                       <AccordionContent className="space-y-2 pt-2">
-                        <p className="text-sm text-muted-foreground">Place an HTML link on your site pointing to your chosen "Trap Path" (e.g., <code className="bg-muted px-1 py-0.5 rounded text-xs">{USER_TRAP_PATH_PLACEHOLDER}</code>). Your server *must* then <strong className="text-accent">redirect (HTTP 301 or 302)</strong> requests from this path to <span className="font-semibold text-accent">this SpiteSpiral URL</span>. This method hides the direct SpiteSpiral URL from your site's source code and is generally recommended.</p>
-                        <SnippetDisplay title="Visible HTML Link (to your Trap Path)" snippet={simpleHtmlLinkSnippet(USER_TRAP_PATH_PLACEHOLDER)} explanation={<>Links to your site's <code className="bg-muted px-1 py-0.5 rounded text-xs">{USER_TRAP_PATH_PLACEHOLDER}</code>, which <strong className="text-accent">redirects</strong> to <strong className="text-accent">this SpiteSpiral URL</strong>.</>} onCopy={handleCopy}/>
-                        <SnippetDisplay title="Tiny, Invisible HTML Link (to your Trap Path)" snippet={tinyHtmlLinkSnippet(USER_TRAP_PATH_PLACEHOLDER)} explanation={<>A less visible link to your site's <code className="bg-muted px-1 py-0.5 rounded text-xs">{USER_TRAP_PATH_PLACEHOLDER}</code>, <strong className="text-accent">redirecting</strong> to <strong className="text-accent">this SpiteSpiral URL</strong>.</>} onCopy={handleCopy}/>
+                        <p className="text-sm text-muted-foreground">Place an HTML link on your site pointing to your chosen "Trap Path" (e.g., <code className="bg-muted px-1 py-0.5 rounded text-xs">{USER_TRAP_PATH_PLACEHOLDER}</code>). Your server *must* then <strong className="text-accent">redirect (HTTP 301 or 302)</strong> requests from this path to <span className="font-semibold text-accent">this SpiteSpiral Nightmare v2 URL</span>. This method hides the direct SpiteSpiral URL from your site's source code and is generally recommended.</p>
+                        <SnippetDisplay title="Visible HTML Link (to your Trap Path)" snippet={simpleHtmlLinkSnippet(USER_TRAP_PATH_PLACEHOLDER)} explanation={<>Links to your site's <code className="bg-muted px-1 py-0.5 rounded text-xs">{USER_TRAP_PATH_PLACEHOLDER}</code>, which <strong className="text-accent">redirects</strong> to <strong className="text-accent">this SpiteSpiral Nightmare v2 URL</strong>.</>} onCopy={handleCopy}/>
+                        <SnippetDisplay title="Tiny, Invisible HTML Link (to your Trap Path)" snippet={tinyHtmlLinkSnippet(USER_TRAP_PATH_PLACEHOLDER)} explanation={<>A less visible link to your site's <code className="bg-muted px-1 py-0.5 rounded text-xs">{USER_TRAP_PATH_PLACEHOLDER}</code>, <strong className="text-accent">redirecting</strong> to <strong className="text-accent">this SpiteSpiral Nightmare v2 URL</strong>.</>} onCopy={handleCopy}/>
                       </AccordionContent>
                     </AccordionItem>
                     <AccordionItem value="embed-sitemap-redirect">
-                      <AccordionTrigger>`sitemap.xml` Entry (Requires Redirect)</AccordionTrigger>
+                      <AccordionTrigger>`sitemap.xml` Entry (Requires Redirect to Nightmare v2)</AccordionTrigger>
                       <AccordionContent className="space-y-2 pt-2">
-                        <p className="text-sm text-muted-foreground">Add to <code className="bg-muted px-1 py-0.5 rounded text-xs">sitemap.xml</code>, pointing to your "Trap Path" (e.g., <code className="bg-muted px-1 py-0.5 rounded text-xs">{USER_TRAP_PATH_PLACEHOLDER}</code>). Ensure this path is disallowed in `robots.txt` and your server <strong className="text-accent">redirects</strong> requests from this path to <span className="font-semibold text-accent">this SpiteSpiral URL</span>.</p>
-                        <SnippetDisplay title="sitemap.xml Entry (for your Trap Path)" snippet={sitemapEntrySnippet(USER_TRAP_PATH_PLACEHOLDER)} explanation={<>Points to your site's <code className="bg-muted px-1 py-0.5 rounded text-xs">{USER_TRAP_PATH_PLACEHOLDER}</code>, which <strong className="text-accent">redirects</strong> to <strong className="text-accent">this SpiteSpiral URL</strong>.</>} onCopy={handleCopy}/>
+                        <p className="text-sm text-muted-foreground">Add to <code className="bg-muted px-1 py-0.5 rounded text-xs">sitemap.xml</code>, pointing to your "Trap Path" (e.g., <code className="bg-muted px-1 py-0.5 rounded text-xs">{USER_TRAP_PATH_PLACEHOLDER}</code>). Ensure this path is disallowed in `robots.txt` and your server <strong className="text-accent">redirects</strong> requests from this path to <span className="font-semibold text-accent">this SpiteSpiral Nightmare v2 URL</span>.</p>
+                        <SnippetDisplay title="sitemap.xml Entry (for your Trap Path)" snippet={sitemapEntrySnippet(USER_TRAP_PATH_PLACEHOLDER)} explanation={<>Points to your site's <code className="bg-muted px-1 py-0.5 rounded text-xs">{USER_TRAP_PATH_PLACEHOLDER}</code>, which <strong className="text-accent">redirects</strong> to <strong className="text-accent">this SpiteSpiral Nightmare v2 URL</strong>.</>} onCopy={handleCopy}/>
                       </AccordionContent>
                     </AccordionItem>
                   </Accordion>
@@ -474,25 +471,25 @@ export default function UrlList() {
                   <h3 className="text-lg font-semibold text-accent mt-6 mb-2">More Advanced Embedding Methods</h3>
                   <Accordion type="single" collapsible className="w-full">
                     <AccordionItem value="embed-css-hidden-direct">
-                        <AccordionTrigger>CSS-Hidden Links (Alternative to Simplest, Direct to SpiteSpiral)</AccordionTrigger>
+                        <AccordionTrigger>CSS-Hidden Links (Direct to Nightmare v2)</AccordionTrigger>
                         <AccordionContent className="space-y-2 pt-2">
-                            <p className="text-sm text-muted-foreground">Present in HTML but CSS-hidden. Links *directly* to <span className="font-semibold text-accent">this SpiteSpiral URL</span>.</p>
-                            <SnippetDisplay title="Link with CSS Class (Direct to SpiteSpiral)" snippet={getCssClassLinkSnippet(currentUrlForSetupGuide?.fullUrl || '')} explanation={<>Uses <strong className="text-accent">this SpiteSpiral URL</strong>.</>} onCopy={handleCopy} />
+                            <p className="text-sm text-muted-foreground">Present in HTML but CSS-hidden. Links *directly* to <span className="font-semibold text-accent">this SpiteSpiral Nightmare v2 URL</span>.</p>
+                            <SnippetDisplay title="Link with CSS Class (Direct to SpiteSpiral)" snippet={getCssClassLinkSnippet(currentUrlForSetupGuide?.fullUrl || '')} explanation={<>Uses <strong className="text-accent">this SpiteSpiral Nightmare v2 URL</strong>.</>} onCopy={handleCopy} />
                             <SnippetDisplay title="Required CSS for .spite-link class" snippet={cssClassStyleSnippet} explanation="Add this CSS to your site's stylesheet." onCopy={handleCopy} />
                         </AccordionContent>
                     </AccordionItem>
                     <AccordionItem value="embed-js-injection-direct">
-                        <AccordionTrigger>JavaScript Link Injection (Direct to SpiteSpiral)</AccordionTrigger>
+                        <AccordionTrigger>JavaScript Link Injection (Direct to Nightmare v2)</AccordionTrigger>
                         <AccordionContent className="space-y-2 pt-2">
-                            <p className="text-sm text-muted-foreground">Dynamically inject the link. May be missed by some scrapers. Links *directly* to <span className="font-semibold text-accent">this SpiteSpiral URL</span>.</p>
-                            <SnippetDisplay title="JS Link Injection Example (Direct to SpiteSpiral)" snippet={getJsInjectionSnippet(currentUrlForSetupGuide?.fullUrl || '')} explanation={<>Uses <strong className="text-accent">this SpiteSpiral URL</strong>.</>} onCopy={handleCopy} />
+                            <p className="text-sm text-muted-foreground">Dynamically inject the link. May be missed by some scrapers. Links *directly* to <span className="font-semibold text-accent">this SpiteSpiral Nightmare v2 URL</span>.</p>
+                            <SnippetDisplay title="JS Link Injection Example (Direct to SpiteSpiral)" snippet={getJsInjectionSnippet(currentUrlForSetupGuide?.fullUrl || '')} explanation={<>Uses <strong className="text-accent">this SpiteSpiral Nightmare v2 URL</strong>.</>} onCopy={handleCopy} />
                         </AccordionContent>
                     </AccordionItem>
                     <AccordionItem value="embed-server-side-direct">
-                        <AccordionTrigger>Server-Side Conditional Redirection (Most Powerful)</AccordionTrigger>
+                        <AccordionTrigger>Server-Side Conditional Redirection (Most Powerful to Nightmare v2)</AccordionTrigger>
                         <AccordionContent className="space-y-2 pt-2">
-                            <p className="text-sm text-muted-foreground">Identify suspicious bots on your server (e.g., based on IP reputation, user-agent patterns, or unusual behavior). Once identified, your server issues an HTTP <strong className="text-accent">redirect (HTTP 301 or 302)</strong>, sending the bot *directly* to <span className="font-semibold text-accent">this SpiteSpiral URL</span> (<code className="text-xs bg-muted p-0.5 rounded text-accent break-all">{currentUrlForSetupGuide?.fullUrl}</code>). This method is highly effective and avoids loading your own server if the bot is sent to SpiteSpiral early.</p>
-                            <p className="text-sm text-muted-foreground mt-2"><span className="font-semibold text-primary">Future Enhancement with API:</span> The upcoming "API for Your Individual Tarpit Data" (see "API Access" section) could allow your server to log suspicious IPs/User-Agents against this specific tarpit instance *before* redirecting. This would provide richer, contextualized data in your SpiteSpiral dashboard related to the bots you've actively diverted.</p>
+                            <p className="text-sm text-muted-foreground">Identify suspicious bots on your server (e.g., based on IP reputation, user-agent patterns, or unusual behavior). Once identified, your server issues an HTTP <strong className="text-accent">redirect (HTTP 301 or 302)</strong>, sending the bot *directly* to <span className="font-semibold text-accent">this SpiteSpiral Nightmare v2 URL</span> (<code className="text-xs bg-muted p-0.5 rounded text-accent break-all">{currentUrlForSetupGuide?.fullUrl}</code>). This method is highly effective and avoids loading your own server if the bot is sent to SpiteSpiral early.</p>
+                            <p className="text-sm text-muted-foreground mt-2"><span className="font-semibold text-primary">Future Enhancement with API:</span> The upcoming "API for Your Individual Tarpit Data" (see "API Access" section) could allow your server to log suspicious IPs/User-Agents against this specific Nightmare v2 tarpit instance *before* redirecting. This would provide richer, contextualized data in your SpiteSpiral dashboard related to the bots you've actively diverted.</p>
                             <p className="text-sm text-muted-foreground mt-2">Implementation is environment-specific (e.g., using `.htaccess` on Apache, Nginx configuration, or middleware in your web application framework).</p>
                         </AccordionContent>
                     </AccordionItem>
@@ -506,9 +503,9 @@ export default function UrlList() {
                   <p className="text-sm text-muted-foreground">Quickly verify:</p>
                   <ul className="list-disc pl-5 space-y-1 text-sm text-foreground/80">
                     <li>Your `robots.txt` is updated (Step 1), disallowing your chosen path (e.g., <code className="text-xs bg-muted p-0.5 rounded">{USER_TRAP_PATH_PLACEHOLDER}</code>) for good bots.</li>
-                    <li>A link to <span className="font-semibold text-accent">this SpiteSpiral URL</span> (either directly, or via your site's path which <strong className="text-accent">redirects</strong> to it) is live on your website (Step 3).</li>
+                    <li>A link to <span className="font-semibold text-accent">this SpiteSpiral Nightmare v2 URL</span> (either directly, or via your site's path which <strong className="text-accent">redirects</strong> to it) is live on your website (Step 3).</li>
                   </ul>
-                  <p className="text-sm text-muted-foreground mt-3">You're all set! Unauthorized bots finding this trap will get caught. Check your SpiteSpiral Dashboard for activity.</p>
+                  <p className="text-sm text-muted-foreground mt-3">You're all set! Unauthorized bots finding this Nightmare v2 trap will get caught. Check your SpiteSpiral Dashboard for activity.</p>
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
@@ -552,7 +549,7 @@ export default function UrlList() {
           <AlertDialogHeader>
             <AlertDialogTitle className="text-destructive">Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription className="text-muted-foreground">
-              This will de-provision the instance and delete: <span className="font-semibold text-foreground break-all">{currentUrlToDelete?.name}</span> ({currentUrlToDelete?.fullUrl}). This cannot be undone.
+              This will de-provision the Nightmare v2 instance and delete: <span className="font-semibold text-foreground break-all">{currentUrlToDelete?.name}</span> ({currentUrlToDelete?.fullUrl}). This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -566,4 +563,3 @@ export default function UrlList() {
     </>
   );
 }
-

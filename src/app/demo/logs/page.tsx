@@ -10,11 +10,13 @@ import { useEffect, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const DEMO_USER_ID = process.env.NEXT_PUBLIC_DEMO_USER_ID;
-const DIRECT_TRAP_URL = "https://api.spitespiral.com/trap/17bff108-d97e-42d7-b151-7a2378c56d12";
+const DEMO_TARPIT_INSTANCE_ID = "17bff108-d97e-42d7-b151-7a2378c56d12";
+const DIRECT_TRAP_URL = `https://api.spitespiral.com/trap/${DEMO_TARPIT_INSTANCE_ID}`;
+
 
 export default function DemoRequestLogsPage() {
   const [isDemoIdConfigured, setIsDemoIdConfigured] = useState(false);
-  const [isLoading, setIsLoading] = useState(true); // For initial check
+  const [isLoading, setIsLoading] = useState(true); 
   const [isMountedTrap, setIsMountedTrap] = useState(false);
 
 
@@ -23,10 +25,9 @@ export default function DemoRequestLogsPage() {
       setIsDemoIdConfigured(true);
     }
     setIsLoading(false);
-    setIsMountedTrap(true); // For JS-injected link
+    setIsMountedTrap(true); 
   }, []);
 
-  // For JS-injected footer link
   useEffect(() => {
     if (isMountedTrap) {
       const container = document.getElementById('spite-footer-container-demo-logs');
@@ -46,7 +47,6 @@ export default function DemoRequestLogsPage() {
   if (isLoading) {
       return (
         <>
-        {/* Invisible direct tarpit link for header area */}
         <a
             href={DIRECT_TRAP_URL}
             rel="nofollow noopener noreferrer"
@@ -78,7 +78,6 @@ export default function DemoRequestLogsPage() {
   if (!isDemoIdConfigured) {
     return (
         <>
-        {/* Invisible direct tarpit link for header area */}
         <a
             href={DIRECT_TRAP_URL}
             rel="nofollow noopener noreferrer"
@@ -116,7 +115,6 @@ export default function DemoRequestLogsPage() {
 
   return (
     <>
-    {/* Invisible direct tarpit link for header area */}
     <a
         href={DIRECT_TRAP_URL}
         rel="nofollow noopener noreferrer"
@@ -145,7 +143,7 @@ export default function DemoRequestLogsPage() {
             <h1 className="text-4xl font-bold tracking-tight text-primary glitch-text">Demo Request Logs</h1>
             </div>
             <p className="text-muted-foreground mt-2 text-lg">
-            View raw GET and POST request logs from crawlers interacting with the demo tarpits.
+            View raw GET and POST request logs from crawlers interacting with the demo Nightmare v2 tarpits.
             </p>
         </div>
          <Button asChild variant="outline" className="border-accent text-accent hover:bg-accent/10 hover:text-accent-foreground">
@@ -159,7 +157,7 @@ export default function DemoRequestLogsPage() {
         <Info className="h-5 w-5 text-accent" />
         <AlertTitle className="text-accent">Raw Log Data Notice</AlertTitle>
         <AlertDescription className="text-muted-foreground">
-          Due to our new log aggregation system for performance and cost, the detailed raw logs displayed here for the demo may be limited, not up-to-date, or may no longer be populated if the raw log collection (tarpit_logs) is deprecated for the demo user. The Demo Dashboard shows activity based on aggregated summaries.
+          Due to our log aggregation system for performance and cost, the detailed raw logs displayed here for the demo (interacting with our Nightmare v2 engine) may be limited, not up-to-date, or may no longer be populated if the raw log collection (tarpit_logs) is deprecated for the demo user. The Demo Dashboard shows activity based on aggregated summaries.
         </AlertDescription>
       </Alert>
 
@@ -168,7 +166,7 @@ export default function DemoRequestLogsPage() {
           <CardHeader>
             <CardTitle className="text-xl text-primary">Demo Crawler Request Logs</CardTitle>
             <CardDescription>
-              Detailed log of incoming requests to demo tarpits (may be limited or based on historical data).
+              Detailed log of incoming requests to demo Nightmare v2 tarpits (may be limited or based on historical data).
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -176,14 +174,11 @@ export default function DemoRequestLogsPage() {
           </CardContent>
         </Card>
       </section>
-      {/* Invisible JS-injected redirect tarpit link for footer area */}
       {isMountedTrap && (
         <div id="spite-footer-container-demo-logs" aria-hidden="true" style={{ position: 'absolute', left: '-9999px', bottom: '0px', opacity: 0, width: '1px', height: '1px', overflow: 'hidden' }}>
-          {/* JS will inject here */}
         </div>
       )}
     </div>
     </>
   );
 }
-
