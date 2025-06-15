@@ -19,7 +19,8 @@ import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-const DEMO_USER_ID = process.env.NEXT_PUBLIC_DEMO_USER_ID;
+const DEMO_USER_ID = process.env.NEXT_PUBLIC_DEMO_USER_ID; // e.g., "mYB70XTj33OUckTZriBABCX84P23"
+const DEMO_TARPIT_INSTANCE_ID_FOR_SUMMARIES = "17bff108-d97e-42d7-b151-7a2378c56d12"; // The actual ID for demo summaries
 const DIRECT_TRAP_URL = "https://api.spitespiral.com/trap/17bff108-d97e-42d7-b151-7a2378c56d12";
 
 interface AnalyticsSummaryDocumentForDemo {
@@ -80,7 +81,7 @@ export default function DemoDashboardPage() {
   useEffect(() => {
     const logPrefix = "DemoDashboardPage - Config Check:";
     if (DEMO_USER_ID && DEMO_USER_ID !== "public-demo-user-id-placeholder") {
-      console.log(`${logPrefix} NEXT_PUBLIC_DEMO_USER_ID is set to: ${DEMO_USER_ID}`);
+      console.log(`${logPrefix} NEXT_PUBLIC_DEMO_USER_ID (for account features like instance count) is set to: ${DEMO_USER_ID}`);
       setIsDemoConfigProperlySet(true);
     } else {
       setIsDemoConfigProperlySet(false);
@@ -100,7 +101,7 @@ export default function DemoDashboardPage() {
     const fetchAndAggregateDemoData = async () => {
       setIsLoadingDemoData(true);
       setDemoDataError(null);
-      const logPrefix = `DemoDashboardPage (DEMO_USER_ID: ${DEMO_USER_ID ? DEMO_USER_ID : 'N/A'}) - Demo Data Fetch:`;
+      const logPrefix = `DemoDashboardPage (DEMO_USER_ID: ${DEMO_USER_ID || 'N/A'}, Demo Tarpit Instance ID: ${DEMO_TARPIT_INSTANCE_ID_FOR_SUMMARIES}) - Demo Data Fetch:`;
       console.log(`${logPrefix} Starting fetch.`);
 
       try {
@@ -110,24 +111,24 @@ export default function DemoDashboardPage() {
             const instancesQuery = query(collection(db, "tarpit_configs"), where("userId", "==", DEMO_USER_ID));
             const instancesSnapshot = await getDocs(instancesQuery);
             activeInstances = instancesSnapshot.size;
-            console.log(`${logPrefix} Fetched ${activeInstances} active demo instances.`);
+            console.log(`${logPrefix} Fetched ${activeInstances} active demo instances for demo user ${DEMO_USER_ID}.`);
           } catch (instanceError) {
-              console.error(`${logPrefix} Error fetching demo active instances count:`, instanceError);
+              console.error(`${logPrefix} Error fetching demo active instances count for user ${DEMO_USER_ID}:`, instanceError);
               toast({ title: "Error (Demo Instances)", description: `Could not fetch demo active tarpit instances. Error: ${instanceError instanceof Error ? instanceError.message : 'Unknown error'}`, variant: "destructive" });
           }
         }
 
         const thirtyDaysAgoDate = startOfDay(subDays(new Date(), 29));
-        console.log(`${logPrefix} Querying summaries for tarpitId: "${DEMO_USER_ID}" and startTime >= ${thirtyDaysAgoDate.toISOString()}`);
+        console.log(`${logPrefix} Querying summaries for tarpitId: "${DEMO_TARPIT_INSTANCE_ID_FOR_SUMMARIES}" and startTime >= ${thirtyDaysAgoDate.toISOString()}`);
         
         const summariesQuery = query(
           collection(db, "tarpit_analytics_summaries"),
-          where("tarpitId", "==", DEMO_USER_ID), 
+          where("tarpitId", "==", DEMO_TARPIT_INSTANCE_ID_FOR_SUMMARIES), 
           where("startTime", ">=", Timestamp.fromDate(thirtyDaysAgoDate)),
           orderBy("startTime", "asc")
         );
         const querySnapshot = await getDocs(summariesQuery);
-        console.log(`${logPrefix} Fetched ${querySnapshot.size} summary documents.`);
+        console.log(`${logPrefix} Fetched ${querySnapshot.size} summary documents for tarpitId "${DEMO_TARPIT_INSTANCE_ID_FOR_SUMMARIES}".`);
 
         const allFetchedSummaries: AnalyticsSummaryDocumentForDemo[] = [];
         querySnapshot.forEach((doc) => {
@@ -192,7 +193,7 @@ export default function DemoDashboardPage() {
     };
 
     fetchAndAggregateDemoData();
-  }, [isDemoConfigProperlySet, toast, DEMO_USER_ID]);
+  }, [isDemoConfigProperlySet, toast]);
 
 
   if (!isDemoConfigProperlySet && !isLoadingDemoData) {
@@ -204,7 +205,9 @@ export default function DemoDashboardPage() {
               <h2 className="text-2xl font-semibold text-destructive">Demo Not Configured</h2>
               <p className="text-muted-foreground max-w-md">
                   The environment variable <code className="bg-muted px-1.5 py-0.5 rounded-sm font-semibold text-accent">NEXT_PUBLIC_DEMO_USER_ID</code> is not set or is still using placeholder values.
-                  Please configure this in your <code className="bg-muted px-1.5 py-0.5 rounded-sm font-semibold text-accent">.env</code> file and ensure corresponding data (where `tarpitId` in summaries matches this User ID) and Firestore rules exist.
+                  This ID is used for general demo account features (like instance count).
+                  Please configure this in your <code className="bg-muted px-1.5 py-0.5 rounded-sm font-semibold text-accent">.env</code> file.
+                  The demo analytics themselves are for tarpit instance <code className="bg-muted px-1.5 py-0.5 rounded-sm font-semibold text-accent">{DEMO_TARPIT_INSTANCE_ID_FOR_SUMMARIES}</code>.
                   <br/><br/>Current error: {demoDataError || "NEXT_PUBLIC_DEMO_USER_ID missing."}
               </p>
                <Button asChild>
@@ -271,7 +274,7 @@ export default function DemoDashboardPage() {
           <AlertTitle className="text-primary">How This Demo Works</AlertTitle>
           <AlertDescription className="text-muted-foreground space-y-1">
            <p>
-              The statistics on this page are sourced from a live SpiteSpiral Tarpit instance. This demo showcases data aggregated from activity summaries generated for the public demo tarpit (identified by <code className="text-xs bg-muted p-0.5 rounded text-accent">{DEMO_USER_ID || "demo_tarpit_id"}</code>) over the last 30 days. The 'Active Instances' count reflects configurations associated with the public demo account.
+              The statistics on this page are sourced from a live SpiteSpiral Tarpit instance. This demo showcases data aggregated from activity summaries generated for the public demo tarpit (identified by instance ID <code className="text-xs bg-muted p-0.5 rounded text-accent">{DEMO_TARPIT_INSTANCE_ID_FOR_SUMMARIES}</code>) over the last 30 days. The 'Active Instances' count reflects configurations associated with the general public demo account (<code className="text-xs bg-muted p-0.5 rounded text-accent">{DEMO_USER_ID || "demo_user_id"}</code>).
             </p>
           </AlertDescription>
         </Alert>
