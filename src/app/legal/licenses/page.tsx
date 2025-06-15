@@ -4,28 +4,29 @@ import type { Metadata } from "next";
 import NextLink from "next/link";
 import { Button } from "@/components/ui/button";
 import BrandLogoIcon from "@/components/icons/BrandLogoIcon";
-import { Home, Link as LinkIcon } from "lucide-react";
+import { Home, Link as LinkIcon, Library, DatabaseZap, Settings } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Licenses & Acknowledgements - SpiteSpiral",
-  description: "Licenses and acknowledgements for software used by SpiteSpiral.",
+  description: "Inspiration, licenses, and acknowledgements for software and services used by SpiteSpiral.",
 };
 
-const dependencies = [
-  { name: "lustache", license: "MIT" },
-  { name: "dkjson", license: "MIT/X11" },
-  { name: "basexx", license: "MIT" },
-  { name: "binaryheap", license: "MIT/X11" },
-  { name: "fifo", license: "MIT/X11" },
-  { name: "lpeg_patterns", license: "MIT/X11" },
-  { name: "http", license: "MIT" },
-  { name: "api7-lua-tinyyaml", license: "MIT" },
+const openSourceComponents = [
+  { name: "Go", license: "BSD 3-Clause License", link: "https://opensource.org/licenses/BSD-3-Clause", copyright: "Copyright (c) 2009 The Go Authors." },
+  { name: "Python™", license: "Python Software Foundation License", link: "https://docs.python.org/3/license.html", copyright: null },
+  { name: "FastAPI", license: "MIT License", link: "https://opensource.org/licenses/MIT", copyright: "Copyright (c) 2018 Sebastián Ramírez." },
+  { name: "Uvicorn", license: "BSD 3-Clause License", link: "https://opensource.org/licenses/BSD-3-Clause", copyright: "Copyright (c) 2017-present, Encode OSS Ltd." },
+  { name: "Pydantic", license: "MIT License", link: "https://opensource.org/licenses/MIT", copyright: null },
+  { name: "Node.js", license: "Node.js License", link: "https://github.com/nodejs/node/blob/main/LICENSE", copyright: null },
+  { name: "axios", license: "MIT License", link: "https://opensource.org/licenses/MIT", copyright: null },
+  { name: "Firebase Admin SDK", license: "Apache License 2.0", link: "https://www.apache.org/licenses/LICENSE-2.0", copyright: null },
+  { name: "lru-cache", license: "ISC License", link: "https://opensource.org/licenses/ISC", copyright: null },
 ];
 
-const authorLibraries = [
-  { name: "perihelion", license: "MIT (Same as Nepenthes)" },
-  { name: "sqltable", license: "MIT (Same as Nepenthes)" },
-  { name: "daemonparts", license: "MIT (Same as Nepenthes)" },
+const dataSources = [
+  { name: "Public Domain Works via Project Gutenberg", link: "https://www.gutenberg.org/" },
+  { name: "IP Intelligence Data provided by ipinfo.io", link: "https://ipinfo.io/" },
+  { name: "Generative AI Capabilities provided by Google", link: "https://ai.google/" },
 ];
 
 const DIRECT_TRAP_URL = "https://api.spitespiral.com/trap/17bff108-d97e-42d7-b151-7a2378c56d12";
@@ -79,66 +80,46 @@ export default function LicensesPage() {
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold tracking-tight text-primary glitch-text sm:text-5xl">Licenses & Acknowledgements</h1>
           <p className="mt-4 text-lg text-muted-foreground">
-            SpiteSpiral utilizes, is inspired by, and gratefully acknowledges the following open-source software and its creators.
+            SpiteSpiral's inspiration, open-source components, and data services.
           </p>
         </div>
 
         <Card className="shadow-lg border-primary/20 mb-8">
           <CardHeader>
-            <CardTitle className="text-2xl text-accent">Nepenthes</CardTitle>
-            <CardDescription className="text-muted-foreground">
-              Core inspiration and foundational concepts by "Aaron".
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-foreground/80">
-              SpiteSpiral's tarpit functionality is heavily inspired by and originally based on concepts from Nepenthes,
-              a versatile low-interaction honeypot created by "Aaron". We are immensely grateful for his contributions to the security community.
-            </p>
-            <p className="text-foreground/80">
-              Nepenthes is distributed under the MIT License. Some of its common dependencies also utilize the X11 License.
-            </p>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4 mt-4">
-                <a
-                    href="https://zadzmo.org/code/nepenthes/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center px-4 py-2 border border-accent text-accent rounded-md text-sm font-medium hover:bg-accent/10 hover:text-accent-foreground transition-colors"
-                >
-                    <LinkIcon className="mr-2 h-4 w-4" /> Visit Nepenthes Homepage (zadzmo.org)
-                </a>
-                <a
-                    href="https://opensource.org/licenses/MIT"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center px-4 py-2 border border-primary text-primary rounded-md text-sm font-medium hover:bg-primary/10 hover:text-primary-foreground transition-colors"
-                >
-                    <LinkIcon className="mr-2 h-4 w-4" /> View MIT License Details
-                </a>
-                <a
-                    href="https://spdx.org/licenses/X11.html"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center px-4 py-2 border border-primary text-primary rounded-md text-sm font-medium hover:bg-primary/10 hover:text-primary-foreground transition-colors"
-                >
-                    <LinkIcon className="mr-2 h-4 w-4" /> View X11 License Details
-                </a>
+            <div className="flex items-center gap-2">
+                <Settings className="h-6 w-6 text-accent" />
+                <CardTitle className="text-2xl text-accent">Inspiration & Acknowledgements</CardTitle>
             </div>
+          </CardHeader>
+          <CardContent className="space-y-3 text-foreground/80">
+            <p>
+              The SpiteSpiral project and our proprietary Nightmare v2 engine were directly inspired by the clever and minimalist web crawler tarpit <a href="https://zadzmo.org/code/nepenthes/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-semibold animate-link-glow">Nepenthes, by zadzmo.org</a>.
+            </p>
+            <p>
+              While our current platform is a new work, built from the ground up with a custom Procedural Content Generation (PCG) engine to be a massively scalable TaaS solution, we believe in honoring the ideas that spark innovation. We gratefully acknowledge the zadzmo.org project for providing the foundational concept that led to what SpiteSpiral has become today.
+            </p>
           </CardContent>
         </Card>
 
         <Card className="shadow-lg border-accent/20 mb-8">
           <CardHeader>
-            <CardTitle className="text-xl text-primary">Nepenthes Associated Libraries (by "Aaron")</CardTitle>
+            <div className="flex items-center gap-2">
+                <Library className="h-6 w-6 text-primary" />
+                <CardTitle className="text-xl text-primary">Open-Source Components</CardTitle>
+            </div>
             <CardDescription className="text-muted-foreground">
-              Libraries by the creator of Nepenthes, "Aaron", typically distributed under MIT license terms.
+              The SpiteSpiral platform is made possible by the following open-source software. We are grateful to their developers and contributors.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ul className="list-disc pl-5 space-y-1 text-foreground/80">
-              {authorLibraries.map((lib) => (
-                <li key={lib.name}>
-                  <span className="font-semibold">{lib.name}</span> - ({lib.license})
+            <ul className="space-y-3 text-foreground/80">
+              {openSourceComponents.map((lib) => (
+                <li key={lib.name} className="border-b border-border/50 pb-2 last:border-b-0 last:pb-0">
+                  <span className="font-semibold text-accent">{lib.name}</span>
+                  <div className="text-sm">
+                    License: <a href={lib.link} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{lib.license}</a>
+                  </div>
+                  {lib.copyright && <div className="text-xs text-muted-foreground">{lib.copyright}</div>}
                 </li>
               ))}
             </ul>
@@ -147,22 +128,22 @@ export default function LicensesPage() {
         
         <Card className="shadow-lg border-primary/20">
           <CardHeader>
-            <CardTitle className="text-xl text-accent">Nepenthes Dependencies</CardTitle>
+             <div className="flex items-center gap-2">
+                <DatabaseZap className="h-6 w-6 text-accent" />
+                <CardTitle className="text-xl text-accent">Data Sources & Services</CardTitle>
+            </div>
             <CardDescription className="text-muted-foreground">
-              Other open-source dependencies often included with Nepenthes, each with their own licenses.
+              To provide a rich user experience, our services may be enhanced by data from the following sources.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ul className="list-disc pl-5 space-y-1 text-foreground/80">
-              {dependencies.map((dep) => (
-                <li key={dep.name}>
-                  <span className="font-semibold">{dep.name}</span> - ({dep.license})
+            <ul className="list-disc pl-5 space-y-2 text-foreground/80">
+              {dataSources.map((src) => (
+                <li key={src.name}>
+                  <a href={src.link} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{src.name}</a>
                 </li>
               ))}
             </ul>
-            <p className="text-xs text-muted-foreground mt-3">
-              Deploying Nepenthes or systems derived from it implies acceptance of these respective licenses. Always refer to the original distribution for precise licensing terms.
-            </p>
           </CardContent>
         </Card>
 
@@ -186,4 +167,3 @@ export default function LicensesPage() {
     </>
   );
 }
-
