@@ -20,7 +20,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 const DEMO_USER_ID = process.env.NEXT_PUBLIC_DEMO_USER_ID;
-const DIRECT_TRAP_URL = "https://api.spitespiral.com/trap/0499e104-1990-4036-bb32-53ea1e7573e7";
+const DIRECT_TRAP_URL = "https://api.spitespiral.com/trap/17bff108-d97e-42d7-b151-7a2378c56d12";
 
 interface AnalyticsSummaryDocumentForDemo {
   id?: string;
@@ -80,6 +80,7 @@ export default function DemoDashboardPage() {
   useEffect(() => {
     const logPrefix = "DemoDashboardPage - Config Check:";
     if (DEMO_USER_ID && DEMO_USER_ID !== "public-demo-user-id-placeholder") {
+      console.log(`${logPrefix} NEXT_PUBLIC_DEMO_USER_ID is set to: ${DEMO_USER_ID}`);
       setIsDemoConfigProperlySet(true);
     } else {
       setIsDemoConfigProperlySet(false);
@@ -87,6 +88,7 @@ export default function DemoDashboardPage() {
       let errorMsg = "";
       if (!DEMO_USER_ID || DEMO_USER_ID === "public-demo-user-id-placeholder") {
         errorMsg += "NEXT_PUBLIC_DEMO_USER_ID is not set or is placeholder. ";
+        console.error(`${logPrefix} Error: NEXT_PUBLIC_DEMO_USER_ID is not set or is placeholder.`);
       }
       setDemoDataError(errorMsg.trim());
     }
@@ -99,6 +101,7 @@ export default function DemoDashboardPage() {
       setIsLoadingDemoData(true);
       setDemoDataError(null);
       const logPrefix = `DemoDashboardPage (DEMO_USER_ID: ${DEMO_USER_ID ? DEMO_USER_ID : 'N/A'}) - Demo Data Fetch:`;
+      console.log(`${logPrefix} Starting fetch.`);
 
       try {
         let activeInstances = 0;
@@ -107,6 +110,7 @@ export default function DemoDashboardPage() {
             const instancesQuery = query(collection(db, "tarpit_configs"), where("userId", "==", DEMO_USER_ID));
             const instancesSnapshot = await getDocs(instancesQuery);
             activeInstances = instancesSnapshot.size;
+            console.log(`${logPrefix} Fetched ${activeInstances} active demo instances.`);
           } catch (instanceError) {
               console.error(`${logPrefix} Error fetching demo active instances count:`, instanceError);
               toast({ title: "Error (Demo Instances)", description: `Could not fetch demo active tarpit instances. Error: ${instanceError instanceof Error ? instanceError.message : 'Unknown error'}`, variant: "destructive" });
@@ -114,6 +118,8 @@ export default function DemoDashboardPage() {
         }
 
         const thirtyDaysAgoDate = startOfDay(subDays(new Date(), 29));
+        console.log(`${logPrefix} Querying summaries for tarpitId: "${DEMO_USER_ID}" and startTime >= ${thirtyDaysAgoDate.toISOString()}`);
+        
         const summariesQuery = query(
           collection(db, "tarpit_analytics_summaries"),
           where("tarpitId", "==", DEMO_USER_ID), 
@@ -121,6 +127,7 @@ export default function DemoDashboardPage() {
           orderBy("startTime", "asc")
         );
         const querySnapshot = await getDocs(summariesQuery);
+        console.log(`${logPrefix} Fetched ${querySnapshot.size} summary documents.`);
 
         const allFetchedSummaries: AnalyticsSummaryDocumentForDemo[] = [];
         querySnapshot.forEach((doc) => {
@@ -128,6 +135,7 @@ export default function DemoDashboardPage() {
         });
 
         if (allFetchedSummaries.length === 0) {
+          console.log(`${logPrefix} No summary documents found for the criteria.`);
           setAggregatedDemoData({
             totalHits: 0, approxUniqueIpCount: 0, topCountries: [], topIPs: [], topUserAgents: [],
             methodDistribution: {}, statusDistribution: {}, summaryHitsOverTime: [], activeInstances, illustrativeCost: "0.0000"
@@ -171,6 +179,7 @@ export default function DemoDashboardPage() {
         };
 
         setAggregatedDemoData(finalAggregatedData);
+        console.log(`${logPrefix} Successfully processed and aggregated ${allFetchedSummaries.length} summaries. Final data:`, finalAggregatedData);
 
       } catch (error) {
         console.error(`${logPrefix} Error fetching or processing demo data:`, error);
@@ -262,7 +271,7 @@ export default function DemoDashboardPage() {
           <AlertTitle className="text-primary">How This Demo Works</AlertTitle>
           <AlertDescription className="text-muted-foreground space-y-1">
            <p>
-              The statistics on this page are sourced from a live SpiteSpiral Tarpit instance. This demo showcases data aggregated from activity summaries generated for the public demo tarpit over the last 30 days. The 'Active Instances' count reflects configurations associated with the public demo account.
+              The statistics on this page are sourced from a live SpiteSpiral Tarpit instance. This demo showcases data aggregated from activity summaries generated for the public demo tarpit (identified by <code className="text-xs bg-muted p-0.5 rounded text-accent">{DEMO_USER_ID || "demo_tarpit_id"}</code>) over the last 30 days. The 'Active Instances' count reflects configurations associated with the public demo account.
             </p>
           </AlertDescription>
         </Alert>
@@ -434,3 +443,4 @@ function aggregateDistribution(
   });
   return totalDistribution;
 }
+
