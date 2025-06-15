@@ -20,19 +20,19 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 const DEMO_USER_ID = process.env.NEXT_PUBLIC_DEMO_USER_ID;
-const DEMO_TARPIT_INSTANCE_ID = "17bff108-d97e-42d7-b151-7a2378c56d12"; // Current demo tarpit ID
+const DEMO_TARPIT_INSTANCE_ID = "17bff108-d97e-42d7-b151-7a2378c56d12"; // This is the specific Tarpit ID for analytics.
 const DIRECT_TRAP_URL = `https://api.spitespiral.com/trap/${DEMO_TARPIT_INSTANCE_ID}`;
 
 interface AnalyticsSummaryDocumentForDemo {
   id?: string;
-  tarpitId: string; 
+  tarpitId: string;
   startTime: Timestamp;
   totalHits: number;
   uniqueIpCount: number;
   topCountries?: Array<{ item: string; hits: number }>;
   methodDistribution?: Record<string, number>;
   statusDistribution?: Record<string, number>;
-  topIPs?: Array<{ item: string; hits: number; asn?: string }>; // Added asn
+  topIPs?: Array<{ item: string; hits: number; asn?: string }>;
   topUserAgents?: Array<{ item: string; hits: number }>;
 }
 
@@ -40,7 +40,7 @@ interface AggregatedAnalyticsDataForDemo {
   totalHits: number;
   approxUniqueIpCount: number;
   topCountries: Array<{ country: string; hits: number }>;
-  topIPs: Array<{ ip: string; hits: number; asn?: string }>; // Added asn
+  topIPs: Array<{ ip: string; hits: number; asn?: string }>;
   topUserAgents: Array<{ userAgent: string; hits: number }>;
   methodDistribution: Record<string, number>;
   statusDistribution: Record<string, number>;
@@ -58,7 +58,7 @@ const HorizontalBarChartDemo = ({ data, nameKey, valueKey, valueSuffixKey }: { d
   })).slice(0, 5);
 
   return (
-    <ResponsiveContainer width="100%" height={chartData.length * 45 + 40}> {/* Increased item height */}
+    <ResponsiveContainer width="100%" height={chartData.length * 45 + 40}>
       <BarChart data={chartData} layout="vertical" margin={{ top: 5, right: 20, left: 100, bottom: 5 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border)/0.3)" />
         <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" allowDecimals={false} />
@@ -69,7 +69,7 @@ const HorizontalBarChartDemo = ({ data, nameKey, valueKey, valueSuffixKey }: { d
           itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
           cursor={{ fill: 'hsl(var(--accent)/0.1)' }}
           formatter={(value, name, props) => {
-            const originalName = props.payload.name; // This will include the ASN if appended
+            const originalName = props.payload.name;
             return [value, originalName];
           }}
         />
@@ -137,7 +137,7 @@ export default function DemoDashboardPage() {
         
         const summariesQuery = query(
           collection(db, "tarpit_analytics_summaries"),
-          where("tarpitId", "==", DEMO_TARPIT_INSTANCE_ID), 
+          where("tarpitId", "==", DEMO_TARPIT_INSTANCE_ID),
           where("startTime", ">=", Timestamp.fromDate(thirtyDaysAgoDate)),
           orderBy("startTime", "asc")
         );
@@ -243,16 +243,16 @@ export default function DemoDashboardPage() {
                 </section>
                 <Separator className="my-8 border-primary/20" />
                  <h2 className="text-2xl font-semibold text-primary mt-8 mb-4"><Skeleton className="h-8 w-1/2"/></h2>
-                 <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-2"> {/* Changed from lg:grid-cols-3 to lg:grid-cols-2 */}
+                 <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
                     <Skeleton className="h-48 w-full" />
                     <Skeleton className="h-48 w-full" />
                     <Skeleton className="h-48 w-full" />
                     <Skeleton className="h-48 w-full" />
                 </section>
                 <Separator className="my-8 border-primary/20" />
-                <section><Skeleton className="h-80 w-full" /></section> {/* User Agent Table Skeleton */}
+                <section><Skeleton className="h-80 w-full" /></section>
                 <Separator className="my-8 border-primary/20" />
-                <section><Skeleton className="h-96 w-full" /></section> {/* Hits Over Time Chart Skeleton */}
+                <section><Skeleton className="h-96 w-full" /></section>
             </div>
         </>
      )
@@ -289,8 +289,13 @@ export default function DemoDashboardPage() {
           <Eye className="h-5 w-5 text-primary" />
           <AlertTitle className="text-primary">How This Demo Works</AlertTitle>
           <AlertDescription className="text-muted-foreground space-y-1">
-           <p>
-              The statistics on this page are sourced from a live SpiteSpiral Nightmare v2 Tarpit instance. This demo showcases data aggregated from activity summaries generated for the public demo tarpit (identified by instance ID <code className="text-xs bg-muted p-0.5 rounded text-accent">{DEMO_TARPIT_INSTANCE_ID}</code>) over the last 30 days. The 'Active Instances' count reflects configurations associated with the general public demo account (<code className="text-xs bg-muted p-0.5 rounded text-accent">{DEMO_USER_ID || "demo_user_id"}</code>). ASN (network provider) data is included for IP insights.
+            <p>
+              The statistics on this page showcase live data from a SpiteSpiral Nightmare v2 Tarpit.
+              This demo reflects real activity aggregated from our public demonstration tarpit,
+              which is actively embedded and collecting data. You can see how it captures and
+              analyzes interactions, including IP intelligence with ASN (network provider) data
+              for enhanced threat assessment. This provides a glimpse into the insights you&apos;d
+              get for your own configured tarpits.
             </p>
           </AlertDescription>
         </Alert>
@@ -376,7 +381,7 @@ export default function DemoDashboardPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {aggregatedDemoData.topUserAgents.slice(0, 5).map((ua, index) => (
+                                {aggregatedDemoData.topUserAgents.slice(0, 10).map((ua, index) => (
                                     <TableRow key={index} className="hover:bg-muted/30">
                                         <TableCell className="text-xs text-muted-foreground max-w-xs md:max-w-md lg:max-w-lg xl:max-w-xl truncate">
                                             <TooltipProvider delayDuration={150}>
@@ -468,3 +473,4 @@ function aggregateDistribution(
   });
   return totalDistribution;
 }
+
