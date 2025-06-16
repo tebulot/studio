@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import TrappedCrawlersChart from "@/components/dashboard/TrappedCrawlersChart";
-import { ShieldCheck, Users, DollarSign, Info, Eye, Fingerprint, Globe, ListFilter, BarChart3, Server, Activity } from "lucide-react";
+import { ShieldCheck, Users, DollarSign, Info, Eye, Fingerprint, Globe, ListFilter, BarChart3, Server, Activity, Network } from "lucide-react"; // Added Network
 import { db } from "@/lib/firebase/clientApp";
 import { collection, query, where, onSnapshot, getDocs, type DocumentData, type QuerySnapshot, Timestamp, orderBy } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -20,20 +20,22 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 const DEMO_USER_ID = process.env.NEXT_PUBLIC_DEMO_USER_ID;
-const DEMO_TARPIT_INSTANCE_ID = "17bff108-d97e-42d7-b151-7a2378c56d12"; // This is the specific Tarpit ID for analytics.
+const DEMO_TARPIT_INSTANCE_ID = "17bff108-d97e-42d7-b151-7a2378c56d12"; 
 const DIRECT_TRAP_URL = `https://api.spitespiral.com/trap/${DEMO_TARPIT_INSTANCE_ID}`;
 
 interface AnalyticsSummaryDocumentForDemo {
   id?: string;
-  tarpitId: string;
+  tarpitId: string; // Should match DEMO_TARPIT_INSTANCE_ID for demo analytics
+  userId?: string; // Could be DEMO_USER_ID for ownership context
   startTime: Timestamp;
   totalHits: number;
   uniqueIpCount: number;
   topCountries?: Array<{ item: string; hits: number }>;
   methodDistribution?: Record<string, number>;
-  statusDistribution?: Record<string, number>;
+  statusDistribution?: Record<string, number>; // Keep for data model, not displayed
   topIPs?: Array<{ item: string; hits: number; asn?: string }>;
   topUserAgents?: Array<{ item: string; hits: number }>;
+  topASNs?: Array<{ item: string; hits: number; name?: string; }>; // New: item is ASN, name is descriptive
 }
 
 interface AggregatedAnalyticsDataForDemo {
@@ -43,17 +45,18 @@ interface AggregatedAnalyticsDataForDemo {
   topIPs: Array<{ ip: string; hits: number; asn?: string }>;
   topUserAgents: Array<{ userAgent: string; hits: number }>;
   methodDistribution: Record<string, number>;
-  statusDistribution: Record<string, number>;
+  statusDistribution: Record<string, number>; // Keep for data model
+  topASNs: Array<{ asn: string; hits: number; name?: string; }>; // New
   summaryHitsOverTime?: Array<{ date: string; hits: number }>;
   activeInstances: number;
   illustrativeCost: string;
 }
 
-const HorizontalBarChartDemo = ({ data, nameKey, valueKey, valueSuffixKey }: { data: any[], nameKey: string, valueKey: string, valueSuffixKey?: string }) => {
+const HorizontalBarChartDemo = ({ data, nameKey, valueKey, detailKey }: { data: any[], nameKey: string, valueKey: string, detailKey?: string }) => {
   if (!data || data.length === 0) return <p className="text-xs text-muted-foreground h-40 flex items-center justify-center">No data to display.</p>;
   
   const chartData = data.map(item => ({
-    name: item[nameKey] + (valueSuffixKey && item[valueSuffixKey] ? ` (${item[valueSuffixKey]})` : ''),
+    name: item[nameKey] + (detailKey && item[detailKey] ? ` (${item[detailKey]})` : ''),
     value: item[valueKey]
   })).slice(0, 5);
 
@@ -90,7 +93,7 @@ export default function DemoDashboardPage() {
   useEffect(() => {
     const logPrefix = "DemoDashboardPage - Config Check:";
     if (DEMO_USER_ID && DEMO_USER_ID !== "public-demo-user-id-placeholder" && DEMO_TARPIT_INSTANCE_ID) {
-      console.log(`${logPrefix} NEXT_PUBLIC_DEMO_USER_ID (for account features) is set to: ${DEMO_USER_ID}`);
+      console.log(`${logPrefix} NEXT_PUBLIC_DEMO_USER_ID (for demo account features like 'Active Instances') is set to: ${DEMO_USER_ID}`);
       console.log(`${logPrefix} DEMO_TARPIT_INSTANCE_ID (for analytics summaries) is set to: ${DEMO_TARPIT_INSTANCE_ID}`);
       setIsDemoConfigProperlySet(true);
     } else {
@@ -115,12 +118,12 @@ export default function DemoDashboardPage() {
     const fetchAndAggregateDemoData = async () => {
       setIsLoadingDemoData(true);
       setDemoDataError(null);
-      const logPrefix = `DemoDashboardPage (DEMO_USER_ID: ${DEMO_USER_ID}, Demo Tarpit ID: ${DEMO_TARPIT_INSTANCE_ID}) - Demo Data Fetch:`;
+      const logPrefix = `DemoDashboardPage (DEMO_USER_ID: ${DEMO_USER_ID}, Demo Tarpit ID for Analytics: ${DEMO_TARPIT_INSTANCE_ID}) - Demo Data Fetch:`;
       console.log(`${logPrefix} Starting fetch.`);
 
       try {
         let activeInstances = 0;
-        if (DEMO_USER_ID) {
+        if (DEMO_USER_ID) { // Fetch active instances based on the demo user ID
           try {
             const instancesQuery = query(collection(db, "tarpit_configs"), where("userId", "==", DEMO_USER_ID));
             const instancesSnapshot = await getDocs(instancesQuery);
@@ -137,7 +140,7 @@ export default function DemoDashboardPage() {
         
         const summariesQuery = query(
           collection(db, "tarpit_analytics_summaries"),
-          where("tarpitId", "==", DEMO_TARPIT_INSTANCE_ID),
+          where("tarpitId", "==", DEMO_TARPIT_INSTANCE_ID), // Use the specific demo tarpit instance ID for analytics
           where("startTime", ">=", Timestamp.fromDate(thirtyDaysAgoDate)),
           orderBy("startTime", "asc")
         );
@@ -153,7 +156,8 @@ export default function DemoDashboardPage() {
           console.log(`${logPrefix} No summary documents found for the criteria.`);
           setAggregatedDemoData({
             totalHits: 0, approxUniqueIpCount: 0, topCountries: [], topIPs: [], topUserAgents: [],
-            methodDistribution: {}, statusDistribution: {}, summaryHitsOverTime: [], activeInstances, illustrativeCost: "0.0000"
+            methodDistribution: {}, statusDistribution: {}, topASNs: [], 
+            summaryHitsOverTime: [], activeInstances, illustrativeCost: "0.0000"
           });
           setIsLoadingDemoData(false);
           return;
@@ -162,12 +166,13 @@ export default function DemoDashboardPage() {
         const totalHits = allFetchedSummaries.reduce((sum, s) => sum + (s.totalHits || 0), 0);
         const approxUniqueIpCount = allFetchedSummaries.reduce((sum, s) => sum + (s.uniqueIpCount || 0), 0);
 
-        const topCountries = aggregateTopList(allFetchedSummaries, "topCountries", "country");
-        const topIPs = aggregateTopList(allFetchedSummaries, "topIPs", "ip");
-        const topUserAgents = aggregateTopList(allFetchedSummaries, "topUserAgents", "userAgent", 10);
+        const topCountries = aggregateTopListDemo(allFetchedSummaries, "topCountries", "country");
+        const topIPs = aggregateTopListDemo(allFetchedSummaries, "topIPs", "ip");
+        const topASNs = aggregateTopListDemo(allFetchedSummaries, "topASNs", "asn"); // New
+        const topUserAgents = aggregateTopListDemo(allFetchedSummaries, "topUserAgents", "userAgent", 10);
 
-        const methodDistribution = aggregateDistribution(allFetchedSummaries, "methodDistribution");
-        const statusDistribution = aggregateDistribution(allFetchedSummaries, "statusDistribution");
+        const methodDistribution = aggregateDistributionDemo(allFetchedSummaries, "methodDistribution");
+        const statusDistribution = aggregateDistributionDemo(allFetchedSummaries, "statusDistribution");
 
         const hitsByInterval: { [key: string]: number } = {};
         const chartEndDate = new Date();
@@ -188,7 +193,7 @@ export default function DemoDashboardPage() {
         const illustrativeCost = (totalHits * 0.0001).toFixed(4);
 
         const finalAggregatedData: AggregatedAnalyticsDataForDemo = {
-            totalHits, approxUniqueIpCount, topCountries, topIPs, topUserAgents,
+            totalHits, approxUniqueIpCount, topCountries, topIPs, topASNs, topUserAgents,
             methodDistribution, statusDistribution, summaryHitsOverTime: summaryHitsOverTimeData,
             activeInstances, illustrativeCost
         };
@@ -328,23 +333,21 @@ export default function DemoDashboardPage() {
               <Card className="border-primary/30 shadow-lg">
                   <CardHeader><div className="flex items-center gap-2"><Fingerprint className="h-5 w-5 text-primary" /><CardTitle className="text-md font-medium text-primary">IP Activity (with ASN)</CardTitle></div></CardHeader>
                   <CardContent className="min-h-[200px]">
-                      {aggregatedDemoData?.topIPs && aggregatedDemoData.topIPs.length > 0 ? <HorizontalBarChartDemo data={aggregatedDemoData.topIPs} nameKey="ip" valueKey="hits" valueSuffixKey="asn"/> : <p className="text-xs text-muted-foreground">No IP data.</p>}
+                      {aggregatedDemoData?.topIPs && aggregatedDemoData.topIPs.length > 0 ? <HorizontalBarChartDemo data={aggregatedDemoData.topIPs} nameKey="ip" valueKey="hits" detailKey="asn"/> : <p className="text-xs text-muted-foreground">No IP data.</p>}
                   </CardContent>
               </Card>
               <Card className="border-accent/30 shadow-lg">
-                  <CardHeader><div className="flex items-center gap-2"><Server className="h-5 w-5 text-accent" /><CardTitle className="text-md font-medium text-accent">HTTP Method Distribution</CardTitle></div></CardHeader>
+                  <CardHeader><div className="flex items-center gap-2"><Network className="h-5 w-5 text-accent" /><CardTitle className="text-md font-medium text-accent">Top ASN Activity</CardTitle></div></CardHeader>
+                  <CardContent className="min-h-[200px]">
+                    {aggregatedDemoData?.topASNs && aggregatedDemoData.topASNs.length > 0 ? <HorizontalBarChartDemo data={aggregatedDemoData.topASNs} nameKey="asn" valueKey="hits" detailKey="name" /> : <p className="text-xs text-muted-foreground">No ASN data.</p>}
+                  </CardContent>
+              </Card>
+              <Card className="border-primary/30 shadow-lg">
+                  <CardHeader><div className="flex items-center gap-2"><Server className="h-5 w-5 text-primary" /><CardTitle className="text-md font-medium text-primary">HTTP Method Distribution</CardTitle></div></CardHeader>
                   <CardContent className="min-h-[150px]">
                     {aggregatedDemoData?.methodDistribution && Object.keys(aggregatedDemoData.methodDistribution).length > 0 ? (
                       <ul className="space-y-1 text-xs text-muted-foreground">{Object.entries(aggregatedDemoData.methodDistribution).sort(([,a],[,b])=>b-a).slice(0,5).map(([k,v],i) => <li key={i} className="flex justify-between"><span className="truncate max-w-[60%]">{k}</span> <span className="font-semibold">{v} hits</span></li>)}</ul>
                     ) : <p className="text-xs text-muted-foreground">No method data.</p>}
-                  </CardContent>
-              </Card>
-              <Card className="border-primary/30 shadow-lg">
-                  <CardHeader><div className="flex items-center gap-2"><BarChart3 className="h-5 w-5 text-primary" /><CardTitle className="text-md font-medium text-primary">HTTP Status Code Distribution</CardTitle></div></CardHeader>
-                  <CardContent className="min-h-[150px]">
-                      {aggregatedDemoData?.statusDistribution && Object.keys(aggregatedDemoData.statusDistribution).length > 0 ? (
-                        <ul className="space-y-1 text-xs text-muted-foreground">{Object.entries(aggregatedDemoData.statusDistribution).sort(([,a],[,b])=>b-a).slice(0,5).map(([k,v],i) => <li key={i} className="flex justify-between"><span className="truncate max-w-[60%]">{k}</span> <span className="font-semibold">{v} hits</span></li>)}</ul>
-                      ) : <p className="text-xs text-muted-foreground">No status data.</p>}
                   </CardContent>
               </Card>
           </section>
@@ -433,15 +436,16 @@ export default function DemoDashboardPage() {
   );
 }
 
-function aggregateTopList(
+// Helper function specific to demo page to avoid direct dependency if main dashboard's is complex
+function aggregateTopListDemo(
   summaries: AnalyticsSummaryDocumentForDemo[],
-  sourceArrayKey: "topCountries" | "topIPs" | "topUserAgents", 
+  sourceArrayKey: "topCountries" | "topIPs" | "topUserAgents" | "topASNs", 
   outputNameKey: string,
   limit: number = 5
-): Array<{ [key: string]: string | number } & { hits: number; asn?: string }> {
-  const counts: Record<string, { hits: number; asn?: string }> = {};
+): Array<{ [key: string]: string | number } & { hits: number; asn?: string; name?: string; }> {
+  const counts: Record<string, { hits: number; asn?: string; name?: string; }> = {};
   summaries.forEach(summary => {
-    const list = summary[sourceArrayKey] as Array<{ item: string; hits: number; asn?: string }> | undefined;
+    const list = summary[sourceArrayKey] as Array<{ item: string; hits: number; asn?: string; name?: string; }> | undefined;
     list?.forEach(subItem => {
       if (!counts[subItem.item]) {
         counts[subItem.item] = { hits: 0 };
@@ -450,15 +454,18 @@ function aggregateTopList(
       if (subItem.asn && !counts[subItem.item].asn) {
         counts[subItem.item].asn = subItem.asn;
       }
+      if (subItem.name && !counts[subItem.item].name) {
+        counts[subItem.item].name = subItem.name;
+      }
     });
   });
   return Object.entries(counts)
     .sort(([, a], [, b]) => b.hits - a.hits)
     .slice(0, limit)
-    .map(([val, data]) => ({ [outputNameKey]: val, hits: data.hits, asn: data.asn }));
+    .map(([val, data]) => ({ [outputNameKey]: val, hits: data.hits, asn: data.asn, name: data.name }));
 }
 
-function aggregateDistribution(
+function aggregateDistributionDemo(
   summaries: AnalyticsSummaryDocumentForDemo[],
   keyField: "methodDistribution" | "statusDistribution"
 ): Record<string, number> {
@@ -474,3 +481,4 @@ function aggregateDistribution(
   return totalDistribution;
 }
 
+    

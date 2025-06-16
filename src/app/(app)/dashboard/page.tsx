@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import TrappedCrawlersChart from "@/components/dashboard/TrappedCrawlersChart";
 import ApiLogTable from "@/components/dashboard/ApiLogTable";
-import { ShieldCheck, Users, DollarSign, Info, Fingerprint, ListFilter, Activity, Globe, Server, BarChart3, AlertCircle, Eye, Lock } from "lucide-react";
+import { ShieldCheck, Users, DollarSign, Info, Fingerprint, ListFilter, Activity, Globe, Server, BarChart3, AlertCircle, Eye, Lock, Network } from "lucide-react"; // Added Network
 import { useAuth, type UserProfile } from "@/contexts/AuthContext";
 import { db } from "@/lib/firebase/clientApp";
 import { collection, query, where, onSnapshot, type DocumentData, type QuerySnapshot, Timestamp, getDocs, orderBy } from "firebase/firestore";
@@ -49,19 +49,21 @@ interface AnalyticsSummaryDocument {
   uniqueIpCount: number;
   topCountries?: Array<{ item: string; hits: number }>;
   methodDistribution?: Record<string, number>;
-  statusDistribution?: Record<string, number>;
-  topIPs?: Array<{ item: string; hits: number; asn?: string }>; // Added optional ASN here
+  statusDistribution?: Record<string, number>; // Kept for data model, but not displayed
+  topIPs?: Array<{ item: string; hits: number; asn?: string }>;
   topUserAgents?: Array<{ item: string; hits: number }>;
+  topASNs?: Array<{ item: string; hits: number; name?: string; }>; // New: item is ASN, name is descriptive
 }
 
 interface AggregatedAnalyticsData {
   totalHits: number;
   approxUniqueIpCount: number;
   topCountries: Array<{ country: string; hits: number }>;
-  topIPs: Array<{ ip: string; hits: number; asn?: string }>; // Added optional ASN here
+  topIPs: Array<{ ip: string; hits: number; asn?: string }>;
   topUserAgents: Array<{ userAgent: string; hits: number }>;
   methodDistribution: Record<string, number>;
-  statusDistribution: Record<string, number>;
+  statusDistribution: Record<string, number>; // Kept for data model
+  topASNs: Array<{ asn: string; hits: number; name?: string; }>; // New
   summaryHitsOverTime?: Array<{ date: string; hits: number }>;
 }
 
@@ -76,7 +78,7 @@ const PLACEHOLDER_TOP_COUNTRIES_DEMO = [
   { country: "Atlantis (Demo)", hits: 300 }, { country: "El Dorado (Demo)", hits: 250 }, { country: "Shangri-La (Demo)", hits: 200 },
   { country: "Avalon (Demo)", hits: 150 }, { country: "Lyonesse (Demo)", hits: 100 },
 ];
-const PLACEHOLDER_TOP_IPS_DEMO = [ // Adding illustrative ASN data
+const PLACEHOLDER_TOP_IPS_DEMO = [
   { ip: "10.0.0.1 (Demo)", hits: 150, asn: "AS15169 (Google Demo)" }, { ip: "10.0.0.2 (Demo)", hits: 120, asn: "AS14618 (Amazon Demo)" }, { ip: "10.0.0.3 (Demo)", hits: 90, asn: "AS7922 (Comcast Demo)" },
   { ip: "10.0.0.4 (Demo)", hits: 70, asn: "AS20115 (DigitalOcean Demo)" }, { ip: "10.0.0.5 (Demo)", hits: 50, asn: "AS3356 (Level3 Demo)" },
 ];
@@ -85,7 +87,15 @@ const PLACEHOLDER_TOP_UAS_DEMO = [
   { userAgent: "PlaceholderUA (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/100.0 (Demo)", hits: 100 }, { userAgent: "Botzilla-Demo (compatible; SpecialBot/3.0; +http://example.com/bot)", hits: 80 },
 ];
 const PLACEHOLDER_METHOD_DIST_DEMO = { "GET (Demo)": 600, "POST (Demo)": 300, "PUT (Demo)": 50, "DELETE (Demo)": 20, "OPTIONS (Demo)": 30 };
-const PLACEHOLDER_STATUS_DIST_DEMO = { "200 (Demo)": 700, "404 (Demo)": 150, "403 (Demo)": 100, "500 (Demo)": 30, "301 (Demo)": 20 };
+// const PLACEHOLDER_STATUS_DIST_DEMO = { "200 (Demo)": 700, "404 (Demo)": 150, "403 (Demo)": 100, "500 (Demo)": 30, "301 (Demo)": 20 }; // No longer used for card
+const PLACEHOLDER_TOP_ASNS_DEMO = [ // New
+  { asn: "AS15169", name: "Google LLC (Demo)", hits: 280 },
+  { asn: "AS7922", name: "Comcast Cable Communications (Demo)", hits: 220 },
+  { asn: "AS14618", name: "Amazon.com, Inc. (Demo)", hits: 180 },
+  { asn: "AS3356", name: "Level 3 Parent, LLC (Demo)", hits: 150 },
+  { asn: "AS20115", name: "DigitalOcean, LLC (Demo)", hits: 120 },
+];
+
 const PLACEHOLDER_SUMMARY_HITS_OVER_TIME_DEMO = (rangeHours: number): Array<{date: string, hits: number}> => {
     const now = new Date();
     const endDate = now;
@@ -101,27 +111,30 @@ const PLACEHOLDER_SUMMARY_HITS_OVER_TIME_DEMO = (rangeHours: number): Array<{dat
 
 function aggregateTopList(
   summaries: AnalyticsSummaryDocument[],
-  sourceArrayKey: "topCountries" | "topIPs" | "topUserAgents",
+  sourceArrayKey: "topCountries" | "topIPs" | "topUserAgents" | "topASNs",
   outputNameKey: string,
   limit: number = 5
-): Array<{ [key: string]: string | number } & { hits: number; asn?: string }> { // Added asn to return type
-  const counts: Record<string, { hits: number; asn?: string }> = {}; // Store hits and ASN
+): Array<{ [key: string]: string | number } & { hits: number; asn?: string; name?: string; }> {
+  const counts: Record<string, { hits: number; asn?: string; name?: string; }> = {};
   summaries.forEach(summary => {
-    const list = summary[sourceArrayKey] as Array<{ item: string; hits: number; asn?: string }> | undefined;
+    const list = summary[sourceArrayKey] as Array<{ item: string; hits: number; asn?: string; name?: string; }> | undefined;
     list?.forEach(subItem => {
       if (!counts[subItem.item]) {
         counts[subItem.item] = { hits: 0 };
       }
       counts[subItem.item].hits += subItem.hits;
-      if (subItem.asn && !counts[subItem.item].asn) { // Store first ASN encountered for an IP
+      if (subItem.asn && !counts[subItem.item].asn) {
         counts[subItem.item].asn = subItem.asn;
+      }
+      if (subItem.name && !counts[subItem.item].name) { // Added for ASN name or other details
+        counts[subItem.item].name = subItem.name;
       }
     });
   });
   return Object.entries(counts)
     .sort(([, a], [, b]) => b.hits - a.hits)
     .slice(0, limit)
-    .map(([val, data]) => ({ [outputNameKey]: val, hits: data.hits, asn: data.asn }));
+    .map(([val, data]) => ({ [outputNameKey]: val, hits: data.hits, asn: data.asn, name: data.name }));
 }
 
 
@@ -141,15 +154,15 @@ function aggregateDistribution(
   return totalDistribution;
 }
 
-const HorizontalBarChart = ({ data, nameKey, valueKey, valueSuffixKey, layout = 'vertical' }: { data: any[], nameKey: string, valueKey: string, valueSuffixKey?: string, layout?: 'horizontal' | 'vertical' }) => {
+const HorizontalBarChart = ({ data, nameKey, valueKey, detailKey, layout = 'vertical' }: { data: any[], nameKey: string, valueKey: string, detailKey?: string, layout?: 'horizontal' | 'vertical' }) => {
   if (!data || data.length === 0) return <p className="text-xs text-muted-foreground h-40 flex items-center justify-center">No data to display.</p>;
   
   const chartData = data.map(item => ({
-    name: item[nameKey] + (valueSuffixKey && item[valueSuffixKey] ? ` (${item[valueSuffixKey]})` : ''), // Append suffix if available
+    name: item[nameKey] + (detailKey && item[detailKey] ? ` (${item[detailKey]})` : ''),
     value: item[valueKey]
   })).slice(0, 5);
 
-  const containerHeight = layout === 'vertical' ? (chartData.length * 45 + 40) : 200; // Increased item height
+  const containerHeight = layout === 'vertical' ? (chartData.length * 45 + 40) : 200;
 
   return (
     <ResponsiveContainer width="100%" height={containerHeight}>
@@ -171,7 +184,7 @@ const HorizontalBarChart = ({ data, nameKey, valueKey, valueSuffixKey, layout = 
           itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
           cursor={{ fill: 'hsl(var(--accent)/0.1)' }}
           formatter={(value, name, props) => {
-            const originalName = props.payload.name; // This will include the ASN if appended
+            const originalName = props.payload.name; 
             return [value, originalName];
           }}
         />
@@ -295,7 +308,7 @@ export default function DashboardPage() {
     const fetchAggregatedAnalytics = async () => {
       setIsAggregatedLoading(true);
       setAggregatedError(null);
-      setAggregatedAnalytics(null); // Clear previous data
+      setAggregatedAnalytics(null); 
       const logPrefix = `DashboardPage (User: ${user.uid.substring(0,5)}...) - Aggregated Analytics:`;
       console.log(`${logPrefix} Starting fetch. Range: ${selectedRangeHours}h. Querying by userId: ${user.uid}`);
 
@@ -329,7 +342,7 @@ export default function DashboardPage() {
         if (allSummaries.length === 0) {
            setAggregatedAnalytics({
             totalHits: 0, approxUniqueIpCount: 0, topCountries: [], topIPs: [],
-            topUserAgents: [], methodDistribution: {}, statusDistribution: {},
+            topUserAgents: [], methodDistribution: {}, statusDistribution: {}, topASNs: [],
             summaryHitsOverTime: [],
           });
           setIsAggregatedLoading(false);
@@ -368,6 +381,7 @@ export default function DashboardPage() {
           approxUniqueIpCount: allSummaries.reduce((sum, s) => sum + (s.uniqueIpCount || 0), 0),
           topCountries: aggregateTopList(allSummaries, "topCountries", "country"),
           topIPs: aggregateTopList(allSummaries, "topIPs", "ip"),
+          topASNs: aggregateTopList(allSummaries, "topASNs", "asn"), // New
           topUserAgents: aggregateTopList(allSummaries, "topUserAgents", "userAgent", 10),
           methodDistribution: aggregateDistribution(allSummaries, "methodDistribution"),
           statusDistribution: aggregateDistribution(allSummaries, "statusDistribution"),
@@ -430,7 +444,8 @@ export default function DashboardPage() {
 
     if (tier === 'window') {
         cardIsLoading = false; cardError = null;
-        displayData = title.toLowerCase().includes("method") ? PLACEHOLDER_METHOD_DIST_DEMO : PLACEHOLDER_STATUS_DIST_DEMO;
+        // displayData = title.toLowerCase().includes("method") ? PLACEHOLDER_METHOD_DIST_DEMO : PLACEHOLDER_STATUS_DIST_DEMO; // Status dist no longer shown
+        displayData = title.toLowerCase().includes("method") ? PLACEHOLDER_METHOD_DIST_DEMO : {};
     }
 
     const sortedData = displayData ? Object.entries(displayData).sort(([,a],[,b]) => b-a).slice(0,5) : [];
@@ -475,18 +490,19 @@ export default function DashboardPage() {
     );
   };
 
-  const renderTopListCard = (title: string, data: Array<{ [key: string]: string | number, hits: number, asn?: string }> | undefined, itemKey: string, icon: React.ElementType, isLoading: boolean, error: string | null, tier: 'window' | 'setforget' | 'analytics', showAsn: boolean = false) => {
+  const renderTopListCard = (title: string, data: Array<any> | undefined, itemKey: string, icon: React.ElementType, isLoading: boolean, error: string | null, tier: 'window' | 'setforget' | 'analytics', detailKey?: string) => {
     const IconComponent = icon;
     let displayData = data;
     let cardIsLoading = isLoading;
     let cardError = error;
-
+  
     if (tier === 'window') {
         cardIsLoading = false; cardError = null;
         if (title.toLowerCase().includes("countries") || title.toLowerCase().includes("country")) displayData = PLACEHOLDER_TOP_COUNTRIES_DEMO;
         else if (title.toLowerCase().includes("ips") || title.toLowerCase().includes("ip activity")) displayData = PLACEHOLDER_TOP_IPS_DEMO;
+        else if (title.toLowerCase().includes("asn") || title.toLowerCase().includes("network provider")) displayData = PLACEHOLDER_TOP_ASNS_DEMO;
     }
-
+  
     return (
       <Card className="border-accent/30 shadow-lg">
         <CardHeader>
@@ -495,8 +511,8 @@ export default function DashboardPage() {
               <IconComponent className="h-5 w-5 text-accent" />
               <CardTitle className="text-md font-medium text-accent">{title}</CardTitle>
             </div>
-            {tier === 'setforget' && (title.includes("Countries") || title.includes("IPs") || title.includes("Country") || title.includes("IP Activity")) &&
-                <TooltipProvider><Tooltip delayDuration={100}><TooltipTrigger asChild><Info className="h-4 w-4 text-muted-foreground cursor-help" /></TooltipTrigger><TooltipContent className="bg-popover text-popover-foreground border-primary/50 max-w-xs"><p className="text-xs">Full list and visual breakdown (including ASN for IPs) available in Analytics Tier.</p></TooltipContent></Tooltip></TooltipProvider>
+            {tier === 'setforget' && (title.includes("Countries") || title.includes("IPs") || title.includes("Country") || title.includes("IP Activity") || title.includes("ASN")) &&
+                <TooltipProvider><Tooltip delayDuration={100}><TooltipTrigger asChild><Info className="h-4 w-4 text-muted-foreground cursor-help" /></TooltipTrigger><TooltipContent className="bg-popover text-popover-foreground border-primary/50 max-w-xs"><p className="text-xs">Full list and visual breakdown available in Analytics Tier.</p></TooltipContent></Tooltip></TooltipProvider>
             }
             {tier === 'window' && <TooltipProvider><Tooltip delayDuration={100}><TooltipTrigger asChild><Info className="h-4 w-4 text-muted-foreground cursor-help" /></TooltipTrigger><TooltipContent className="bg-popover text-popover-foreground border-primary/50 max-w-xs"><p className="text-xs">Live data and full lists available in paid tiers.</p></TooltipContent></Tooltip></TooltipProvider>}
           </div>
@@ -513,12 +529,12 @@ export default function DashboardPage() {
                       <TooltipTrigger asChild>
                         <span className="truncate max-w-[70%] cursor-help">
                           {item[itemKey] as string}
-                          {showAsn && item.asn && <span className="ml-1 text-accent/70">({item.asn.split(' ')[0]})</span>}
+                          {detailKey && item[detailKey] && <span className="ml-1 text-accent/70">({(item[detailKey] as string).split(' ')[0]})</span>}
                         </span>
                       </TooltipTrigger>
                       <TooltipContent className="bg-popover text-popover-foreground border-primary/50 max-w-xs">
                         <p>{item[itemKey] as string}</p>
-                        {showAsn && item.asn && <p className="text-xs text-accent">{item.asn}</p>}
+                        {detailKey && item[detailKey] && <p className="text-xs text-accent">{item[detailKey] as string}</p>}
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -734,15 +750,27 @@ export default function DashboardPage() {
               <CardContent className="min-h-[150px]">
                 {isAggregatedLoading && !isWindowShoppingTier ? <Skeleton className="h-40 w-full" /> : aggregatedError ? <p className="text-xs text-destructive">{aggregatedError}</p> :
                  !aggregatedAnalytics?.topIPs || aggregatedAnalytics.topIPs.length === 0 ? <p className="text-xs text-muted-foreground">No data available.</p> :
-                 <HorizontalBarChart data={aggregatedAnalytics.topIPs} nameKey="ip" valueKey="hits" valueSuffixKey="asn" />}
+                 <HorizontalBarChart data={aggregatedAnalytics.topIPs} nameKey="ip" valueKey="hits" detailKey="asn" />}
               </CardContent>
             </Card>
           ) : (
-             renderTopListCard("IP Activity", aggregatedAnalytics?.topIPs, "ip", Fingerprint, isAggregatedLoading && !isWindowShoppingTier, aggregatedError, currentDashboardTier, isAnalyticsTier)
+             renderTopListCard("IP Activity", aggregatedAnalytics?.topIPs, "ip", Fingerprint, isAggregatedLoading && !isWindowShoppingTier, aggregatedError, currentDashboardTier, "asn")
+          )}
+          
+          {isAnalyticsTier ? (
+            <Card className="border-primary/30 shadow-lg">
+              <CardHeader><div className="flex items-center gap-2"><Network className="h-5 w-5 text-primary" /><CardTitle className="text-md font-medium text-primary">Top ASN Activity</CardTitle></div></CardHeader>
+              <CardContent className="min-h-[150px]">
+                {isAggregatedLoading && !isWindowShoppingTier ? <Skeleton className="h-40 w-full" /> : aggregatedError ? <p className="text-xs text-destructive">{aggregatedError}</p> :
+                 !aggregatedAnalytics?.topASNs || aggregatedAnalytics.topASNs.length === 0 ? <p className="text-xs text-muted-foreground">No ASN data available.</p> :
+                 <HorizontalBarChart data={aggregatedAnalytics.topASNs} nameKey="asn" valueKey="hits" detailKey="name" />}
+              </CardContent>
+            </Card>
+          ) : (
+             renderTopListCard("Top ASN Activity", aggregatedAnalytics?.topASNs, "asn", Network, isAggregatedLoading && !isWindowShoppingTier, aggregatedError, currentDashboardTier, "name")
           )}
 
            {renderDistributionCard("HTTP Method Distribution", aggregatedAnalytics?.methodDistribution, Server, isAggregatedLoading && !isWindowShoppingTier, aggregatedError, isAnalyticsTier, currentDashboardTier)}
-           {renderDistributionCard("HTTP Status Code Distribution", aggregatedAnalytics?.statusDistribution, BarChart3, isAggregatedLoading && !isWindowShoppingTier, aggregatedError, isAnalyticsTier, currentDashboardTier)}
         </section>
       ) : (isAggregatedLoading && !isWindowShoppingTier) ? (
            <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
@@ -867,3 +895,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
