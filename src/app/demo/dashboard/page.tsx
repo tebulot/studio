@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import TrappedCrawlersChart from "@/components/dashboard/TrappedCrawlersChart";
-import { ShieldCheck, Users, DollarSign, Info, Eye, Fingerprint, Globe, ListFilter, BarChart3, Server, Activity, Network } from "lucide-react"; // Added Network
+import { ShieldCheck, Users, DollarSign, Info, Eye, Fingerprint, Globe, ListFilter, BarChart3, Server, Activity, Network, Map as MapIcon } from "lucide-react"; // Added Network, MapIcon
 import { db } from "@/lib/firebase/clientApp";
 import { collection, query, where, onSnapshot, getDocs, type DocumentData, type QuerySnapshot, Timestamp, orderBy } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -18,24 +18,25 @@ import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Toolti
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import LiveThreatMap from "@/components/dashboard/LiveThreatMap"; // New import
 
 const DEMO_USER_ID = process.env.NEXT_PUBLIC_DEMO_USER_ID;
-const DEMO_TARPIT_INSTANCE_ID = "17bff108-d97e-42d7-b151-7a2378c56d12"; 
+const DEMO_TARPIT_INSTANCE_ID = "17bff108-d97e-42d7-b151-7a2378c56d12";
 const DIRECT_TRAP_URL = `https://api.spitespiral.com/trap/${DEMO_TARPIT_INSTANCE_ID}`;
 
 interface AnalyticsSummaryDocumentForDemo {
   id?: string;
-  tarpitId: string; // Should match DEMO_TARPIT_INSTANCE_ID for demo analytics
-  userId?: string; // Could be DEMO_USER_ID for ownership context
+  tarpitId: string;
+  userId?: string;
   startTime: Timestamp;
   totalHits: number;
   uniqueIpCount: number;
   topCountries?: Array<{ item: string; hits: number }>;
   methodDistribution?: Record<string, number>;
-  statusDistribution?: Record<string, number>; // Keep for data model, not displayed
+  statusDistribution?: Record<string, number>;
   topIPs?: Array<{ item: string; hits: number; asn?: string }>;
   topUserAgents?: Array<{ item: string; hits: number }>;
-  topASNs?: Array<{ item: string; hits: number; name?: string; }>; // New: item is ASN, name is descriptive
+  topASNs?: Array<{ item: string; hits: number; name?: string; }>;
 }
 
 interface AggregatedAnalyticsDataForDemo {
@@ -45,8 +46,8 @@ interface AggregatedAnalyticsDataForDemo {
   topIPs: Array<{ ip: string; hits: number; asn?: string }>;
   topUserAgents: Array<{ userAgent: string; hits: number }>;
   methodDistribution: Record<string, number>;
-  statusDistribution: Record<string, number>; // Keep for data model
-  topASNs: Array<{ asn: string; hits: number; name?: string; }>; // New
+  statusDistribution: Record<string, number>;
+  topASNs: Array<{ asn: string; hits: number; name?: string; }>;
   summaryHitsOverTime?: Array<{ date: string; hits: number }>;
   activeInstances: number;
   illustrativeCost: string;
@@ -123,7 +124,7 @@ export default function DemoDashboardPage() {
 
       try {
         let activeInstances = 0;
-        if (DEMO_USER_ID) { // Fetch active instances based on the demo user ID
+        if (DEMO_USER_ID) { 
           try {
             const instancesQuery = query(collection(db, "tarpit_configs"), where("userId", "==", DEMO_USER_ID));
             const instancesSnapshot = await getDocs(instancesQuery);
@@ -140,7 +141,7 @@ export default function DemoDashboardPage() {
         
         const summariesQuery = query(
           collection(db, "tarpit_analytics_summaries"),
-          where("tarpitId", "==", DEMO_TARPIT_INSTANCE_ID), // Use the specific demo tarpit instance ID for analytics
+          where("tarpitId", "==", DEMO_TARPIT_INSTANCE_ID),
           where("startTime", ">=", Timestamp.fromDate(thirtyDaysAgoDate)),
           orderBy("startTime", "asc")
         );
@@ -168,7 +169,7 @@ export default function DemoDashboardPage() {
 
         const topCountries = aggregateTopListDemo(allFetchedSummaries, "topCountries", "country");
         const topIPs = aggregateTopListDemo(allFetchedSummaries, "topIPs", "ip");
-        const topASNs = aggregateTopListDemo(allFetchedSummaries, "topASNs", "asn"); // New
+        const topASNs = aggregateTopListDemo(allFetchedSummaries, "topASNs", "asn");
         const topUserAgents = aggregateTopListDemo(allFetchedSummaries, "topUserAgents", "userAgent", 10);
 
         const methodDistribution = aggregateDistributionDemo(allFetchedSummaries, "methodDistribution");
@@ -294,7 +295,7 @@ export default function DemoDashboardPage() {
           <Eye className="h-5 w-5 text-primary" />
           <AlertTitle className="text-primary">How This Demo Works</AlertTitle>
           <AlertDescription className="text-muted-foreground space-y-1">
-            <p>
+             <p>
               The statistics on this page showcase live data from a SpiteSpiral Nightmare v2 Tarpit.
               This demo reflects real activity aggregated from our public demonstration tarpit,
               which is actively embedded and collecting data. You can see how it captures and
@@ -311,6 +312,24 @@ export default function DemoDashboardPage() {
             Aggregated statistics are based on summaries updated by the backend. This dashboard fetches these summarized stats.
           </AlertDescription>
         </Alert>
+
+        <h2 className="text-2xl font-semibold text-primary mt-8 mb-4">Live Threat Map (Demo Instance)</h2>
+            <Card className="shadow-lg border-primary/20">
+                <CardHeader>
+                    <div className="flex items-center gap-2">
+                        <MapIcon className="h-6 w-6 text-primary" />
+                        <CardTitle className="text-xl text-primary">Real-time Activity Graph</CardTitle>
+                    </div>
+                    <CardDescription>
+                        Visualizes interactions with the demo Nightmare v2 tarpit. New connections and page navigations within the trap appear as nodes and edges.
+                        (Note: For the public demo, authentication context for live updates might be limited.)
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <LiveThreatMap />
+                </CardContent>
+            </Card>
+        <Separator className="my-8 border-primary/20" />
 
         <h2 className="text-2xl font-semibold text-primary mt-8 mb-4">Key Metrics (Last 30 Days Demo Summary)</h2>
         <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4">
@@ -480,5 +499,7 @@ function aggregateDistributionDemo(
   });
   return totalDistribution;
 }
+
+    
 
     
