@@ -5,7 +5,8 @@ import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import TrappedCrawlersChart from "@/components/dashboard/TrappedCrawlersChart";
 import ApiLogTable from "@/components/dashboard/ApiLogTable";
-import { ShieldCheck, Users, DollarSign, Info, Fingerprint, ListFilter, Activity, Globe, Server, BarChart3, AlertCircle, Eye, Lock, Network } from "lucide-react"; // Added Network
+import LiveThreatMap from "@/components/dashboard/LiveThreatMap"; // New Import
+import { ShieldCheck, Users, DollarSign, Info, Fingerprint, ListFilter, Activity, Globe, Server, BarChart3, AlertCircle, Eye, Lock, Network, Map } from "lucide-react"; // Added Network, Map
 import { useAuth, type UserProfile } from "@/contexts/AuthContext";
 import { db } from "@/lib/firebase/clientApp";
 import { collection, query, where, onSnapshot, type DocumentData, type QuerySnapshot, Timestamp, getDocs, orderBy } from "firebase/firestore";
@@ -49,10 +50,9 @@ interface AnalyticsSummaryDocument {
   uniqueIpCount: number;
   topCountries?: Array<{ item: string; hits: number }>;
   methodDistribution?: Record<string, number>;
-  statusDistribution?: Record<string, number>; // Kept for data model, but not displayed
   topIPs?: Array<{ item: string; hits: number; asn?: string }>;
   topUserAgents?: Array<{ item: string; hits: number }>;
-  topASNs?: Array<{ item: string; hits: number; name?: string; }>; // New: item is ASN, name is descriptive
+  topASNs?: Array<{ item: string; hits: number; name?: string; }>;
 }
 
 interface AggregatedAnalyticsData {
@@ -62,8 +62,7 @@ interface AggregatedAnalyticsData {
   topIPs: Array<{ ip: string; hits: number; asn?: string }>;
   topUserAgents: Array<{ userAgent: string; hits: number }>;
   methodDistribution: Record<string, number>;
-  statusDistribution: Record<string, number>; // Kept for data model
-  topASNs: Array<{ asn: string; hits: number; name?: string; }>; // New
+  topASNs: Array<{ asn: string; hits: number; name?: string; }>;
   summaryHitsOverTime?: Array<{ date: string; hits: number }>;
 }
 
@@ -87,8 +86,7 @@ const PLACEHOLDER_TOP_UAS_DEMO = [
   { userAgent: "PlaceholderUA (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/100.0 (Demo)", hits: 100 }, { userAgent: "Botzilla-Demo (compatible; SpecialBot/3.0; +http://example.com/bot)", hits: 80 },
 ];
 const PLACEHOLDER_METHOD_DIST_DEMO = { "GET (Demo)": 600, "POST (Demo)": 300, "PUT (Demo)": 50, "DELETE (Demo)": 20, "OPTIONS (Demo)": 30 };
-// const PLACEHOLDER_STATUS_DIST_DEMO = { "200 (Demo)": 700, "404 (Demo)": 150, "403 (Demo)": 100, "500 (Demo)": 30, "301 (Demo)": 20 }; // No longer used for card
-const PLACEHOLDER_TOP_ASNS_DEMO = [ // New
+const PLACEHOLDER_TOP_ASNS_DEMO = [
   { asn: "AS15169", name: "Google LLC (Demo)", hits: 280 },
   { asn: "AS7922", name: "Comcast Cable Communications (Demo)", hits: 220 },
   { asn: "AS14618", name: "Amazon.com, Inc. (Demo)", hits: 180 },
@@ -126,7 +124,7 @@ function aggregateTopList(
       if (subItem.asn && !counts[subItem.item].asn) {
         counts[subItem.item].asn = subItem.asn;
       }
-      if (subItem.name && !counts[subItem.item].name) { // Added for ASN name or other details
+      if (subItem.name && !counts[subItem.item].name) {
         counts[subItem.item].name = subItem.name;
       }
     });
@@ -140,7 +138,7 @@ function aggregateTopList(
 
 function aggregateDistribution(
   summaries: AnalyticsSummaryDocument[],
-  keyField: "methodDistribution" | "statusDistribution"
+  keyField: "methodDistribution"
 ): Record<string, number> {
   const totalDistribution: Record<string, number> = {};
   summaries.forEach(summary => {
@@ -342,7 +340,7 @@ export default function DashboardPage() {
         if (allSummaries.length === 0) {
            setAggregatedAnalytics({
             totalHits: 0, approxUniqueIpCount: 0, topCountries: [], topIPs: [],
-            topUserAgents: [], methodDistribution: {}, statusDistribution: {}, topASNs: [],
+            topUserAgents: [], methodDistribution: {}, topASNs: [],
             summaryHitsOverTime: [],
           });
           setIsAggregatedLoading(false);
@@ -381,10 +379,9 @@ export default function DashboardPage() {
           approxUniqueIpCount: allSummaries.reduce((sum, s) => sum + (s.uniqueIpCount || 0), 0),
           topCountries: aggregateTopList(allSummaries, "topCountries", "country"),
           topIPs: aggregateTopList(allSummaries, "topIPs", "ip"),
-          topASNs: aggregateTopList(allSummaries, "topASNs", "asn"), // New
+          topASNs: aggregateTopList(allSummaries, "topASNs", "asn"),
           topUserAgents: aggregateTopList(allSummaries, "topUserAgents", "userAgent", 10),
           methodDistribution: aggregateDistribution(allSummaries, "methodDistribution"),
-          statusDistribution: aggregateDistribution(allSummaries, "statusDistribution"),
           summaryHitsOverTime: summaryHitsOverTimeData,
         };
         setAggregatedAnalytics(aggregatedData);
@@ -444,7 +441,6 @@ export default function DashboardPage() {
 
     if (tier === 'window') {
         cardIsLoading = false; cardError = null;
-        // displayData = title.toLowerCase().includes("method") ? PLACEHOLDER_METHOD_DIST_DEMO : PLACEHOLDER_STATUS_DIST_DEMO; // Status dist no longer shown
         displayData = title.toLowerCase().includes("method") ? PLACEHOLDER_METHOD_DIST_DEMO : {};
     }
 
@@ -598,7 +594,7 @@ export default function DashboardPage() {
         <AlertDescription className="text-muted-foreground space-y-1">
           <p> • <strong className="text-primary">Window Shopping Tier:</strong> Displays static, illustrative demo data. Upgrade for live analytics!</p>
           <p> • <strong className="text-primary">Set & Forget Tier:</strong> Shows aggregated statistics from your Nightmare v2 tarpits (updated periodically from Firestore summaries). Limited visual details. Upgrade to Analytics for real-time logs and full visualizations including ASN (network provider) data for IPs.</p>
-          <p> • <strong className="text-primary">Analytics Tier:</strong> Full access to near real-time detailed logs (up to {LOG_FETCH_LIMIT} via API), aggregated summaries, and all advanced visualizations including ASN (network provider) data.</p>
+          <p> • <strong className="text-primary">Analytics Tier:</strong> Full access to near real-time detailed logs (up to {LOG_FETCH_LIMIT} via API), aggregated summaries, the Live Threat Map, and all advanced visualizations including ASN (network provider) data.</p>
         </AlertDescription>
       </Alert>
 
@@ -619,6 +615,22 @@ export default function DashboardPage() {
 
       {isAnalyticsTier && (
         <>
+            <h2 className="text-2xl font-semibold text-primary mt-8 mb-4">Live Threat Map (Analytics Tier Exclusive)</h2>
+            <Card className="shadow-lg border-primary/20">
+                <CardHeader>
+                    <div className="flex items-center gap-2">
+                        <Map className="h-6 w-6 text-primary" />
+                        <CardTitle className="text-xl text-primary">Real-time Activity Graph</CardTitle>
+                    </div>
+                    <CardDescription>
+                        Visualizes live interactions with your Nightmare v2 tarpits as they happen. New connections and page navigations within the trap appear as nodes and edges.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <LiveThreatMap />
+                </CardContent>
+            </Card>
+            <Separator className="my-8 border-primary/20" />
             <h2 className="text-2xl font-semibold text-primary mt-8 mb-4">Recent Activity Insights (from latest {LOG_FETCH_LIMIT} API logs - Analytics Tier)</h2>
             <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4">
                 <Card className="border-primary/30 shadow-lg">
@@ -688,7 +700,7 @@ export default function DashboardPage() {
             <Lock className="h-5 w-5 text-primary" />
             <AlertTitle className="text-primary">Analytics Tier Features</AlertTitle>
             <AlertDescription className="text-muted-foreground">
-                Recent Activity Insights (from real-time API logs), detailed log table, ASN (network provider) data for IPs, and advanced chart visualizations are available in the <strong className="text-accent">Analytics Tier</strong>.
+                Recent Activity Insights (from real-time API logs), detailed log table, ASN (network provider) data for IPs, Live Threat Map, and advanced chart visualizations are available in the <strong className="text-accent">Analytics Tier</strong>.
             </AlertDescription>
         </Alert>
       )}
@@ -895,5 +907,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
