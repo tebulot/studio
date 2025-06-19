@@ -5,8 +5,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import TrappedCrawlersChart from "@/components/dashboard/TrappedCrawlersChart";
 import ApiLogTable from "@/components/dashboard/ApiLogTable";
-import LiveThreatMap from "@/components/dashboard/LiveThreatMap"; // New Import
-import { ShieldCheck, Users, DollarSign, Info, Fingerprint, ListFilter, Activity, Globe, Server, BarChart3, AlertCircle, Eye, Lock, Network, Map } from "lucide-react"; // Added Network, Map
+import { ShieldCheck, Users, DollarSign, Info, Fingerprint, ListFilter, Activity, Globe, Server, BarChart3, AlertCircle, Eye, Lock, Network } from "lucide-react"; // Removed Map
 import { useAuth, type UserProfile } from "@/contexts/AuthContext";
 import { db } from "@/lib/firebase/clientApp";
 import { collection, query, where, onSnapshot, type DocumentData, type QuerySnapshot, Timestamp, getDocs, orderBy } from "firebase/firestore";
@@ -594,7 +593,7 @@ export default function DashboardPage() {
         <AlertDescription className="text-muted-foreground space-y-1">
           <p> • <strong className="text-primary">Window Shopping Tier:</strong> Displays static, illustrative demo data. Upgrade for live analytics!</p>
           <p> • <strong className="text-primary">Set & Forget Tier:</strong> Shows aggregated statistics from your Nightmare v2 tarpits (updated periodically from Firestore summaries). Limited visual details. Upgrade to Analytics for real-time logs and full visualizations including ASN (network provider) data for IPs.</p>
-          <p> • <strong className="text-primary">Analytics Tier:</strong> Full access to near real-time detailed logs (up to {LOG_FETCH_LIMIT} via API), aggregated summaries, the Live Threat Map, and all advanced visualizations including ASN (network provider) data.</p>
+          <p> • <strong className="text-primary">Analytics Tier:</strong> Full access to near real-time detailed logs (up to {LOG_FETCH_LIMIT} via API), aggregated summaries, and all advanced visualizations including ASN (network provider) data.</p>
         </AlertDescription>
       </Alert>
 
@@ -615,21 +614,6 @@ export default function DashboardPage() {
 
       {isAnalyticsTier && (
         <>
-            <h2 className="text-2xl font-semibold text-primary mt-8 mb-4">Live Threat Map (Analytics Tier Exclusive)</h2>
-            <Card className="shadow-lg border-primary/20">
-                <CardHeader>
-                    <div className="flex items-center gap-2">
-                        <Map className="h-6 w-6 text-primary" />
-                        <CardTitle className="text-xl text-primary">Real-time Activity Graph</CardTitle>
-                    </div>
-                    <CardDescription>
-                        Visualizes live interactions with your Nightmare v2 tarpits as they happen. New connections and page navigations within the trap appear as nodes and edges.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <LiveThreatMap />
-                </CardContent>
-            </Card>
             <Separator className="my-8 border-primary/20" />
             <h2 className="text-2xl font-semibold text-primary mt-8 mb-4">Recent Activity Insights (from latest {LOG_FETCH_LIMIT} API logs - Analytics Tier)</h2>
             <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4">
@@ -700,7 +684,7 @@ export default function DashboardPage() {
             <Lock className="h-5 w-5 text-primary" />
             <AlertTitle className="text-primary">Analytics Tier Features</AlertTitle>
             <AlertDescription className="text-muted-foreground">
-                Recent Activity Insights (from real-time API logs), detailed log table, ASN (network provider) data for IPs, Live Threat Map, and advanced chart visualizations are available in the <strong className="text-accent">Analytics Tier</strong>.
+                Recent Activity Insights (from real-time API logs), detailed log table, ASN (network provider) data for IPs, and advanced chart visualizations are available in the <strong className="text-accent">Analytics Tier</strong>.
             </AlertDescription>
         </Alert>
       )}
@@ -907,3 +891,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+

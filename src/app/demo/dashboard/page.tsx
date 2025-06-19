@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import TrappedCrawlersChart from "@/components/dashboard/TrappedCrawlersChart";
-import { ShieldCheck, Users, DollarSign, Info, Eye, Fingerprint, Globe, ListFilter, BarChart3, Server, Activity, Network, Map as MapIcon } from "lucide-react"; // Added Network, MapIcon
+import { ShieldCheck, Users, DollarSign, Info, Eye, Fingerprint, Globe, ListFilter, BarChart3, Server, Activity, Network } from "lucide-react"; // Removed MapIcon
 import { db } from "@/lib/firebase/clientApp";
 import { collection, query, where, onSnapshot, getDocs, type DocumentData, type QuerySnapshot, Timestamp, orderBy } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -18,7 +18,7 @@ import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Toolti
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import LiveThreatMap from "@/components/dashboard/LiveThreatMap"; // New import
+
 
 const DEMO_USER_ID = process.env.NEXT_PUBLIC_DEMO_USER_ID;
 const DEMO_TARPIT_INSTANCE_ID = "17bff108-d97e-42d7-b151-7a2378c56d12";
@@ -313,22 +313,6 @@ export default function DemoDashboardPage() {
           </AlertDescription>
         </Alert>
 
-        <h2 className="text-2xl font-semibold text-primary mt-8 mb-4">Live Threat Map (Demo Instance)</h2>
-            <Card className="shadow-lg border-primary/20">
-                <CardHeader>
-                    <div className="flex items-center gap-2">
-                        <MapIcon className="h-6 w-6 text-primary" />
-                        <CardTitle className="text-xl text-primary">Real-time Activity Graph</CardTitle>
-                    </div>
-                    <CardDescription>
-                        Visualizes interactions with the demo Nightmare v2 tarpit. New connections and page navigations within the trap appear as nodes and edges.
-                        (Note: For the public demo, authentication context for live updates might be limited.)
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <LiveThreatMap />
-                </CardContent>
-            </Card>
         <Separator className="my-8 border-primary/20" />
 
         <h2 className="text-2xl font-semibold text-primary mt-8 mb-4">Key Metrics (Last 30 Days Demo Summary)</h2>
