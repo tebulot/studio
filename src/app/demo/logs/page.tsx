@@ -10,7 +10,7 @@ import { useEffect, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const DEMO_USER_ID = process.env.NEXT_PUBLIC_DEMO_USER_ID;
-const DEMO_TARPIT_INSTANCE_ID = "17bff108-d97e-42d7-b151-7a2378c56d12";
+const DEMO_TARPIT_INSTANCE_ID = "26d8f4ba-d387-46c5-9ec7-ea8413b70062";
 const DIRECT_TRAP_URL = `https://api.spitespiral.com/trap/${DEMO_TARPIT_INSTANCE_ID}`;
 
 

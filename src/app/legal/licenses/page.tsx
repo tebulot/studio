@@ -29,7 +29,7 @@ const dataSources = [
   { name: "Generative AI Capabilities provided by Google", link: "https://ai.google/" },
 ];
 
-const DIRECT_TRAP_URL = "https://api.spitespiral.com/trap/17bff108-d97e-42d7-b151-7a2378c56d12";
+const DIRECT_TRAP_URL = "https://api.spitespiral.com/trap/26d8f4ba-d387-46c5-9ec7-ea8413b70062";
 
 
 export default function LicensesPage() {

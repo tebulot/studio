@@ -22,7 +22,7 @@ export default function LoginPage() {
   const { signIn, signUp, loading: authContextLoading, sendPasswordReset } = useAuth();
   const [resetLoading, setResetLoading] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
-  const directTarpitUrl = "https://api.spitespiral.com/trap/17bff108-d97e-42d7-b151-7a2378c56d12";
+  const directTarpitUrl = "https://api.spitespiral.com/trap/26d8f4ba-d387-46c5-9ec7-ea8413b70062";
 
 
   useEffect(() => {
@@ -238,4 +238,3 @@ export default function LoginPage() {
     </>
   );
 }
-
