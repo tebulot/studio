@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import TrappedCrawlersChart from "@/components/dashboard/TrappedCrawlersChart";
 import ApiLogTable from "@/components/dashboard/ApiLogTable";
-import { ShieldCheck, Users, DollarSign, Info, Fingerprint, ListFilter, Activity, Globe, Server, BarChart3, AlertCircle, Eye, Lock, Network } from "lucide-react"; // Removed Map
+import { ShieldCheck, Users, DollarSign, Info, Fingerprint, ListFilter, Activity, Globe, Server, BarChart3, AlertCircle, Eye, Lock, Network } from "lucide-react";
 import { useAuth, type UserProfile } from "@/contexts/AuthContext";
 import { db } from "@/lib/firebase/clientApp";
 import { collection, query, where, onSnapshot, type DocumentData, type QuerySnapshot, Timestamp, getDocs, orderBy } from "firebase/firestore";
