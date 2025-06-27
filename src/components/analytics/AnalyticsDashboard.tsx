@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Activity, AlertCircle, Globe, Shield, Users, Zap, TrendingUp, BarChart3 } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar } from 'recharts';
 import { useAuth } from '@/contexts/AuthContext';
+import { GeographicThreatMap } from './GeographicThreatMap';
 
 export function AnalyticsDashboard() {
   const { userProfile } = useAuth();
@@ -171,6 +172,11 @@ export function AnalyticsDashboard() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Geographic threat map */}
+          {analyticsQuery.data.data.geographic && analyticsQuery.data.data.geographic.length > 0 && (
+            <GeographicThreatMap data={analyticsQuery.data.data.geographic} />
+          )}
 
           {/* Time series chart for Analytics and Enterprise tiers */}
           {analyticsQuery.data.data.timeSeriesData && analyticsQuery.data.data.timeSeriesData.length > 0 && (
