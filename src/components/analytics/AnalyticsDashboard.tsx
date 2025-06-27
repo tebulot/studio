@@ -8,11 +8,28 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Activity, AlertCircle, Globe, Shield, Users, Zap, TrendingUp, BarChart3 } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar } from 'recharts';
 import { useAuth } from '@/contexts/AuthContext';
+import type { AnalyticsResponse } from '@/lib/spitespiral-api';
 
-export function AnalyticsDashboard() {
+interface AnalyticsDashboardProps {
+  analyticsData?: AnalyticsResponse;
+  isLoading?: boolean;
+  error?: any;
+  isDemo?: boolean;
+}
+
+export function AnalyticsDashboard({ analyticsData, isLoading, error, isDemo = false }: AnalyticsDashboardProps) {
   const { userProfile } = useAuth();
   const healthQuery = useSpiteSpiralHealth();
-  const analyticsQuery = useSpiteSpiralAnalytics();
+  const defaultAnalyticsQuery = useSpiteSpiralAnalytics();
+  
+  // Use provided props or fall back to hooks
+  const analyticsQuery = {
+    data: analyticsData || defaultAnalyticsQuery.data,
+    isLoading: isLoading !== undefined ? isLoading : defaultAnalyticsQuery.isLoading,
+    isError: error !== undefined ? !!error : defaultAnalyticsQuery.isError,
+    error: error || defaultAnalyticsQuery.error,
+    isSuccess: analyticsData ? true : defaultAnalyticsQuery.isSuccess
+  };
 
   const tierBadgeVariant = (tier: string) => {
     switch (tier) {
@@ -37,6 +54,8 @@ export function AnalyticsDashboard() {
         return 'Core';
       case 'window_shopping':
         return 'Free';
+      case 'demo':
+        return 'Demo';
       default:
         return tier;
     }
@@ -52,12 +71,12 @@ export function AnalyticsDashboard() {
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Analytics Dashboard</h2>
           <p className="text-muted-foreground">
-            Real-time threat intelligence and behavioral analytics
+            {isDemo ? 'Sample analytics data from our tarpit network' : 'Real-time threat intelligence and behavioral analytics'}
           </p>
         </div>
         <div className="flex items-center gap-4">
-          <Badge variant={tierBadgeVariant(userProfile?.subscriptionTier || 'window_shopping')}>
-            {tierDisplayName(userProfile?.subscriptionTier || 'window_shopping')} Tier
+          <Badge variant={isDemo ? 'secondary' : tierBadgeVariant(userProfile?.subscriptionTier || 'window_shopping')}>
+            {isDemo ? 'Demo' : tierDisplayName(userProfile?.subscriptionTier || 'window_shopping')} Tier
           </Badge>
           <Badge variant={backendStatus === 'healthy' ? 'outline' : backendStatus === 'error' ? 'destructive' : 'secondary'}>
             Backend: {backendStatus === 'healthy' ? 'Connected' : backendStatus === 'error' ? 'Disconnected' : 'Connecting...'}

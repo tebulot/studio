@@ -42,3 +42,15 @@ export function useSpiteSpiralAnalytics() {
     },
   });
 }
+
+export function useSpiteSpiralDemoAnalytics() {
+  const api = getSpiteSpiralAPI(async () => null); // Demo doesn't need auth
+
+  return useQuery({
+    queryKey: ['spitespiral', 'demo-analytics'],
+    queryFn: () => api.getDemoAnalytics(),
+    staleTime: 10 * 60 * 1000, // Consider data stale after 10 minutes (demo data changes less frequently)
+    refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
+    retry: 3,
+  });
+}
