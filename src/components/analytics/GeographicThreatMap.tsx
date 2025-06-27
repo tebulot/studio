@@ -24,7 +24,61 @@ interface GeographicThreatMapProps {
 }
 
 // Country coordinates for mapping (using capital cities as reference points)
+// Supporting both country codes and full names
 const COUNTRY_COORDINATES: { [key: string]: [number, number] } = {
+  // Country codes (from API)
+  'US': [39.0458, -76.6413],
+  'CN': [39.9042, 116.4074],
+  'RU': [55.7558, 37.6176],
+  'DE': [52.5200, 13.4050],
+  'BR': [-15.8267, -47.9218],
+  'GB': [51.5074, -0.1278],
+  'FR': [48.8566, 2.3522],
+  'IN': [28.6139, 77.2090],
+  'JP': [35.6762, 139.6503],
+  'CA': [45.4215, -75.6972],
+  'AU': [-35.2809, 149.1300],
+  'KR': [37.5665, 126.9780],
+  'NL': [52.3676, 4.9041],
+  'IT': [41.9028, 12.4964],
+  'ES': [40.4168, -3.7038],
+  'MX': [19.4326, -99.1332],
+  'TR': [39.9334, 32.8597],
+  'PL': [52.2297, 21.0122],
+  'UA': [50.4501, 30.5234],
+  'IR': [35.6892, 51.3890],
+  'IL': [31.7683, 35.2137],
+  'VN': [21.0285, 105.8542],
+  'TH': [13.7563, 100.5018],
+  'SE': [59.3293, 18.0686],
+  'NO': [59.9139, 10.7522],
+  'FI': [60.1699, 24.9384],
+  'BE': [50.8503, 4.3517],
+  'CH': [46.9480, 7.4474],
+  'AT': [48.2082, 16.3738],
+  'CZ': [50.0755, 14.4378],
+  'PT': [38.7223, -9.1393],
+  'RO': [44.4268, 26.1025],
+  'HU': [47.4979, 19.0402],
+  'GR': [37.9755, 23.7348],
+  'SG': [1.3521, 103.8198],
+  'HK': [22.3193, 114.1694],
+  'TW': [25.0330, 121.5654],
+  'MY': [3.1390, 101.6869],
+  'ID': [-6.2088, 106.8456],
+  'PH': [14.5995, 120.9842],
+  'ZA': [-25.7461, 28.1881],
+  'EG': [30.0444, 31.2357],
+  'NG': [9.0765, 7.3986],
+  'MA': [34.0209, -6.8416],
+  'KE': [-1.2921, 36.8219],
+  'AR': [-34.6118, -58.3960],
+  'CL': [-33.4489, -70.6693],
+  'CO': [4.7110, -74.0721],
+  'PE': [-12.0464, -77.0428],
+  'VE': [10.4806, -66.9036],
+  
+  // Full country names (fallback compatibility)
   'United States': [39.0458, -76.6413],
   'China': [39.9042, 116.4074],
   'Russia': [55.7558, 37.6176],
@@ -113,7 +167,15 @@ function LeafletMap({ data }: GeographicThreatMapProps) {
       ...item,
       coordinates: COUNTRY_COORDINATES[item.country] || null
     }))
-    .filter(item => item.coordinates !== null);
+    .filter(item => {
+      if (item.coordinates === null) {
+        console.log(`No coordinates found for country: ${item.country}`);
+        return false;
+      }
+      return true;
+    });
+
+  console.log('Geographic data for map:', mapData);
 
   // Calculate threat intensity for circle sizing and coloring
   const maxRequests = Math.max(...mapData.map(item => item.requests), 1);
