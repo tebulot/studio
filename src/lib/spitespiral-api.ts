@@ -156,6 +156,20 @@ export class SpiteSpiralAPI {
       throw error;
     }
   }
+
+  async getDemoAnalytics(): Promise<AnalyticsResponse> {
+    try {
+      const response = await fetch(`${this.baseURL}/v1/demo/analytics`);
+      const data = await response.json();
+      return AnalyticsResponseSchema.parse(data);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        console.error('Demo analytics response validation error:', error.errors);
+        throw new SpiteSpiralAPIError('Invalid demo analytics response format');
+      }
+      throw error;
+    }
+  }
 }
 
 // Singleton instance factory
