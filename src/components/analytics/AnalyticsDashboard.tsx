@@ -137,7 +137,7 @@ export function AnalyticsDashboard({ analyticsData, isLoading, error, isDemo = f
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {analyticsQuery.data.data.requests?.total || 
+                  {analyticsQuery.data.data.metrics?.sessions?.total_requests || 
                    analyticsQuery.data.data.summary?.totalRequests || 0}
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -153,7 +153,7 @@ export function AnalyticsDashboard({ analyticsData, isLoading, error, isDemo = f
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {analyticsQuery.data.data.requests?.unique_ips || 
+                  {analyticsQuery.data.data.metrics?.sessions?.unique_ips || 
                    analyticsQuery.data.data.summary?.uniqueIPs || 0}
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -177,28 +177,92 @@ export function AnalyticsDashboard({ analyticsData, isLoading, error, isDemo = f
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Threat Level</CardTitle>
-                <Zap className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium">Patterns Detected</CardTitle>
+                <BarChart3 className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {analyticsQuery.data.data.summary?.threatLevel || 
-                   (analyticsQuery.data.data.patterns?.high_confidence || 0) > 10 ? 'High' : 'Low'}
+                  {analyticsQuery.data.data.metrics?.patterns?.detected || 0}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Based on patterns detected
+                  {analyticsQuery.data.data.metrics?.patterns?.high_confidence || 0} high confidence
                 </p>
               </CardContent>
             </Card>
           </div>
 
+          {/* Additional Analytics Metrics */}
+          {analyticsQuery.data.data.metrics && (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Sessions</CardTitle>
+                  <Activity className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {analyticsQuery.data.data.metrics.sessions?.total_sessions || 0}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Crawler sessions analyzed
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Avg Time Wasted</CardTitle>
+                  <Zap className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {analyticsQuery.data.data.metrics.sessions?.avg_time_wasted?.toFixed(1) || 0}s
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Per crawler session
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Pattern Types</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {analyticsQuery.data.data.metrics.patterns?.pattern_types?.length || 0}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {analyticsQuery.data.data.metrics.patterns?.pattern_types?.[0] || 'Various'} patterns
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Top Paths Hit</CardTitle>
+                  <Shield className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {analyticsQuery.data.data.metrics.top_paths?.length || 0}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Most targeted endpoints
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
           {/* Geographic threat map */}
-          {analyticsQuery.data.data.geographic && analyticsQuery.data.data.geographic.length > 0 && (
-            <GeographicThreatMap data={analyticsQuery.data.data.geographic} />
+          {analyticsQuery.data.data.metrics?.geographic && analyticsQuery.data.data.metrics.geographic.length > 0 && (
+            <GeographicThreatMap data={analyticsQuery.data.data.metrics.geographic} />
           )}
 
           {/* Time series chart for Analytics and Enterprise tiers */}
-          {analyticsQuery.data.data.timeSeriesData && analyticsQuery.data.data.timeSeriesData.length > 0 && (
+          {analyticsQuery.data.data.metrics?.time_series && analyticsQuery.data.data.metrics.time_series.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle>Request Volume Over Time</CardTitle>
@@ -208,7 +272,10 @@ export function AnalyticsDashboard({ analyticsData, isLoading, error, isDemo = f
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={350}>
-                  <AreaChart data={analyticsQuery.data.data.timeSeriesData}>
+                  <AreaChart data={analyticsQuery.data.data.metrics?.time_series?.map(item => ({
+                    hour: `${item.hour}:00`,
+                    sessions: item.sessions
+                  }))}>
                     <defs>
                       <linearGradient id="colorRequests" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/>
@@ -216,7 +283,7 @@ export function AnalyticsDashboard({ analyticsData, isLoading, error, isDemo = f
                       </linearGradient>
                     </defs>
                     <XAxis 
-                      dataKey="time" 
+                      dataKey="hour" 
                       tickFormatter={(value) => new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     />
                     <YAxis />
@@ -227,7 +294,7 @@ export function AnalyticsDashboard({ analyticsData, isLoading, error, isDemo = f
                     />
                     <Area 
                       type="monotone" 
-                      dataKey="requests" 
+                      dataKey="sessions" 
                       stroke="#8884d8" 
                       fillOpacity={1} 
                       fill="url(#colorRequests)" 

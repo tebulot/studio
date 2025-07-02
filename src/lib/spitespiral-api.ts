@@ -13,27 +13,30 @@ const AnalyticsSummarySchema = z.object({
 });
 
 const ClickHouseAnalyticsSchema = z.object({
-  requests: z.object({
-    total: z.number(),
+  sessions: z.object({
+    total_sessions: z.number(),
     unique_ips: z.number(),
+    total_requests: z.number(),
+    avg_time_wasted: z.number(),
   }),
   patterns: z.object({
     detected: z.number(),
     high_confidence: z.number(),
+    pattern_types: z.array(z.string()),
   }),
   geographic: z.array(z.object({
     country: z.string(),
-    requests: z.number(),
+    sessions: z.number(),
   })),
-  behavioral: z.array(z.object({
-    pattern: z.string(),
-    occurrences: z.number(),
-    avg_confidence: z.number(),
+  top_paths: z.array(z.object({
+    tarpit_id: z.string(),
+    hits: z.number(),
   })),
-  timeSeriesData: z.array(z.object({
-    time: z.string(),
-    requests: z.number(),
+  time_series: z.array(z.object({
+    hour: z.number(),
+    sessions: z.number(),
   })),
+  filtered: z.boolean(),
 });
 
 const EnterpriseAnalyticsSchema = ClickHouseAnalyticsSchema.extend({
@@ -53,13 +56,40 @@ const AnalyticsResponseSchema = z.object({
   tarpitCount: z.number(),
   data: z.object({
     source: z.string(),
+    timeRange: z.optional(z.string()),
+    tarpits: z.optional(z.array(z.string())),
+    userId: z.optional(z.string()),
     summary: z.optional(AnalyticsSummarySchema),
-    requests: z.optional(ClickHouseAnalyticsSchema.shape.requests),
-    patterns: z.optional(ClickHouseAnalyticsSchema.shape.patterns),
-    geographic: z.optional(ClickHouseAnalyticsSchema.shape.geographic),
-    behavioral: z.optional(ClickHouseAnalyticsSchema.shape.behavioral),
-    timeSeriesData: z.optional(ClickHouseAnalyticsSchema.shape.timeSeriesData),
-    stixIndicators: z.optional(EnterpriseAnalyticsSchema.shape.stixIndicators),
+    metrics: z.optional(z.object({
+      sessions: z.optional(ClickHouseAnalyticsSchema.shape.sessions),
+      patterns: z.optional(ClickHouseAnalyticsSchema.shape.patterns),
+      geographic: z.optional(ClickHouseAnalyticsSchema.shape.geographic),
+      top_paths: z.optional(ClickHouseAnalyticsSchema.shape.top_paths),
+      time_series: z.optional(ClickHouseAnalyticsSchema.shape.time_series),
+      filtered: z.optional(z.boolean()),
+    })),
+    networkwide: z.optional(z.object({
+      threat_correlation: z.object({
+        matches: z.number(),
+        severity: z.string(),
+      }),
+      attribution: z.object({
+        known_actors: z.number(),
+        campaigns: z.number(),
+      }),
+      intelligence: z.object({
+        iocs_matched: z.number(),
+        feed_sources: z.number(),
+      }),
+    })),
+    stix_objects: z.optional(z.array(z.object({
+      type: z.string(),
+      pattern: z.optional(z.string()),
+      name: z.optional(z.string()),
+      labels: z.optional(z.array(z.string())),
+      created: z.string(),
+      user_context: z.optional(z.string()),
+    }))),
     message: z.optional(z.string()),
     error: z.optional(z.string()),
   }),

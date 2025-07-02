@@ -14,7 +14,8 @@ const Popup = dynamic(() => import('react-leaflet').then(mod => mod.Popup), { ss
 
 interface GeographicData {
   country: string;
-  requests: number;
+  sessions?: number;
+  requests?: number; // For backwards compatibility
   latitude?: number;
   longitude?: number;
 }
@@ -178,7 +179,7 @@ function LeafletMap({ data }: GeographicThreatMapProps) {
   console.log('Geographic data for map:', mapData);
 
   // Calculate threat intensity for circle sizing and coloring
-  const maxRequests = Math.max(...mapData.map(item => item.requests), 1);
+  const maxRequests = Math.max(...mapData.map(item => item.sessions || item.requests || 0), 1);
   
   // Get threat intensity level
   const getThreatIntensity = (requests: number) => {
@@ -221,9 +222,10 @@ function LeafletMap({ data }: GeographicThreatMapProps) {
         
         {/* Threat markers */}
         {mapData.map((threat, index) => {
-          const intensity = getThreatIntensity(threat.requests);
+          const requestCount = threat.sessions || threat.requests || 0;
+          const intensity = getThreatIntensity(requestCount);
           const color = getThreatColor(intensity);
-          const radius = getCircleRadius(threat.requests);
+          const radius = getCircleRadius(requestCount);
           
           return (
             <CircleMarker
@@ -242,7 +244,7 @@ function LeafletMap({ data }: GeographicThreatMapProps) {
                 <div className="text-sm font-mono">
                   <div className="font-semibold text-primary mb-1">{threat.country}</div>
                   <div className="text-xs text-muted-foreground">
-                    <div>Requests: <span className="font-medium text-foreground">{threat.requests.toLocaleString()}</span></div>
+                    <div>Sessions: <span className="font-medium text-foreground">{requestCount.toLocaleString()}</span></div>
                     <div>Threat Level: <span className={`font-medium ${
                       intensity === 'high' ? 'text-destructive' : 
                       intensity === 'medium' ? 'text-orange-600' : 
@@ -262,9 +264,10 @@ function LeafletMap({ data }: GeographicThreatMapProps) {
 export function GeographicThreatMap({ data }: GeographicThreatMapProps) {
   // Calculate statistics
   const totalCountries = data.length;
-  const totalRequests = data.reduce((sum, item) => sum + item.requests, 0);
+  const totalRequests = data.reduce((sum, item) => sum + (item.sessions || item.requests || 0), 0);
   const topThreat = data.reduce((max, item) => 
-    item.requests > max.requests ? item : max, data[0] || { country: 'N/A', requests: 0 });
+    (item.sessions || item.requests || 0) > (max.sessions || max.requests || 0) ? item : max, 
+    data[0] || { country: 'N/A', sessions: 0 });
 
   return (
     <Card>
@@ -319,7 +322,7 @@ export function GeographicThreatMap({ data }: GeographicThreatMapProps) {
             <div>
               <h4 className="text-sm font-medium text-foreground mb-2">Top Threat Source</h4>
               <div className="text-xs text-muted-foreground">
-                <span className="font-medium text-foreground">{topThreat.country}</span> - {topThreat.requests.toLocaleString()} requests
+                <span className="font-medium text-foreground">{topThreat.country}</span> - {(topThreat.sessions || topThreat.requests || 0).toLocaleString()} sessions
               </div>
             </div>
           </div>
